@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import { SITE } from "@/lib/site";
@@ -17,21 +18,26 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE.url),
-  title: {
-    default: `${SITE.name} – ${SITE.tagline}`,
-    template: `%s | ${SITE.name}`,
-  },
-  description: SITE.description,
-  openGraph: {
-    type: "website",
-    siteName: SITE.name,
-    title: `${SITE.name} – ${SITE.tagline}`,
+export function generateMetadata(): Metadata {
+  return {
+    metadataBase: new URL(SITE.url),
+    title: {
+      default: `${SITE.name} – ${SITE.tagline}`,
+      template: `%s | ${SITE.name}`,
+    },
     description: SITE.description,
-  },
-  robots: { index: true, follow: true },
-};
+    openGraph: {
+      type: "website",
+      siteName: SITE.name,
+      title: `${SITE.name} – ${SITE.tagline}`,
+      description: SITE.description,
+    },
+    robots: { index: true, follow: true },
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  };
+}
 
 export default function RootLayout({
   children,
