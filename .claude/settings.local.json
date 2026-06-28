@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(supabase --version)",
+      "Bash(git --version)",
+      "Bash(npx --yes create-next-app@14.2.15 . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(npm install *)"
+    ]
+  }
+}

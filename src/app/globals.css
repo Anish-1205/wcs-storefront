@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Premium / luxury palette mapped to shadcn tokens.
+       background = ivory, foreground = near-black, primary = burgundy, accent = gold */
+    --background: 38 33% 96%;        /* #FAF7F2 ivory */
+    --foreground: 20 14% 12%;        /* warm near-black */
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 12%;
+    --primary: 347 56% 27%;          /* #6B1E2E burgundy */
+    --primary-foreground: 38 33% 96%;
+    --secondary: 40 30% 92%;
+    --secondary-foreground: 20 14% 12%;
+    --muted: 40 20% 90%;
+    --muted-foreground: 25 8% 40%;
+    --accent: 43 89% 38%;            /* #B8860B gold */
+    --accent-foreground: 38 33% 96%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 38 33% 96%;
+    --border: 40 18% 85%;
+    --input: 40 18% 85%;
+    --ring: 43 89% 38%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+@layer components {
+  /* Thin gold rule used as a section divider */
+  .gold-rule {
+    @apply h-px w-16 bg-gold;
+  }
+  .container-px {
+    @apply px-5 sm:px-8 lg:px-12;
+  }
+}

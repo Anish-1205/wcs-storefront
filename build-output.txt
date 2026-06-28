@@ -1,0 +1,63 @@
+
+> saree-website@0.1.0 build
+> next build
+
+  Γû▓ Next.js 14.2.15
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/35) ...
+   Generating static pages (8/35) 
+   Generating static pages (17/35) 
+   Generating static pages (26/35) 
+ Γ£ô Generating static pages (35/35)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                    Size     First Load JS
+Γöî Γùï /                                          2.61 kB         122 kB
+Γö£ Γùï /_not-found                                142 B          87.3 kB
+Γö£ Γùï /about                                     142 B          87.3 kB
+Γö£ ╞Æ /admin                                     178 B          94.2 kB
+Γö£ ╞Æ /admin/inquiries                           2.03 kB        96.3 kB
+Γö£ Γùï /admin/login                               2.31 kB         162 kB
+Γö£ ╞Æ /admin/products                            2.25 kB         103 kB
+Γö£ ╞Æ /admin/products/[id]                       141 B           106 kB
+Γö£ ╞Æ /admin/products/new                        142 B           106 kB
+Γö£ ╞Æ /admin/subscribers                         2.2 kB         96.5 kB
+Γö£ ╞Æ /api/inquiries                             0 B                0 B
+Γö£ ╞Æ /api/subscribe                             0 B                0 B
+Γö£ ╞Æ /api/upload                                0 B                0 B
+Γö£ ╞Æ /catalog                                   2.23 kB         108 kB
+Γö£ ΓùÅ /catalog/[category]                        2.23 kB         108 kB
+Γö£   Γö£ /catalog/gadwal
+Γö£   Γö£ /catalog/kanjivaram
+Γö£   Γö£ /catalog/banarasi
+Γö£   Γöö [+7 more paths]
+Γö£ ΓùÅ /collections/[slug]                        2.67 kB         122 kB
+Γö£   Γö£ /collections/bridal-sarees
+Γö£   Γöö /collections/sarees-under-5000
+Γö£ Γùï /contact                                   2.99 kB        97.2 kB
+Γö£ Γùï /robots.txt                                0 B                0 B
+Γö£ ΓùÅ /sarees/[slug]                             5.77 kB         112 kB
+Γö£   Γö£ /sarees/royal-gadwal-silk-saree
+Γö£   Γö£ /sarees/classic-kanjivaram-bridal-saree
+Γö£   Γö£ /sarees/banarasi-katan-silk-saree
+Γö£   Γöö /sarees/handloom-cotton-saree
+Γö£ Γùï /sitemap.xml                               0 B                0 B
+Γöö Γùï /wholesale                                 2.99 kB        97.2 kB
++ First Load JS shared by all                  87.2 kB
+  Γö£ chunks/117-849d4a23a2242024.js             31.6 kB
+  Γö£ chunks/fd9d1056-ac5ee11e2db7ea5d.js        53.6 kB
+  Γöö other shared chunks (total)                1.95 kB
+
+
+╞Æ Middleware                                   82.4 kB
+
+Γùï  (Static)   prerendered as static content
+ΓùÅ  (SSG)      prerendered as static HTML (uses getStaticProps)
+╞Æ  (Dynamic)  server-rendered on demand
+
