@@ -9,7 +9,9 @@ export default async function AdminProductsPage() {
 
   const { data } = await admin
     .from("products")
-    .select("id, name, slug, status, is_featured, product_code, category:categories(name), product_variants(id)")
+    .select(
+      "id, name, slug, status, is_featured, product_code, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
+    )
     .order("created_at", { ascending: false });
 
   const rows: AdminProductRow[] = (data ?? []).map((p: Record<string, unknown>) => ({
@@ -22,6 +24,12 @@ export default async function AdminProductsPage() {
     category_name:
       (p.category as { name?: string } | null)?.name ?? null,
     variant_count: ((p.product_variants as unknown[]) ?? []).length,
+    thumbnail_url:
+      ((p.product_variants as Array<{ variant_images?: Array<{ image_url: string; is_primary?: boolean; display_order?: number }> }> | undefined) ?? [])
+        .flatMap((variant) => variant.variant_images ?? [])
+        .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || (a.display_order ?? 0) - (b.display_order ?? 0))[0]?.image_url ?? null,
+    created_at: p.created_at as string,
+    updated_at: p.updated_at as string,
   }));
 
   return (

@@ -32,6 +32,7 @@ export default async function AdminDashboard() {
     { label: "Drafts", value: drafts, href: "/admin/products" },
     { label: "Inquiries", value: inquiries, href: "/admin/inquiries" },
     { label: "Subscribers", value: subscribers, href: "/admin/subscribers" },
+    { label: "Collections", value: "→", href: "/admin/collections" },
   ];
 
   return (

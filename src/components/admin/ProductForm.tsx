@@ -9,14 +9,15 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { VariantManager } from "./VariantManager";
 import { CollectionCheckboxes } from "./CollectionCheckboxes";
-import { saveProduct, type ProductInput, type VariantInput } from "@/app/admin/actions";
+import { saveProduct } from "@/app/admin/actions";
 import { slugify } from "@/lib/utils";
 import type { Category, Collection } from "@/lib/supabase/types";
+import type { ProductInputShape, VariantInputShape } from "@/lib/validation";
 
-export interface ProductFormInitial extends Partial<ProductInput> {
-  variants: VariantInput[];
+export type ProductFormInitial = Partial<ProductInputShape> & {
+  variants: VariantInputShape[];
   collection_ids: string[];
-}
+};
 
 interface Props {
   categories: Category[];
@@ -44,15 +45,15 @@ export function ProductForm({ categories, collections, initial }: Props) {
   const [priceMax, setPriceMax] = useState<string>(
     initial?.base_price_max != null ? String(initial.base_price_max) : "",
   );
-  const [status, setStatus] = useState<ProductInput["status"]>(
+  const [status, setStatus] = useState<ProductInputShape["status"]>(
     initial?.status ?? "draft",
   );
   const [productCode, setProductCode] = useState(initial?.product_code ?? "");
   const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? false);
-  const [stockType, setStockType] = useState<ProductInput["stock_type"]>(
+  const [stockType, setStockType] = useState<ProductInputShape["stock_type"]>(
     initial?.stock_type ?? "supplier",
   );
-  const [variants, setVariants] = useState<VariantInput[]>(initial?.variants ?? []);
+  const [variants, setVariants] = useState<VariantInputShape[]>(initial?.variants ?? []);
   const [collectionIds, setCollectionIds] = useState<string[]>(
     initial?.collection_ids ?? [],
   );
@@ -71,7 +72,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
       return setError("Every variant needs a color name.");
 
     setSaving(true);
-    const payload: ProductInput = {
+    const payload: ProductInputShape = {
       id: initial?.id,
       name: name.trim(),
       slug: slug.trim() || slugify(name),
@@ -80,7 +81,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
       description: description.trim() || null,
       highlights: highlights
         .split("\n")
-        .map((h) => h.trim())
+        .map((h: string) => h.trim())
         .filter(Boolean),
       base_price_min: priceMin ? Number(priceMin) : null,
       base_price_max: priceMax ? Number(priceMax) : null,
@@ -176,7 +177,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="status">Status</Label>
-            <Select id="status" value={status} onChange={(e) => setStatus(e.target.value as ProductInput["status"])}>
+            <Select id="status" value={status} onChange={(e) => setStatus(e.target.value as ProductInputShape["status"])}>
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="archived">Archived</option>
@@ -184,7 +185,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="stock">Stock type</Label>
-            <Select id="stock" value={stockType} onChange={(e) => setStockType(e.target.value as ProductInput["stock_type"])}>
+            <Select id="stock" value={stockType} onChange={(e) => setStockType(e.target.value as ProductInputShape["stock_type"])}>
               <option value="supplier">Supplier (sourced on order)</option>
               <option value="held">Held (in stock)</option>
             </Select>

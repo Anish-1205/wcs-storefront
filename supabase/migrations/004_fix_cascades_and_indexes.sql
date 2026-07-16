@@ -13,3 +13,5 @@ CREATE INDEX IF NOT EXISTS idx_products_base_price_max ON products(base_price_ma
 
 -- Disable public insert on whatsapp_subscribers table
 DROP POLICY IF EXISTS "public insert subscribers" ON whatsapp_subscribers;
+CREATE POLICY "public insert subscribers" ON whatsapp_subscribers
+	FOR INSERT WITH CHECK (true);

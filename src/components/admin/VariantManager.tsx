@@ -4,14 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ImageUploader } from "./ImageUploader";
-import type { VariantInput } from "@/app/admin/actions";
+import type { VariantInputShape } from "@/lib/validation";
 
 interface Props {
-  variants: VariantInput[];
-  onChange: (variants: VariantInput[]) => void;
+  variants: VariantInputShape[];
+  onChange: (variants: VariantInputShape[]) => void;
 }
 
-const emptyVariant = (order: number): VariantInput => ({
+const emptyVariant = (order: number): VariantInputShape => ({
   color: "",
   color_hex: "#6B1E2E",
   status: "available",
@@ -22,7 +22,7 @@ const emptyVariant = (order: number): VariantInput => ({
 });
 
 export function VariantManager({ variants, onChange }: Props) {
-  function update(i: number, patch: Partial<VariantInput>) {
+  function update(i: number, patch: Partial<VariantInputShape>) {
     onChange(variants.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
   }
   function add() {
@@ -93,7 +93,7 @@ export function VariantManager({ variants, onChange }: Props) {
               <Select
                 value={v.status}
                 onChange={(e) =>
-                  update(i, { status: e.target.value as VariantInput["status"] })
+                  update(i, { status: e.target.value as VariantInputShape["status"] })
                 }
                 className="h-9"
               >
