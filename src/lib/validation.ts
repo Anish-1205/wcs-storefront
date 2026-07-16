@@ -1,8 +1,15 @@
 import { z } from "zod";
 import { VALID_SOURCES } from "./source-tracking";
-import type { ProductStatus, StockType, VariantStatus } from "./supabase/types";
+import type {
+  ContactRole,
+  ContactSource,
+  ContactStatusTag,
+  ProductStatus,
+  StockType,
+  VariantStatus,
+} from "./supabase/types";
 
-const phoneRegex = /^[+]?[\d\s-]{7,15}$/;
+const phoneRegex = /^[+]?\d[\d\s-]{6,14}$/;
 
 /** Inquiry form (retail / wholesale / general). Includes honeypot field. */
 export const inquirySchema = z.object({
@@ -76,6 +83,74 @@ export const collectionInputSchema = z.object({
   product_ids: z.array(z.string().uuid()),
 });
 
+const contactRoleValues: [ContactRole, ...ContactRole[]] = [
+  "customer",
+  "reseller",
+  "supplier",
+  "weaver",
+  "other",
+];
+
+const contactStatusTagValues: [ContactStatusTag, ...ContactStatusTag[]] = [
+  "regular",
+  "priority",
+  "good_payer",
+  "delayed_payer",
+  "quality_consistent",
+  "quality_inconsistent",
+  "blocked",
+];
+
+const contactSourceValues: [ContactSource, ...ContactSource[]] = [
+  "manual",
+  "import",
+  "inquiry",
+  "subscriber",
+];
+
+const contactPhoneRegex = /^[+]?\d[\d\s()-]{6,19}$/;
+
+export const contactSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(200),
+  phone: z.string().regex(contactPhoneRegex, "Please enter a valid phone number"),
+  role: z.enum(contactRoleValues),
+  status_tag: z.enum(contactStatusTagValues),
+  city: z.string().max(100).nullable(),
+  source: z.enum(contactSourceValues),
+  whatsapp_opt_in: z.boolean(),
+  rating: z.number().int().min(1).max(5).nullable(),
+  notes: z.string().max(10000).nullable(),
+  last_contacted_at: z.string().datetime({ offset: true }).nullable(),
+  next_follow_up_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+});
+
+export const contactImportRowSchema = z.object({
+  name: z.string().min(1).max(200),
+  phone: z.string().regex(contactPhoneRegex, "Please enter a valid phone number"),
+  role: z.enum(contactRoleValues).optional().default("customer"),
+  status_tag: z.enum(contactStatusTagValues).optional().default("regular"),
+  city: z.string().max(100).optional().nullable(),
+  source: z.enum(contactSourceValues).optional().default("import"),
+  whatsapp_opt_in: z.coerce.boolean().optional().default(false),
+  rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+  notes: z.string().optional().nullable(),
+  last_contacted_at: z.string().datetime({ offset: true }).optional().nullable(),
+  next_follow_up_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
+
+export const contactsQuerySchema = z.object({
+  q: z.string().optional().default(""),
+  role: z.enum(contactRoleValues).optional().or(z.literal("")),
+  status_tag: z.enum(contactStatusTagValues).optional().or(z.literal("")),
+  source: z.enum(contactSourceValues).optional().or(z.literal("")),
+  sort: z.enum(["created_at", "updated_at", "name", "next_follow_up_on"]).optional().default("updated_at"),
+  dir: z.enum(["asc", "desc"]).optional().default("desc"),
+});
+
 export type VariantInputShape = z.infer<typeof variantInputSchema>;
 export type ProductInputShape = z.infer<typeof productInputSchema>;
 export type CollectionInputShape = z.infer<typeof collectionInputSchema>;
+export type ContactInputShape = z.infer<typeof contactSchema>;
+export type ContactImportRowShape = z.infer<typeof contactImportRowSchema>;
+export type ContactsQueryShape = z.infer<typeof contactsQuerySchema>;

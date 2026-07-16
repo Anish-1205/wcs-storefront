@@ -6,6 +6,7 @@ import { slugify } from "@/lib/utils";
 import type {
   Collection,
   CollectionProduct,
+  Contact,
   ProductStatus,
   StockType,
   VariantStatus,
@@ -16,8 +17,14 @@ import type {
 } from "@/lib/supabase/types";
 import {
   collectionInputSchema,
+  contactImportRowSchema,
+  contactSchema,
+  contactsQuerySchema,
   productInputSchema,
   type CollectionInputShape,
+  type ContactImportRowShape,
+  type ContactInputShape,
+  type ContactsQueryShape,
   type ProductInputShape,
 } from "@/lib/validation";
 
@@ -66,6 +73,240 @@ async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAd
 
 function withoutValue(values: Set<string>, removed?: string | null) {
   return Array.from(values).filter((value) => value !== removed);
+}
+
+function csvEscape(value: unknown) {
+  const text = value == null ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index++) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+  return cells;
+}
+
+function toIsoDate(value: string | null | undefined) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function normalizePhone(value: string) {
+  return value.replace(/[^0-9+]/g, "").replace(/(?!^)\+/g, "");
+}
+
+async function getContactByNormalizedPhone(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], phone: string) {
+  const normalized = normalizePhone(phone).toLowerCase();
+  const { data } = await admin
+    .from("contacts")
+    .select("*")
+    .or(`phone.eq.${phone},phone.eq.${normalized}`)
+    .maybeSingle();
+  return data as Contact | null;
+}
+
+async function listContactsInternal(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], query: ContactsQueryShape) {
+  let q = admin.from("contacts").select("*");
+  if (query.q) {
+    const escaped = query.q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    q = q.or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%,notes.ilike.%${escaped}%`);
+  }
+  if (query.role) q = q.eq("role", query.role);
+  if (query.status_tag) q = q.eq("status_tag", query.status_tag);
+  if (query.source) q = q.eq("source", query.source);
+  q = q.order(query.sort, { ascending: query.dir === "asc" });
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Contact[];
+}
+
+export async function listContacts(query: Partial<ContactsQueryShape> = {}) {
+  const { admin } = await assertAdmin();
+  const parsed = contactsQuerySchema.safeParse(query);
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contacts query");
+  return listContactsInternal(admin, parsed.data);
+}
+
+export async function saveContact(input: ContactInputShape): Promise<{ id: string }> {
+  const { admin } = await assertAdmin();
+  const parsed = contactSchema.safeParse(input);
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contact");
+  input = parsed.data;
+
+  const row = {
+    name: input.name,
+    phone: input.phone,
+    role: input.role,
+    status_tag: input.status_tag,
+    city: input.city,
+    source: input.source,
+    whatsapp_opt_in: input.whatsapp_opt_in,
+    rating: input.rating,
+    notes: input.notes,
+    last_contacted_at: input.last_contacted_at,
+    next_follow_up_on: input.next_follow_up_on,
+  };
+
+  let id = input.id;
+  if (id) {
+    const { error } = await admin.from("contacts").update(row).eq("id", id);
+    if (error) throw new Error(error.message);
+  } else {
+    const existing = await getContactByNormalizedPhone(admin, input.phone);
+    if (existing) {
+      const { error } = await admin.from("contacts").update(row).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+      id = existing.id;
+    } else {
+      const { data, error } = await admin.from("contacts").insert(row).select("id").single();
+      if (error) throw new Error(error.message);
+      id = data.id as string;
+    }
+  }
+
+  revalidatePath("/admin/contacts");
+  return { id };
+}
+
+export async function deleteContact(id: string) {
+  const { admin } = await assertAdmin();
+  const { error } = await admin.from("contacts").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/contacts");
+}
+
+export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {}) {
+  const { admin } = await assertAdmin();
+  const parsed = contactsQuerySchema.safeParse(query);
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contacts query");
+  const rows = await listContactsInternal(admin, parsed.data);
+  const header = [
+    "name",
+    "phone",
+    "role",
+    "status_tag",
+    "city",
+    "source",
+    "whatsapp_opt_in",
+    "rating",
+    "notes",
+    "last_contacted_at",
+    "next_follow_up_on",
+  ];
+  return [
+    header.join(","),
+    ...rows.map((row) => [
+      row.name,
+      row.phone,
+      row.role,
+      row.status_tag,
+      row.city ?? "",
+      row.source,
+      row.whatsapp_opt_in,
+      row.rating ?? "",
+      row.notes ?? "",
+      row.last_contacted_at ?? "",
+      row.next_follow_up_on ?? "",
+    ].map(csvEscape).join(",")),
+  ].join("\n");
+}
+
+export async function importContactsCsv(csvText: string) {
+  const { admin } = await assertAdmin();
+  const lines = csvText.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) {
+    return { total: 0, inserted: 0, updated: 0, skipped: 0, errors: [] as Array<{ row: number; message: string }> };
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+  const rows = lines.slice(1);
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
+  const errors: Array<{ row: number; message: string }> = [];
+
+  for (let index = 0; index < rows.length; index++) {
+    const rowNumber = index + 2;
+    const values = parseCsvLine(rows[index]);
+    const raw = Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ""]));
+    const parsed = contactImportRowSchema.safeParse({
+      ...raw,
+      whatsapp_opt_in: raw.whatsapp_opt_in === "true" || raw.whatsapp_opt_in === "1",
+      rating: raw.rating === "" ? null : raw.rating,
+      last_contacted_at: raw.last_contacted_at || null,
+      next_follow_up_on: raw.next_follow_up_on || null,
+    });
+    if (!parsed.success) {
+      skipped += 1;
+      errors.push({ row: rowNumber, message: parsed.error.issues[0]?.message ?? "Invalid row" });
+      continue;
+    }
+
+    const row = parsed.data;
+    const existing = await getContactByNormalizedPhone(admin, row.phone);
+    const payload = {
+      name: row.name,
+      phone: row.phone,
+      role: row.role,
+      status_tag: row.status_tag,
+      city: row.city ?? null,
+      source: row.source,
+      whatsapp_opt_in: row.whatsapp_opt_in,
+      rating: row.rating ?? null,
+      notes: row.notes ?? null,
+      last_contacted_at: toIsoDate(row.last_contacted_at),
+      next_follow_up_on: row.next_follow_up_on ?? null,
+    };
+
+    if (existing) {
+      const { error } = await admin.from("contacts").update(payload).eq("id", existing.id);
+      if (error) {
+        skipped += 1;
+        errors.push({ row: rowNumber, message: error.message });
+        continue;
+      }
+      updated += 1;
+    } else {
+      const { error } = await admin.from("contacts").insert(payload);
+      if (error) {
+        skipped += 1;
+        errors.push({ row: rowNumber, message: error.message });
+        continue;
+      }
+      inserted += 1;
+    }
+  }
+
+  revalidatePath("/admin/contacts");
+  return { total: rows.length, inserted, updated, skipped, errors };
 }
 
 async function getCollectionSlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {

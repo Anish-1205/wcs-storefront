@@ -10,6 +10,16 @@ export type ProductStatus = "draft" | "published" | "archived";
 export type StockType = "held" | "supplier";
 export type VariantStatus = "available" | "sold_out";
 export type InquiryType = "retail" | "wholesale" | "general";
+export type ContactRole = "customer" | "reseller" | "supplier" | "weaver" | "other";
+export type ContactStatusTag =
+  | "regular"
+  | "priority"
+  | "good_payer"
+  | "delayed_payer"
+  | "quality_consistent"
+  | "quality_inconsistent"
+  | "blocked";
+export type ContactSource = "manual" | "import" | "inquiry" | "subscriber";
 
 export interface Category {
   id: string;
@@ -96,6 +106,23 @@ export interface WhatsAppSubscriber {
   phone: string;
   source: string;
   opted_in_at: string;
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  phone: string;
+  role: ContactRole;
+  status_tag: ContactStatusTag;
+  city: string | null;
+  source: ContactSource;
+  whatsapp_opt_in: boolean;
+  rating: number | null;
+  notes: string | null;
+  last_contacted_at: string | null;
+  next_follow_up_on: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ── Composed shapes used across the app ───────────────────────────
