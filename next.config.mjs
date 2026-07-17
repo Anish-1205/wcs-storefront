@@ -42,7 +42,6 @@ export default withSentryConfig(nextConfig, {
   tunnelRoute: "/monitoring",
 
   hideSourceMaps: true,
-  disableLogger: true,
 
   webpack: {
     // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
