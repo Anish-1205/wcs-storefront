@@ -57,6 +57,18 @@ function makeUniqueSlug(base: string, existing: Set<string>) {
   return candidate;
 }
 
+function makeStableSlug(base: string, existing: Set<string>, currentSlug?: string | null) {
+  const root = slugify(base);
+  if (currentSlug && currentSlug === root) {
+    return currentSlug;
+  }
+  const collisions = new Set(existing);
+  if (currentSlug) {
+    collisions.delete(currentSlug);
+  }
+  return makeUniqueSlug(root, collisions);
+}
+
 async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"]) {
   const [{ data: products }, { data: collections }] = await Promise.all([
     admin.from("products").select("slug, product_code"),
@@ -73,8 +85,9 @@ async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAd
   };
 }
 
-function withoutValue(values: Set<string>, removed?: string | null) {
-  return Array.from(values).filter((value) => value !== removed);
+async function getProductSlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
+  const { data } = await admin.from("products").select("slug").eq("id", id).maybeSingle();
+  return (data as { slug?: string } | null)?.slug ?? null;
 }
 
 function csvEscape(value: unknown) {
@@ -322,16 +335,16 @@ export async function saveProduct(input: ProductInputShape): Promise<{ id: strin
 
   let previousSlug: string | null = null;
   if (input.id) {
-    const { data } = await admin.from("products").select("slug").eq("id", input.id).maybeSingle();
-    previousSlug = (data as { slug?: string } | null)?.slug ?? null;
+    previousSlug = await getProductSlugById(admin, input.id);
   }
 
   const refs = await loadExistingProductRefs(admin);
-  const slug = input.slug?.trim()
-    ? makeUniqueSlug(input.slug, new Set(withoutValue(refs.productSlugs, input.id)))
-    : makeUniqueSlug(input.name, new Set(withoutValue(refs.productSlugs, input.id)));
+  const slugSource = input.slug?.trim() || input.name;
+  const slug = input.id
+    ? makeStableSlug(slugSource, refs.productSlugs, previousSlug)
+    : makeUniqueSlug(slugSource, refs.productSlugs);
   const productCode = input.product_code?.trim()
-    ? makeUniqueSlug(input.product_code, new Set(withoutValue(refs.productCodes, input.product_code)))
+    ? makeUniqueSlug(input.product_code, refs.productCodes)
     : null;
 
   const productRow = {
@@ -631,9 +644,10 @@ export async function saveCollection(input: CollectionInputShape): Promise<{ id:
   }
 
   const refs = await loadExistingProductRefs(admin);
-  const slug = input.slug?.trim()
-    ? makeUniqueSlug(input.slug, new Set(withoutValue(refs.collectionSlugs, input.id)))
-    : makeUniqueSlug(input.name, new Set(withoutValue(refs.collectionSlugs, input.id)));
+  const slugSource = input.slug?.trim() || input.name;
+  const slug = input.id
+    ? makeStableSlug(slugSource, refs.collectionSlugs, previousSlug)
+    : makeUniqueSlug(slugSource, refs.collectionSlugs);
 
   const row = {
     name: input.name,
