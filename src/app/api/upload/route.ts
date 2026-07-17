@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -26,7 +27,13 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    console.warn("upload signing denied: unauthenticated");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isEmailAllowed(user.email)) {
+    console.warn("upload signing denied: forbidden");
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
