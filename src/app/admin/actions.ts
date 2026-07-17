@@ -20,6 +20,8 @@ import {
   contactImportRowSchema,
   contactSchema,
   contactsQuerySchema,
+  parseContactDateTimeValue,
+  parseContactDateValue,
   productInputSchema,
   type CollectionInputShape,
   type ContactImportRowShape,
@@ -112,13 +114,6 @@ function parseCsvLine(line: string) {
   return cells;
 }
 
-function toIsoDate(value: string | null | undefined) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
 function normalizePhone(value: string) {
   return value.replace(/[^0-9+]/g, "").replace(/(?!^)\+/g, "");
 }
@@ -171,8 +166,8 @@ export async function saveContact(input: ContactInputShape): Promise<{ id: strin
     whatsapp_opt_in: input.whatsapp_opt_in,
     rating: input.rating,
     notes: input.notes,
-    last_contacted_at: input.last_contacted_at,
-    next_follow_up_on: input.next_follow_up_on,
+    last_contacted_at: parseContactDateTimeValue(input.last_contacted_at),
+    next_follow_up_on: parseContactDateValue(input.next_follow_up_on),
   };
 
   let id = input.id;
@@ -282,8 +277,8 @@ export async function importContactsCsv(csvText: string) {
       whatsapp_opt_in: row.whatsapp_opt_in,
       rating: row.rating ?? null,
       notes: row.notes ?? null,
-      last_contacted_at: toIsoDate(row.last_contacted_at),
-      next_follow_up_on: row.next_follow_up_on ?? null,
+      last_contacted_at: parseContactDateTimeValue(row.last_contacted_at),
+      next_follow_up_on: parseContactDateValue(row.next_follow_up_on),
     };
 
     if (existing) {

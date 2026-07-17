@@ -110,6 +110,148 @@ const contactSourceValues: [ContactSource, ...ContactSource[]] = [
 
 const contactPhoneRegex = /^[+]?\d[\d\s()-]{6,19}$/;
 
+const contactDateTimeHtmlRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const contactDateHtmlRegex = /^\d{4}-\d{2}-\d{2}$/;
+const contactDateLegacyRegex = /^\d{2}-\d{2}-\d{4}$/;
+const contactDateTimeLegacyRegex = /^\d{2}-\d{2}-\d{4}[ T]\d{2}:\d{2}$/;
+
+function isBlankValue(value: unknown) {
+  return value == null || (typeof value === "string" && value.trim() === "");
+}
+
+function padTwoDigits(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateTimeForInput(date: Date) {
+  return `${date.getFullYear()}-${padTwoDigits(date.getMonth() + 1)}-${padTwoDigits(date.getDate())}T${padTwoDigits(date.getHours())}:${padTwoDigits(date.getMinutes())}`;
+}
+
+function formatDateForInput(date: Date) {
+  return `${date.getFullYear()}-${padTwoDigits(date.getMonth() + 1)}-${padTwoDigits(date.getDate())}`;
+}
+
+function parseLocalDateTime(year: number, month: number, day: number, hour = 0, minute = 0) {
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day ||
+    date.getHours() !== hour ||
+    date.getMinutes() !== minute
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function parseContactDateTimeInternal(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (contactDateTimeHtmlRegex.test(trimmed)) {
+    const [datePart, timePart] = trimmed.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    const date = parseLocalDateTime(year, month, day, hour, minute);
+    return date ? date.toISOString() : null;
+  }
+
+  if (contactDateTimeLegacyRegex.test(trimmed)) {
+    const [datePart, timePart] = trimmed.split(/[ T]/);
+    const [day, month, year] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    const date = parseLocalDateTime(year, month, day, hour, minute);
+    return date ? date.toISOString() : null;
+  }
+
+  if (contactDateHtmlRegex.test(trimmed)) {
+    const [year, month, day] = trimmed.split("-").map(Number);
+    const date = parseLocalDateTime(year, month, day);
+    return date ? date.toISOString() : null;
+  }
+
+  if (contactDateLegacyRegex.test(trimmed)) {
+    const [day, month, year] = trimmed.split("-").map(Number);
+    const date = parseLocalDateTime(year, month, day);
+    return date ? date.toISOString() : null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function parseContactDateInternal(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (contactDateHtmlRegex.test(trimmed)) {
+    const [year, month, day] = trimmed.split("-").map(Number);
+    const date = parseLocalDateTime(year, month, day);
+    return date ? formatDateForInput(date) : null;
+  }
+
+  if (contactDateLegacyRegex.test(trimmed)) {
+    const [day, month, year] = trimmed.split("-").map(Number);
+    const date = parseLocalDateTime(year, month, day);
+    return date ? formatDateForInput(date) : null;
+  }
+
+  if (contactDateTimeHtmlRegex.test(trimmed) || contactDateTimeLegacyRegex.test(trimmed)) {
+    const parsedDateTime = parseContactDateTimeInternal(trimmed);
+    return parsedDateTime ? formatDateForInput(new Date(parsedDateTime)) : null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : formatDateForInput(parsed);
+}
+
+function normalizeContactDateTimeValue(value: unknown) {
+  if (isBlankValue(value)) return null;
+  if (typeof value !== "string") return value;
+  return parseContactDateTimeInternal(value) ?? value;
+}
+
+function normalizeContactDateValue(value: unknown) {
+  if (isBlankValue(value)) return null;
+  if (typeof value !== "string") return value;
+  return parseContactDateInternal(value) ?? value;
+}
+
+export function parseContactDateTimeValue(value: string | null | undefined) {
+  return isBlankValue(value) ? null : typeof value === "string" ? parseContactDateTimeInternal(value) : null;
+}
+
+export function parseContactDateValue(value: string | null | undefined) {
+  return isBlankValue(value) ? null : typeof value === "string" ? parseContactDateInternal(value) : null;
+}
+
+export function formatContactDateTimeValueForInput(value: string | null | undefined) {
+  if (isBlankValue(value) || typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (contactDateTimeHtmlRegex.test(trimmed)) return trimmed;
+  const parsed = parseContactDateTimeInternal(trimmed);
+  return parsed ? formatDateTimeForInput(new Date(parsed)) : "";
+}
+
+export function formatContactDateValueForInput(value: string | null | undefined) {
+  if (isBlankValue(value) || typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (contactDateHtmlRegex.test(trimmed)) return trimmed;
+  const parsed = parseContactDateInternal(trimmed);
+  return parsed ?? "";
+}
+
+const contactDateTimeSchema = z.preprocess(
+  normalizeContactDateTimeValue,
+  z.string().datetime({ offset: true }).nullish().transform((value) => value ?? null),
+);
+
+const contactDateSchema = z.preprocess(
+  normalizeContactDateValue,
+  z.string().regex(contactDateHtmlRegex).nullish().transform((value) => value ?? null),
+);
+
 export const contactSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(200),
@@ -121,8 +263,8 @@ export const contactSchema = z.object({
   whatsapp_opt_in: z.boolean(),
   rating: z.number().int().min(1).max(5).nullable(),
   notes: z.string().max(10000).nullable(),
-  last_contacted_at: z.string().datetime({ offset: true }).nullable(),
-  next_follow_up_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  last_contacted_at: contactDateTimeSchema,
+  next_follow_up_on: contactDateSchema,
 });
 
 export const contactImportRowSchema = z.object({
@@ -135,8 +277,8 @@ export const contactImportRowSchema = z.object({
   whatsapp_opt_in: z.coerce.boolean().optional().default(false),
   rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
   notes: z.string().optional().nullable(),
-  last_contacted_at: z.string().datetime({ offset: true }).optional().nullable(),
-  next_follow_up_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  last_contacted_at: contactDateTimeSchema,
+  next_follow_up_on: contactDateSchema,
 });
 
 export const contactsQuerySchema = z.object({

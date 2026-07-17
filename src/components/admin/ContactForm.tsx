@@ -9,7 +9,13 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { saveContact } from "@/app/admin/actions";
 import type { Contact } from "@/lib/supabase/types";
-import type { ContactInputShape } from "@/lib/validation";
+import {
+  formatContactDateTimeValueForInput,
+  formatContactDateValueForInput,
+  parseContactDateTimeValue,
+  parseContactDateValue,
+  type ContactInputShape,
+} from "@/lib/validation";
 
 export type ContactFormInitial = Partial<ContactInputShape>;
 
@@ -43,8 +49,8 @@ export function ContactForm({ initial }: Props) {
   const [whatsappOptIn, setWhatsappOptIn] = useState(initial?.whatsapp_opt_in ?? false);
   const [rating, setRating] = useState<string>(initial?.rating != null ? String(initial.rating) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [lastContactedAt, setLastContactedAt] = useState(initial?.last_contacted_at ?? "");
-  const [nextFollowUpOn, setNextFollowUpOn] = useState(initial?.next_follow_up_on ?? "");
+  const [lastContactedAt, setLastContactedAt] = useState(formatContactDateTimeValueForInput(initial?.last_contacted_at));
+  const [nextFollowUpOn, setNextFollowUpOn] = useState(formatContactDateValueForInput(initial?.next_follow_up_on));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,8 +71,8 @@ export function ContactForm({ initial }: Props) {
         whatsapp_opt_in: whatsappOptIn,
         rating: rating ? Number(rating) : null,
         notes: notes.trim() || null,
-        last_contacted_at: lastContactedAt || null,
-        next_follow_up_on: nextFollowUpOn || null,
+        last_contacted_at: parseContactDateTimeValue(lastContactedAt),
+        next_follow_up_on: parseContactDateValue(nextFollowUpOn),
       });
       router.push("/admin/contacts");
       router.refresh();
