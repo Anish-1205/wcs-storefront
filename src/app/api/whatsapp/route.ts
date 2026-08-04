@@ -1,430 +1,561 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { signUpload } from "@/lib/cloudinary";
-import type { VariantImage } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
-const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "my_saree_bot_secret_token_123";
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const GRAPH_API_VERSION = "v20.0";
+const VERIFY_FALLBACK = "my_saree_bot_secret_token_123";
 
-/**
- * Generates a clean product SKU from a description.
- * Example: "Royal Blue Kanchipuram" → "ROYAL-BLUE-KANCHIPURAM"
- */
+type WhatsAppProfile = {
+  name?: string;
+};
+
+type WhatsAppContact = {
+  profile?: WhatsAppProfile;
+  wa_id?: string;
+};
+
+type WhatsAppImage = {
+  id?: string;
+  mime_type?: string;
+  caption?: string;
+  sha256?: string;
+};
+
+type WhatsAppText = {
+  body?: string;
+};
+
+type WhatsAppMessage = {
+  from?: string;
+  id?: string;
+  timestamp?: string;
+  type?: string;
+  image?: WhatsAppImage;
+  text?: WhatsAppText;
+};
+
+type WhatsAppChangeValue = {
+  metadata?: {
+    phone_number_id?: string;
+    display_phone_number?: string;
+  };
+  contacts?: WhatsAppContact[];
+  messages?: WhatsAppMessage[];
+  statuses?: unknown[];
+};
+
+type WhatsAppChange = {
+  value?: WhatsAppChangeValue;
+};
+
+type WhatsAppEntry = {
+  changes?: WhatsAppChange[];
+};
+
+type WhatsAppWebhookPayload = {
+  object?: string;
+  entry?: WhatsAppEntry[];
+};
+
+type MetaMediaResponse = {
+  url?: string;
+  mime_type?: string;
+  sha256?: string;
+  file_size?: number;
+};
+
+type CloudinaryUploadResponse = {
+  secure_url?: string;
+  public_id?: string;
+  asset_id?: string;
+  format?: string;
+};
+
+type AdminUploadSessionRow = {
+  product_id: string;
+  variant_id: string;
+};
+
+type ProductRow = {
+  id: string;
+  product_code: string | null;
+  slug: string;
+};
+
+type CreatedProductRow = {
+  id: string;
+  name: string;
+  slug: string;
+  product_code: string | null;
+};
+
+type CreatedVariantRow = {
+  id: string;
+  product_id: string;
+};
+
+function requireEnv(name: string, fallback?: string): string {
+  const value = process.env[name] ?? fallback;
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function getCloudName(): string {
+  return process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? process.env.CLOUDINARY_CLOUD_NAME ?? "";
+}
+
+function getWhatsAppToken(): string {
+  return requireEnv("WHATSAPP_ACCESS_TOKEN");
+}
+
+function getWhatsAppPhoneNumberId(): string {
+  return requireEnv("WHATSAPP_PHONE_NUMBER_ID");
+}
+
+function getWhatsAppVerifyToken(): string {
+  return requireEnv("WHATSAPP_VERIFY_TOKEN", VERIFY_FALLBACK);
+}
+
+function normalizeCaption(message: WhatsAppMessage): string {
+  return (message.image?.caption ?? message.text?.body ?? "").trim();
+}
+
 function generateProductSKU(description: string): string {
-  return description
+  const cleaned = description
     .toUpperCase()
-    .replace(/[^A-Z0-9\s]/g, "")
+    .replace(/[^A-Z0-9\s]/g, " ")
     .trim()
-    .split(/\s+/)
-    .join("-");
+    .replace(/\s+/g, "-");
+
+  return cleaned || `SAREE-${Date.now()}`;
 }
 
-/**
- * Downloads an image from Meta's API using the media ID.
- * Returns the image buffer and the MIME type.
- */
-async function downloadImageFromMeta(
-  mediaId: string,
-): Promise<{ buffer: Buffer; mimeType: string }> {
-  if (!WHATSAPP_ACCESS_TOKEN) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN not configured");
-  }
-
-  try {
-    // Step 1: Get the media URL from Meta's API
-    const mediaResponse = await fetch(
-      `https://graph.instagram.com/v18.0/${mediaId}?fields=media_product_type`,
-      {
-        headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-      },
-    );
-
-    if (!mediaResponse.ok) {
-      throw new Error(`Failed to fetch media metadata: ${mediaResponse.statusText}`);
-    }
-
-    const mediaData = await mediaResponse.json() as { media_product_type?: string };
-    console.log("Media metadata:", mediaData);
-
-    // Step 2: Get the actual image URL
-    const urlResponse = await fetch(
-      `https://graph.instagram.com/v18.0/${mediaId}?fields=url`,
-      {
-        headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-      },
-    );
-
-    if (!urlResponse.ok) {
-      throw new Error(`Failed to fetch media URL: ${urlResponse.statusText}`);
-    }
-
-    const urlData = await urlResponse.json() as { url?: string };
-    if (!urlData.url) {
-      throw new Error("No URL returned from Meta API");
-    }
-
-    // Step 3: Download the actual image
-    const imageResponse = await fetch(urlData.url, {
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-    });
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.statusText}`);
-    }
-
-    const buffer = await imageResponse.arrayBuffer();
-    const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
-
-    return {
-      buffer: Buffer.from(buffer),
-      mimeType,
-    };
-  } catch (error) {
-    console.error("Error downloading image from Meta:", error);
-    throw error;
-  }
+function parseMessageTimestamp(timestamp?: string): string {
+  if (!timestamp) return new Date().toISOString();
+  const numeric = Number(timestamp);
+  if (Number.isNaN(numeric)) return new Date().toISOString();
+  return new Date(numeric * 1000).toISOString();
 }
 
-/**
- * Uploads an image buffer to Cloudinary using direct API.
- * Returns the secure_url from Cloudinary.
- */
-async function uploadToCloudinary(
-  buffer: Buffer,
-  folder: string,
-): Promise<string> {
-  if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET || !NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-    throw new Error("Cloudinary credentials not configured");
-  }
+function extractFirstMessage(payload: WhatsAppWebhookPayload): {
+  message: WhatsAppMessage | null;
+  contactName: string | null;
+  rawEvent: WhatsAppChangeValue | null;
+} {
+  const changeValue = payload.entry?.[0]?.changes?.[0]?.value ?? null;
+  const message = changeValue?.messages?.[0] ?? null;
+  const contactName = changeValue?.contacts?.[0]?.profile?.name ?? null;
 
-  try {
-    const formData = new FormData();
-    const blob = new Blob([buffer], { type: "image/jpeg" });
-    formData.append("file", blob);
-    formData.append("api_key", CLOUDINARY_API_KEY);
-    formData.append("folder", folder);
-
-    // Use unsigned upload (simpler for bot integration)
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Cloudinary upload failed: ${response.statusText}`);
-    }
-
-    const data = await response.json() as { secure_url?: string };
-    if (!data.secure_url) {
-      throw new Error("No secure_url returned from Cloudinary");
-    }
-
-    return data.secure_url;
-  } catch (error) {
-    console.error("Error uploading to Cloudinary:", error);
-    throw error;
-  }
+  return { message, contactName, rawEvent: changeValue };
 }
 
-/**
- * Sends a WhatsApp reply back to the admin's phone number.
- */
+async function downloadImageFromMeta(mediaId: string): Promise<{ buffer: Buffer; mimeType: string }> {
+  const accessToken = getWhatsAppToken();
+
+  const metadataResponse = await fetch(
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${mediaId}` +
+      "?fields=url,mime_type,sha256,file_size",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+
+  if (!metadataResponse.ok) {
+    const errorText = await metadataResponse.text();
+    throw new Error(`Meta media lookup failed (${metadataResponse.status}): ${errorText}`);
+  }
+
+  const media = (await metadataResponse.json()) as MetaMediaResponse;
+  if (!media.url) {
+    throw new Error("Meta did not return a downloadable media URL");
+  }
+
+  const binaryResponse = await fetch(media.url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!binaryResponse.ok) {
+    const errorText = await binaryResponse.text();
+    throw new Error(`Meta image download failed (${binaryResponse.status}): ${errorText}`);
+  }
+
+  const arrayBuffer = await binaryResponse.arrayBuffer();
+  const mimeType = binaryResponse.headers.get("content-type") ?? media.mime_type ?? "image/jpeg";
+
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    mimeType,
+  };
+}
+
+async function uploadToCloudinary(params: {
+  buffer: Buffer;
+  mimeType?: string;
+  folder: string;
+}): Promise<{ secureUrl: string; publicId: string | null }> {
+  const cloudName = getCloudName();
+  const apiKey = requireEnv("CLOUDINARY_API_KEY");
+  requireEnv("CLOUDINARY_API_SECRET");
+
+  const payloadBuffer = Buffer.isBuffer(params.buffer) ? params.buffer : Buffer.from(params.buffer);
+  const blob = new Blob([new Uint8Array(payloadBuffer)], {
+    type: params.mimeType || "image/jpeg",
+  });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signed = await signUpload({ timestamp, folder: params.folder });
+
+  const formData = new FormData();
+  formData.append("file", blob, "whatsapp-upload.jpg");
+  formData.append("api_key", apiKey);
+  formData.append("timestamp", String(timestamp));
+  formData.append("signature", signed.signature);
+  formData.append("folder", params.folder);
+
+  const uploadResponse = await fetch(signed.uploadUrl, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    throw new Error(`Cloudinary upload failed (${uploadResponse.status}): ${errorText}`);
+  }
+
+  const uploaded = (await uploadResponse.json()) as CloudinaryUploadResponse;
+  if (!uploaded.secure_url) {
+    throw new Error("Cloudinary response did not include secure_url");
+  }
+
+  if (!cloudName) {
+    throw new Error("Missing Cloudinary cloud name environment variable");
+  }
+
+  return {
+    secureUrl: uploaded.secure_url,
+    publicId: uploaded.public_id ?? null,
+  };
+}
+
 async function sendWhatsAppReply(to: string, text: string): Promise<void> {
-  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-    console.warn("WhatsApp credentials not configured; skipping reply");
-    return;
-  }
+  const accessToken = getWhatsAppToken();
+  const phoneNumberId = getWhatsAppPhoneNumberId();
 
-  try {
-    const response = await fetch(
-      `https://graph.instagram.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "text",
-          text: { body: text },
-        }),
+  const response = await fetch(
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: text,
+        },
+      }),
+    },
+  );
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`Failed to send WhatsApp reply: ${response.statusText}`, errorData);
-      throw new Error(`WhatsApp send failed: ${response.statusText}`);
-    }
-
-    console.log(`✓ WhatsApp reply sent to ${to}`);
-  } catch (error) {
-    console.error("Error sending WhatsApp reply:", error);
-    // Don't throw—log and continue to avoid breaking the webhook response
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`WhatsApp reply failed (${response.status}): ${errorText}`);
   }
 }
 
-/**
- * GET /api/whatsapp
- * Webhook verification endpoint for Meta's WhatsApp API.
- */
+async function persistIngestEvent(params: {
+  supabase: ReturnType<typeof createAdminClient>;
+  messageId: string;
+  senderPhone: string;
+  senderName: string | null;
+  messageTimestamp: string;
+  caption: string;
+  imageUrl: string;
+  rawPayload: WhatsAppWebhookPayload;
+  productId: string | null;
+  variantId: string | null;
+  mediaId: string;
+}): Promise<void> {
+  const { error } = await params.supabase.from("whatsapp_ingest_events").insert({
+    message_id: params.messageId,
+    sender_phone: params.senderPhone,
+    sender_name: params.senderName,
+    message_timestamp: params.messageTimestamp,
+    caption: params.caption,
+    image_url: params.imageUrl,
+    raw_payload: params.rawPayload,
+    product_id: params.productId,
+    variant_id: params.variantId,
+    media_id: params.mediaId,
+  });
+
+  if (error) {
+    throw new Error(`DB ingest insert failed: ${error.message}`);
+  }
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const mode = url.searchParams.get("hub.mode");
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === WHATSAPP_VERIFY_TOKEN) {
-    console.log("✓ WhatsApp webhook verified");
-    return new NextResponse(challenge, { status: 200 });
+  if (mode === "subscribe" && token === getWhatsAppVerifyToken()) {
+    return new NextResponse(challenge ?? "", { status: 200 });
   }
 
-  console.warn("WhatsApp webhook verification failed");
-  return NextResponse.json({ error: "Verification failed" }, { status: 403 });
+  return NextResponse.json({ error: "Webhook verification failed" }, { status: 403 });
 }
 
-/**
- * POST /api/whatsapp
- * Receives incoming WhatsApp messages from Meta's API.
- *
- * State machine:
- * - If image + number caption → Add image to existing session (Scenario A)
- * - If image + text caption → Create new product/variant (Scenario B)
- */
 export async function POST(req: Request) {
+  let payload: WhatsAppWebhookPayload;
+  let senderPhone: string | null = null;
+  let productId: string | null = null;
+  let variantId: string | null = null;
+  let savedImageUrl = "";
+
   try {
-    const body = await req.json() as {
-      object?: string;
-      entry?: Array<{
-        changes?: Array<{
-          value?: {
-            messages?: Array<{
-              from?: string;
-              type?: string;
-              image?: { id?: string };
-              text?: { body?: string };
-            }>;
-          };
-        }>;
-      }>;
-    };
+    payload = (await req.json()) as WhatsAppWebhookPayload;
+  } catch (error) {
+    console.error("whatsapp webhook: invalid json payload", error);
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
 
-    // Validate this is a message event
-    if (body.object !== "whatsapp_business_account") {
+  const { message, contactName, rawEvent } = extractFirstMessage(payload);
+
+  if (payload.object !== "whatsapp_business_account" || !message) {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  senderPhone = message.from?.trim() ?? null;
+  const mediaId = message.image?.id?.trim();
+  const caption = normalizeCaption(message);
+
+  if (!senderPhone || !mediaId) {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  const messageId = message.id ?? `${senderPhone}-${mediaId}-${message.timestamp ?? Date.now()}`;
+  const messageTimestamp = parseMessageTimestamp(message.timestamp);
+  const supabase = createAdminClient();
+
+  try {
+    const { data: existingEvent, error: existingEventError } = await supabase
+      .from("whatsapp_ingest_events")
+      .select("message_id")
+      .eq("message_id", messageId)
+      .maybeSingle();
+
+    if (existingEventError) {
+      console.error("whatsapp webhook: duplicate check failed", existingEventError.message);
+    }
+
+    if (existingEvent) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const entry = body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const message = change?.value?.messages?.[0];
+    const isNumberCaption = /^\d+$/.test(caption);
 
-    if (!message) {
-      return NextResponse.json({ ok: true }, { status: 200 });
-    }
-
-    const senderPhone = message.from;
-    const hasImage = message.type === "image" && message.image?.id;
-    const caption = message.text?.body || "";
-
-    if (!senderPhone || !hasImage) {
-      console.log("Received non-image message or no sender phone");
-      return NextResponse.json({ ok: true }, { status: 200 });
-    }
-
-    console.log(`📱 Received image from ${senderPhone}, caption: "${caption}"`);
-
-    const supabase = createAdminClient();
-
-    // ─────────────────────────────────────────────────────
-    // Check if caption is a number (Scenario A) or text (Scenario B)
-    // ─────────────────────────────────────────────────────
-    const isNumberCaption = /^\d+$/.test(caption.trim());
+    let folder = "whatsapp";
 
     if (isNumberCaption) {
-      // ─────────────────────────────────────────────────────
-      // SCENARIO A: Number caption (e.g., "2", "3")
-      // Add image to existing session
-      // ─────────────────────────────────────────────────────
-      const displayOrder = parseInt(caption.trim(), 10);
+      const displayOrder = Number.parseInt(caption, 10);
 
-      // Query for active session
       const { data: session, error: sessionError } = await supabase
         .from("admin_upload_sessions")
         .select("product_id, variant_id")
         .eq("admin_phone", senderPhone)
-        .single();
+        .maybeSingle<AdminUploadSessionRow>();
 
-      if (sessionError || !session) {
-        console.warn(`No active session for ${senderPhone}`);
+      if (sessionError) {
+        throw new Error(`Active session lookup failed: ${sessionError.message}`);
+      }
+
+      if (!session) {
         await sendWhatsAppReply(
           senderPhone,
-          "❌ No active product session. Send a photo with a product description first.",
-        );
-        return NextResponse.json({ ok: true }, { status: 200 });
-      }
-
-      const { variant_id } = session;
-
-      // Download image from Meta
-      console.log(`⬇️  Downloading image from Meta...`);
-      const { buffer } = await downloadImageFromMeta(message.image!.id!);
-
-      // Determine the folder based on product code
-      const { data: product } = await supabase
-        .from("products")
-        .select("product_code")
-        .eq("id", session.product_id)
-        .single();
-
-      const folder = product?.product_code || `products/${session.product_id}`;
-
-      // Upload to Cloudinary
-      console.log(`☁️  Uploading to Cloudinary (folder: ${folder})...`);
-      const imageUrl = await uploadToCloudinary(buffer, folder);
-
-      // Insert into variant_images
-      const { error: insertError } = await supabase
-        .from("variant_images")
-        .insert({
-          variant_id,
-          image_url: imageUrl,
-          is_primary: false,
-          display_order: displayOrder,
+          "No active product session found. Send an image with a text description first.",
+        ).catch((error) => {
+          console.error("whatsapp webhook: reply failed for missing session", (error as Error).message);
         });
-
-      if (insertError) {
-        console.error("Failed to insert variant_images:", insertError);
-        await sendWhatsAppReply(senderPhone, "❌ Failed to save image to database.");
         return NextResponse.json({ ok: true }, { status: 200 });
       }
 
-      console.log(
-        `✓ Image added to variant ${variant_id} with display_order ${displayOrder}`,
-      );
-      await sendWhatsAppReply(
-        senderPhone,
-        `✅ Photo saved at position ${displayOrder}!\nSend next photos as numbers (2, 3, 4...) or send a new product description to start fresh.`,
-      );
-    } else {
-      // ─────────────────────────────────────────────────────
-      // SCENARIO B: Text caption (product description)
-      // Create new product + variant + image
-      // ─────────────────────────────────────────────────────
-      const productDescription = caption.trim();
-      const sku = generateProductSKU(productDescription);
+      productId = session.product_id;
+      variantId = session.variant_id;
 
-      console.log(`📝 Creating new product: ${sku} (${productDescription})`);
-
-      // Download image from Meta
-      console.log(`⬇️  Downloading image from Meta...`);
-      const { buffer } = await downloadImageFromMeta(message.image!.id!);
-
-      // Create new product
-      const { data: newProduct, error: productError } = await supabase
+      const { data: product, error: productError } = await supabase
         .from("products")
-        .insert({
-          name: productDescription,
-          slug: sku.toLowerCase().replace(/-+/g, "-"),
-          product_code: sku,
-          status: "draft",
-          fabric_type: null,
-          description: `Created via WhatsApp bot from: ${productDescription}`,
-          stock_type: "supplier",
-        })
-        .select()
-        .single();
+        .select("id, product_code, slug")
+        .eq("id", productId)
+        .maybeSingle<ProductRow>();
 
-      if (productError || !newProduct) {
-        console.error("Failed to create product:", productError);
-        await sendWhatsAppReply(senderPhone, "❌ Failed to create product.");
-        return NextResponse.json({ ok: true }, { status: 200 });
+      if (productError) {
+        throw new Error(`Product lookup failed: ${productError.message}`);
       }
 
-      console.log(`✓ Product created: ${newProduct.id}`);
+      folder = product?.product_code || product?.slug || productId;
 
-      // Create default variant (generic color)
-      const { data: newVariant, error: variantError } = await supabase
-        .from("product_variants")
-        .insert({
-          product_id: newProduct.id,
-          color: "Default",
-          color_hex: "#000000",
-          status: "available",
-          display_order: 1,
-        })
-        .select()
-        .single();
+      const { buffer, mimeType } = await downloadImageFromMeta(mediaId);
+      const uploaded = await uploadToCloudinary({ buffer, mimeType, folder });
+      savedImageUrl = uploaded.secureUrl;
 
-      if (variantError || !newVariant) {
-        console.error("Failed to create variant:", variantError);
-        await sendWhatsAppReply(senderPhone, "❌ Failed to create variant.");
-        return NextResponse.json({ ok: true }, { status: 200 });
-      }
-
-      console.log(`✓ Variant created: ${newVariant.id}`);
-
-      // Upload image to Cloudinary
-      console.log(`☁️  Uploading to Cloudinary (folder: ${sku})...`);
-      const imageUrl = await uploadToCloudinary(buffer, sku);
-
-      // Insert primary image
-      const { error: imageError } = await supabase
-        .from("variant_images")
-        .insert({
-          variant_id: newVariant.id,
-          image_url: imageUrl,
-          is_primary: true,
-          display_order: 1,
-        });
+      const { error: imageError } = await supabase.from("variant_images").insert({
+        variant_id: variantId,
+        image_url: uploaded.secureUrl,
+        is_primary: false,
+        display_order: displayOrder,
+      });
 
       if (imageError) {
-        console.error("Failed to insert image:", imageError);
-        await sendWhatsAppReply(senderPhone, "❌ Failed to save image.");
-        return NextResponse.json({ ok: true }, { status: 200 });
+        throw new Error(`variant_images insert failed: ${imageError.message}`);
       }
 
-      console.log(`✓ Image inserted`);
-
-      // Upsert session state
-      const { error: sessionUpsertError } = await supabase
+      const { error: touchSessionError } = await supabase
         .from("admin_upload_sessions")
         .upsert({
           admin_phone: senderPhone,
-          product_id: newProduct.id,
-          variant_id: newVariant.id,
+          product_id: productId,
+          variant_id: variantId,
           updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        });
 
-      if (sessionUpsertError) {
-        console.error("Failed to upsert session:", sessionUpsertError);
+      if (touchSessionError) {
+        throw new Error(`admin_upload_sessions upsert failed: ${touchSessionError.message}`);
       }
 
-      console.log(`✓ Session state saved`);
+      await persistIngestEvent({
+        supabase,
+        messageId,
+        senderPhone,
+        senderName: contactName,
+        messageTimestamp,
+        caption,
+        imageUrl: uploaded.secureUrl,
+        rawPayload: payload,
+        productId,
+        variantId,
+        mediaId,
+      });
+
       await sendWhatsAppReply(
         senderPhone,
-        `✅ Product "${productDescription}" created!\n\nSKU: ${sku}\n\nSend photos for this product as simple numbers:\n• 2 for second photo\n• 3 for third photo\n• etc.\n\nOr send a new description to create a different product.`,
-      );
+        `Saved photo ${displayOrder} for ${folder}. Send the next photo as a number, or send a new description to start a new listing.`,
+      ).catch((error) => {
+        console.error("whatsapp webhook: reply failed after scenario a", (error as Error).message);
+      });
+
+      return NextResponse.json({ ok: true }, { status: 200 });
     }
+
+    if (!caption) {
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    const sku = generateProductSKU(caption);
+    folder = sku;
+
+    const { buffer, mimeType } = await downloadImageFromMeta(mediaId);
+    const uploaded = await uploadToCloudinary({ buffer, mimeType, folder });
+    savedImageUrl = uploaded.secureUrl;
+
+    const { data: createdProduct, error: productError } = await supabase
+      .from("products")
+      .insert({
+        name: caption,
+        slug: sku.toLowerCase(),
+        product_code: sku,
+        status: "draft",
+        description: caption,
+        stock_type: "supplier",
+      })
+      .select("id, name, slug, product_code")
+      .single<CreatedProductRow>();
+
+    if (productError || !createdProduct) {
+      throw new Error(`Product insert failed: ${productError?.message ?? "unknown error"}`);
+    }
+
+    productId = createdProduct.id;
+
+    const { data: createdVariant, error: variantError } = await supabase
+      .from("product_variants")
+      .insert({
+        product_id: createdProduct.id,
+        color: "Default",
+        status: "available",
+        display_order: 1,
+      })
+      .select("id, product_id")
+      .single<CreatedVariantRow>();
+
+    if (variantError || !createdVariant) {
+      throw new Error(`Variant insert failed: ${variantError?.message ?? "unknown error"}`);
+    }
+
+    variantId = createdVariant.id;
+
+    const { error: imageError } = await supabase.from("variant_images").insert({
+      variant_id: createdVariant.id,
+      image_url: uploaded.secureUrl,
+      is_primary: true,
+      display_order: 1,
+    });
+
+    if (imageError) {
+      throw new Error(`Primary image insert failed: ${imageError.message}`);
+    }
+
+    const { error: sessionError } = await supabase.from("admin_upload_sessions").upsert({
+      admin_phone: senderPhone,
+      product_id: createdProduct.id,
+      variant_id: createdVariant.id,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (sessionError) {
+      throw new Error(`Session upsert failed: ${sessionError.message}`);
+    }
+
+    await persistIngestEvent({
+      supabase,
+      messageId,
+      senderPhone,
+      senderName: contactName,
+      messageTimestamp,
+      caption,
+      imageUrl: uploaded.secureUrl,
+      rawPayload: payload,
+      productId,
+      variantId,
+      mediaId,
+    });
+
+    await sendWhatsAppReply(
+      senderPhone,
+      `Created SKU ${sku}. Send the next photos as simple numbers like 2, 3, 4.`,
+    ).catch((error) => {
+      console.error("whatsapp webhook: reply failed after scenario b", (error as Error).message);
+    });
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
-    console.error("Webhook handler error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    console.error("whatsapp webhook: processing failed", error instanceof Error ? error.message : error);
+
+    if (senderPhone && savedImageUrl && productId && variantId) {
+      await sendWhatsAppReply(senderPhone, "We received the image, but saving it failed. Please try again.").catch(() => {
+        void 0;
+      });
+    }
+
+    return NextResponse.json({ ok: true }, { status: 200 });
   }
 }
