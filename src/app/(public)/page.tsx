@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { getFeaturedProducts, getActiveCollections, getCategories } from "@/lib/queries";
+import { getFeaturedProducts, getActiveCollections } from "@/lib/queries";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { CategoryCard } from "@/components/catalog/CategoryCard";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 import { Button } from "@/components/ui/button";
@@ -11,10 +10,9 @@ import { SITE } from "@/lib/site";
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [featured, collections, categories] = await Promise.all([
+  const [featured, collections] = await Promise.all([
     getFeaturedProducts(8),
     getActiveCollections(),
-    getCategories(),
   ]);
 
   return (
@@ -43,19 +41,6 @@ export default async function HomePage() {
               </Button>
             </a>
           </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="container-px mx-auto max-w-7xl py-16">
-        <div className="mb-8 text-center">
-          <span className="gold-rule mx-auto" />
-          <h2 className="mt-4 font-serif text-3xl text-burgundy">Shop by Weave</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.slice(0, 10).map((c) => (
-            <CategoryCard key={c.id} category={c} />
-          ))}
         </div>
       </section>
 

@@ -8,8 +8,13 @@ import type { ProductWithRelations } from "@/lib/supabase/types";
 /** Catalog card: primary variant image + price + color swatches. */
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const variants = product.product_variants ?? [];
-  const primaryVariant = variants[0] ?? null;
-  const primaryImage = primaryVariant?.variant_images?.[0]?.image_url ?? null;
+  const primaryVariant = variants.find((variant) => (variant.variant_images ?? []).length > 0) ?? variants[0] ?? null;
+  const primaryImage =
+    primaryVariant?.variant_images?.find((image) => image.is_primary)?.image_url ??
+    primaryVariant?.variant_images?.[0]?.image_url ??
+    variants.flatMap((variant) => variant.variant_images ?? []).find((image) => image.is_primary)?.image_url ??
+    variants.flatMap((variant) => variant.variant_images ?? [])[0]?.image_url ??
+    null;
   const price = getDisplayPrice(product, primaryVariant);
   const allSoldOut =
     variants.length > 0 && variants.every((v) => v.status === "sold_out");
