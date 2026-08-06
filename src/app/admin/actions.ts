@@ -17,6 +17,7 @@ import type {
 } from "@/lib/supabase/types";
 import {
   collectionInputSchema,
+  categoryInputSchema,
   contactImportRowSchema,
   contactSchema,
   contactsQuerySchema,
@@ -24,6 +25,7 @@ import {
   parseContactDateValue,
   productInputSchema,
   type CollectionInputShape,
+  type CategoryInputShape,
   type ContactImportRowShape,
   type ContactInputShape,
   type ContactsQueryShape,
@@ -45,6 +47,7 @@ function revalidateCatalogShell() {
   revalidatePath("/admin");
   revalidatePath("/admin/products");
   revalidatePath("/admin/collections");
+  revalidatePath("/admin/categories");
 }
 
 function makeUniqueSlug(base: string, existing: Set<string>) {
@@ -70,9 +73,10 @@ function makeStableSlug(base: string, existing: Set<string>, currentSlug?: strin
 }
 
 async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"]) {
-  const [{ data: products }, { data: collections }] = await Promise.all([
+  const [{ data: products }, { data: collections }, { data: categories }] = await Promise.all([
     admin.from("products").select("slug, product_code"),
     admin.from("collections").select("slug"),
+    admin.from("categories").select("slug"),
   ]);
   return {
     productSlugs: new Set((products ?? []).map((p) => (p as { slug: string }).slug)),
@@ -82,6 +86,7 @@ async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAd
         .filter((value): value is string => !!value),
     ),
     collectionSlugs: new Set((collections ?? []).map((c) => (c as { slug: string }).slug)),
+      categorySlugs: new Set((categories ?? []).map((c) => (c as { slug: string }).slug)),
   };
 }
 
@@ -211,6 +216,76 @@ export async function deleteContact(id: string) {
   revalidatePath("/admin/contacts");
 }
 
+export async function saveCategory(input: CategoryInputShape): Promise<{ id: string }> {
+  const { admin } = await assertAdmin();
+  const parsed = categoryInputSchema.safeParse(input);
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid category");
+  input = parsed.data;
+
+  let previousSlug: string | null = null;
+  if (input.id) {
+    previousSlug = await getCategorySlugById(admin, input.id);
+  }
+
+  const refs = await loadExistingProductRefs(admin);
+  const slugSource = input.slug?.trim() || input.name;
+  const slug = input.id
+    ? makeStableSlug(slugSource, refs.categorySlugs, previousSlug)
+    : makeUniqueSlug(slugSource, refs.categorySlugs);
+
+  const row = {
+    name: input.name,
+    slug,
+    description: input.description,
+    image_url: input.image_url,
+    display_order: input.display_order,
+  };
+
+  let categoryId = input.id;
+  if (categoryId) {
+    const { error } = await admin.from("categories").update(row).eq("id", categoryId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { data, error } = await admin.from("categories").insert(row).select("id").single();
+    if (error) throw new Error(error.message);
+    categoryId = data.id as string;
+  }
+
+  if (previousSlug && previousSlug !== slug) {
+    revalidatePath(`/catalog/${previousSlug}`);
+  }
+  revalidatePath("/");
+  revalidatePath("/catalog");
+  revalidatePath("/admin/categories");
+  revalidatePath(`/catalog/${slug}`);
+  if (categoryId) await revalidateCategoryProducts(admin, categoryId);
+  revalidateCatalogShell();
+  return { id: categoryId };
+}
+
+export async function deleteCategory(id: string) {
+  const { admin } = await assertAdmin();
+  const { data: category } = await admin.from("categories").select("slug").eq("id", id).maybeSingle();
+  const { count } = await admin
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", id);
+
+  if ((count ?? 0) > 0) {
+    throw new Error("Move or reassign products before deleting this category.");
+  }
+
+  const { error } = await admin.from("categories").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  const slug = (category as { slug?: string } | null)?.slug;
+  if (slug) revalidatePath(`/catalog/${slug}`);
+  revalidatePath("/");
+  revalidatePath("/catalog");
+  revalidatePath("/admin/categories");
+  revalidateCatalogShell();
+}
+
 export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {}) {
   const { admin } = await assertAdmin();
   const parsed = contactsQuerySchema.safeParse(query);
@@ -320,6 +395,19 @@ export async function importContactsCsv(csvText: string) {
 async function getCollectionSlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
   const { data } = await admin.from("collections").select("slug").eq("id", id).maybeSingle();
   return (data as { slug?: string } | null)?.slug ?? null;
+}
+
+async function getCategorySlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
+  const { data } = await admin.from("categories").select("slug").eq("id", id).maybeSingle();
+  return (data as { slug?: string } | null)?.slug ?? null;
+}
+
+async function revalidateCategoryProducts(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], categoryId: string) {
+  const { data } = await admin.from("products").select("slug").eq("category_id", categoryId);
+  for (const row of data ?? []) {
+    const slug = (row as { slug?: string }).slug;
+    if (slug) revalidatePath(`/sarees/${slug}`);
+  }
 }
 
 /**

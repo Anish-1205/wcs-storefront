@@ -7,13 +7,9 @@ import {
 } from "@/lib/queries";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { FilterPanel } from "@/components/catalog/FilterPanel";
-import { SITE, CATEGORY_SLUGS } from "@/lib/site";
+import { SITE } from "@/lib/site";
 
 export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  return CATEGORY_SLUGS.map((category) => ({ category }));
-}
 
 export async function generateMetadata({
   params,

@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { SITE, CATEGORY_SLUGS } from "@/lib/site";
+import { SITE } from "@/lib/site";
+import { getCategories } from "@/lib/queries";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 
-function titleCase(slug: string) {
-  return slug.charAt(0).toUpperCase() + slug.slice(1);
-}
+export async function Footer() {
+  const categories = await getCategories();
 
-export function Footer() {
   return (
     <footer className="mt-24 border-t border-border bg-secondary/40">
       <div className="container-px mx-auto max-w-7xl py-14">
@@ -30,10 +29,10 @@ export function Footer() {
                   All Sarees
                 </Link>
               </li>
-              {CATEGORY_SLUGS.slice(0, 5).map((c) => (
-                <li key={c}>
-                  <Link href={`/catalog/${c}`} className="hover:text-burgundy">
-                    {titleCase(c)}
+              {categories.slice(0, 5).map((category) => (
+                <li key={category.id}>
+                  <Link href={`/catalog/${category.slug}`} className="hover:text-burgundy">
+                    {category.name}
                   </Link>
                 </li>
               ))}

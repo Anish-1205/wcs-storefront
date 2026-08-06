@@ -83,6 +83,17 @@ export const collectionInputSchema = z.object({
   product_ids: z.array(z.string().uuid()),
 });
 
+export const categoryInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(200),
+  slug: z.string().max(220).optional().nullable(),
+  description: z.string().max(5000).nullable(),
+  image_url: z.string().url().max(2048).nullable(),
+  display_order: z.number().int().nonnegative(),
+});
+
+export type CategoryInputShape = z.infer<typeof categoryInputSchema>;
+
 const contactRoleValues: [ContactRole, ...ContactRole[]] = [
   "customer",
   "reseller",

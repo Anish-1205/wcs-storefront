@@ -16,8 +16,8 @@ export const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-// Fixed category list (mirrors 002_seed_categories.sql) used for nav/filters
-// when a DB round-trip is unnecessary.
+// Initial category seed list from 002_seed_categories.sql.
+// The live admin/public UI now reads categories from the database.
 export const CATEGORY_SLUGS = [
   "gadwal",
   "kanjivaram",
