@@ -21,12 +21,20 @@ const emptyVariant = (order: number): VariantInputShape => ({
   images: [],
 });
 
+const defaultSingleVariant = (order: number): VariantInputShape => ({
+  ...emptyVariant(order),
+  color: "Single color",
+});
+
 export function VariantManager({ variants, onChange }: Props) {
   function update(i: number, patch: Partial<VariantInputShape>) {
     onChange(variants.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
   }
   function add() {
     onChange([...variants, emptyVariant(variants.length)]);
+  }
+  function addSingle() {
+    onChange([...variants, defaultSingleVariant(variants.length)]);
   }
   function remove(i: number) {
     onChange(
@@ -43,6 +51,22 @@ export function VariantManager({ variants, onChange }: Props) {
 
   return (
     <div className="space-y-4">
+      {variants.length === 0 && (
+        <div className="rounded-sm border border-dashed border-border bg-secondary/20 p-4">
+          <p className="text-sm text-foreground/80">
+            This saree can have one version or multiple color variants.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Button type="button" variant="outline" size="sm" onClick={addSingle}>
+              + Add single variant
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={add}>
+              + Add color variant
+            </Button>
+          </div>
+        </div>
+      )}
+
       {variants.map((v, i) => (
         <div key={i} className="rounded-sm border border-border bg-secondary/20 p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -141,9 +165,16 @@ export function VariantManager({ variants, onChange }: Props) {
         </div>
       ))}
 
-      <Button type="button" variant="outline" size="sm" onClick={add}>
-        + Add color variant
-      </Button>
+      {variants.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="outline" size="sm" onClick={addSingle}>
+            + Add single variant
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={add}>
+            + Add color variant
+          </Button>
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
         Leave a variant&apos;s price blank to use the product&apos;s base price range.
       </p>
