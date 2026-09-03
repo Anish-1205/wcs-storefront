@@ -1,0 +1,883 @@
+Ready to code?                                                                                                                                                                                                                                                                  
+                                                                                                                                                                                                                                                                                 
+ Here is Claude's plan:                                                                                                                                                                                                                                                          
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Saree Business Website — Final Implementation Plan                                                                                                                                                                                                                              
+                                                        
+ Context
+
+ A family-owned saree sourcing and distribution business in India. Sells via WhatsApp and Facebook today. Serves boutiques, resellers, wholesalers, and retail buyers. Categories: Gadwal, Kanjivaram, Banarasi, Silk, Cotton, Linen, Organza, Handloom, and others.
+
+ Core acquisition funnel: Instagram / Pinterest → Website → WhatsApp Inquiry → Sale
+
+ Confirmed design: Premium / Luxury — ivory background (#FAF7F2), gold (#B8860B) + dark burgundy (#6B1E2E) accents, Playfair Display headings, Inter body. Text-based wordmark (no logo file yet).
+
+ Build constraint: Solo developer, 4–6 week MVP, maximum business impact.
+
+ ---
+ Architectural North Star
+
+ Do NOT build cart, checkout, or payment in MVP.
+
+ WhatsApp is the proven conversion channel. Every page exists to drive one action: a WhatsApp inquiry or a subscriber opt-in.
+
+ Instagram / Pinterest / Google
+           ↓
+     Website (catalog + collections)
+           ↓
+     WhatsApp CTA / Inquiry Form / Subscriber Capture
+           ↓
+     WhatsApp → Sale
+
+ ---
+ User Personas
+
+ ┌───────────────────────────────┬────────────────┬────────────────────────────────────────────────────────────┐
+ │            Persona            │     Device     │                            Goal                            │
+ ├───────────────────────────────┼────────────────┼────────────────────────────────────────────────────────────┤
+ │ Priya (Retail, 25–45F)        │ Mobile         │ Browse, discover a saree, ask price on WhatsApp            │
+ ├───────────────────────────────┼────────────────┼────────────────────────────────────────────────────────────┤
+ │ Raju (Boutique owner, 30–55M) │ Mobile/Desktop │ Check availability, wholesale inquiry                      │
+ ├───────────────────────────────┼────────────────┼────────────────────────────────────────────────────────────┤
+ │ Kavitha (Wholesaler, 35–60F)  │ Desktop        │ Catalog view, bulk quote request                           │
+ ├───────────────────────────────┼────────────────┼────────────────────────────────────────────────────────────┤
+ │ Family Admin                  │ Desktop        │ Manage products/variants, view inquiries, view subscribers │
+ └───────────────────────────────┴────────────────┴────────────────────────────────────────────────────────────┘
+
+ ---
+ MVP Feature Decisions
+
+ KEEP
+
+ ┌─────────────────────────────────────┬──────────────────────────────────────────────────────────┐
+ │               Feature               │                          Reason                          │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Home page with hero + WhatsApp CTA  │ Primary trust and conversion page                        │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Catalog with filters                │ Core browsing experience                                 │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Category pages                      │ SEO + browsing                                           │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Collection landing pages            │ Replaces blog for SEO; higher purchase-intent traffic    │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Product detail + variant selector   │ Sarees have color variants; critical for catalog quality │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ About page                          │ Brand trust; story sells in this category                │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Wholesale page + inquiry form       │ Dedicated B2B conversion path                            │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Contact / general inquiry           │ Catch-all lead capture                                   │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ WhatsApp subscriber capture         │ Owned audience; high ROI                                 │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Admin: product + variant CRUD       │ Core catalog management                                  │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Admin: inquiry list                 │ Lead management                                          │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Admin: subscriber list + CSV export │ Audience management                                      │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ WhatsApp floating button            │ Always-visible CTA on mobile                             │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Core SEO + Pinterest meta           │ Organic acquisition                                      │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ GA4 + Clarity + Pinterest Tag       │ Analytics foundation                                     │
+ ├─────────────────────────────────────┼──────────────────────────────────────────────────────────┤
+ │ Lead source attribution             │ Know which channel drives revenue                        │
+ └─────────────────────────────────────┴──────────────────────────────────────────────────────────┘
+
+ SIMPLIFY
+
+ ┌───────────────────────┬───────────────────────────────────────────────────────────────┐
+ │        Feature        │                        Simplification                         │
+ ├───────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ Categories            │ Pre-seeded fixed list; no CRUD in admin MVP                   │
+ ├───────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ Admin dashboard       │ No analytics charts; list views with row counts only          │
+ ├───────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ Filtering             │ Category + fabric + price range only; color filtering Phase 2 │
+ ├───────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ Collection assignment │ Checkboxes on product edit page (not searchable multi-select) │
+ ├───────────────────────┼───────────────────────────────────────────────────────────────┤
+ │ Subscriber capture    │ Direct Supabase client insert; no API route needed            │
+ └───────────────────────┴───────────────────────────────────────────────────────────────┘
+
+ REMOVE FROM MVP
+
+ ┌───────────────────────────────────────┬──────────────────────────────────────────────────────────────────────┐
+ │                Feature                │                                Reason                                │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Blog / content articles               │ Replaced by collection pages                                         │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Full category CRUD in admin           │ Stable list; managed via Supabase dashboard if needed                │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Admin analytics charts                │ GA4 covers this                                                      │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Product video                         │ Phase 2                                                              │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Custom WhatsApp message per product   │ Auto-generated message is sufficient; adds admin confusion           │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Product variant SKU                   │ No existing SKU system; UNIQUE NULL constraint is vacuous            │
+ ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ collections.seo_title/seo_description │ Redundant with name + description; adds form fields for minimal gain │
+ └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────────┘
+
+ DEFER
+
+ ┌──────────────────────────────────────┬────────────────────────────────────────────────────────────┐
+ │               Feature                │                           Phase                            │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Exit intent popup for subscriber     │ Phase 2                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ WhatsApp Business API auto-reply     │ Phase 2                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Color-based filtering in catalog     │ Phase 2                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Pinterest Rich Pins API verification │ Phase 2                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Cloudinary orphan image cleanup job  │ Phase 2                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Wholesale reseller portal            │ Phase 3                                                    │
+ ├──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+ │ Checkout / payment                   │ Phase 4 — evaluate if WhatsApp volume becomes unmanageable │
+ └──────────────────────────────────────┴────────────────────────────────────────────────────────────┘
+
+ ---
+ Technology Stack
+
+ ┌─────────────────────┬─────────────────────────────────────────┬─────────────────────────────────────────────────────────────┐
+ │        Layer        │                 Choice                  │                        Justification                        │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Frontend            │ Next.js 14 (App Router) + TypeScript    │ SSR/SSG for SEO, React ecosystem, Vercel-native             │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Styling             │ Tailwind CSS + shadcn/ui                │ Rapid development, consistent components, mobile-first      │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Database            │ Supabase (PostgreSQL)                   │ Managed DB, built-in Auth, RLS, free tier                   │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Image Storage       │ Cloudinary                              │ CDN + auto-compression + responsive transforms              │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Hosting             │ Vercel                                  │ Zero-config Next.js, global CDN, preview deploys, free tier │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Analytics           │ GA4 + Microsoft Clarity + Pinterest Tag │ Conversion tracking + heatmaps + Pinterest attribution      │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Forms               │ React Hook Form + Zod                   │ Type-safe, lightweight                                      │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ Email Notifications │ Resend                                  │ Inquiry alert to admin on form submit; free tier            │
+ ├─────────────────────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+ │ WhatsApp CTAs       │ wa.me deep links                        │ Zero cost, no API                                           │
+ └─────────────────────┴─────────────────────────────────────────┴─────────────────────────────────────────────────────────────┘
+
+ ---
+ Information Architecture
+
+ /                              → Home
+ /catalog                       → All Products (filter: category, fabric, price)
+ /catalog/[category-slug]       → Category page (e.g., /catalog/kanjivaram)
+ /collections/[slug]            → Collection page (e.g., /collections/bridal-sarees)
+ /sarees/[slug]                 → Product Detail + Variant Selector
+ /about                         → Brand story + weavers
+ /wholesale                     → B2B inquiry
+ /contact                       → General inquiry
+ /admin                         → Protected admin (middleware-guarded)
+   /admin/login                 → Login page
+   /admin/products              → Product list
+   /admin/products/new          → Add product + variants
+   /admin/products/[id]         → Edit product + variants + images
+   /admin/inquiries             → Inquiry list
+   /admin/subscribers           → WhatsApp subscriber list + CSV export
+
+ Pre-seeded categories (no admin CRUD in MVP):
+ Gadwal, Kanjivaram, Banarasi, Silk, Cotton, Linen, Organza, Handloom, Patola, Chanderi
+
+ Initial collections (created via admin after launch):
+ Bridal Sarees, Wedding Sarees, Gadwal Collection, Kanjivaram Collection, Banarasi Collection, Pure Silk Collection, Sarees Under ₹5,000, Sarees Under ₹10,000
+
+ ---
+ Database Schema
+
+ categories (pre-seeded)
+
+ id            uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ name          text NOT NULL
+ slug          text UNIQUE NOT NULL
+ description   text
+ image_url     text
+ display_order integer DEFAULT 0
+
+ products
+
+ id             uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ name           text NOT NULL
+ slug           text UNIQUE NOT NULL
+ category_id    uuid REFERENCES categories(id)
+ fabric_type    text
+ description    text
+ highlights     text[]
+ base_price_min integer          -- INR; fallback when no variant price override
+ base_price_max integer
+ status         text NOT NULL DEFAULT 'draft'   -- 'draft' | 'published' | 'archived'
+ product_code   text UNIQUE                     -- optional human-readable ref e.g. "GAD-001", "KAN-042"
+ is_featured    boolean DEFAULT false
+ stock_type     text DEFAULT 'supplier'          -- 'held' | 'supplier'
+ created_at     timestamptz DEFAULT now()
+ updated_at     timestamptz DEFAULT now()
+
+ Status rules (product lifecycle only):
+ - draft — not visible publicly; admin can edit
+ - published — visible in catalog
+ - archived — hidden from public; retained in DB
+
+ ▎ Sold-out state lives at the variant level only. A published product with all variants sold out is still indexed for SEO. There is no sold_out on products — the admin marks individual color variants as sold out. The product page derives sold-out state from its variants.
+
+ product_variants
+
+ id            uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ product_id    uuid REFERENCES products(id) ON DELETE CASCADE
+ color         text NOT NULL          -- "Red", "Maroon", "Peacock Blue"
+ color_hex     text                   -- "#8B0000" for swatch display
+ status        text DEFAULT 'available'  -- 'available' | 'sold_out'
+ price_min     integer                -- overrides product base_price_min if set
+ price_max     integer
+ display_order integer DEFAULT 0
+ created_at    timestamptz DEFAULT now()
+ updated_at    timestamptz DEFAULT now()
+
+ variant_images
+
+ id            uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ variant_id    uuid REFERENCES product_variants(id) ON DELETE CASCADE
+ image_url     text NOT NULL
+ is_primary    boolean DEFAULT false
+ display_order integer DEFAULT 0
+
+ collections
+
+ id            uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ name          text NOT NULL
+ slug          text UNIQUE NOT NULL
+ description   text       -- used as both page intro text and meta description (truncated to 160 chars)
+ image_url     text
+ is_active     boolean DEFAULT true
+ display_order integer DEFAULT 0
+ created_at    timestamptz DEFAULT now()
+
+ collection_products (M2M join)
+
+ collection_id   uuid REFERENCES collections(id) ON DELETE CASCADE
+ product_id      uuid REFERENCES products(id) ON DELETE CASCADE
+ display_order   integer DEFAULT 0
+ PRIMARY KEY (collection_id, product_id)
+
+ inquiries
+
+ id            uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ name          text NOT NULL
+ phone         text NOT NULL
+ email         text
+ product_id    uuid REFERENCES products(id)          -- nullable; no cascade
+ variant_id    uuid REFERENCES product_variants(id)  -- nullable; no cascade
+ product_name  text                                  -- denormalized; preserved if product deleted
+ inquiry_type  text DEFAULT 'general'                -- 'retail' | 'wholesale' | 'general'
+ message       text
+ source        text DEFAULT 'unknown'                -- 'instagram'|'facebook'|'pinterest'|'google'|'direct'|'whatsapp'|'unknown'
+ created_at    timestamptz DEFAULT now()
+
+ ▎ No ON DELETE CASCADE on inquiries.product_id — inquiry history must be preserved when products are removed.
+
+ whatsapp_subscribers
+
+ id          uuid PRIMARY KEY DEFAULT gen_random_uuid()
+ name        text NOT NULL
+ phone       text NOT NULL
+ source      text DEFAULT 'unknown'
+ opted_in_at timestamptz DEFAULT now()
+
+ Indexes
+
+ CREATE INDEX idx_products_status ON products(status);
+ CREATE INDEX idx_products_category_id ON products(category_id);
+ CREATE INDEX idx_products_featured ON products(is_featured) WHERE is_featured = true;
+ CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
+ CREATE INDEX idx_variant_images_variant_id ON variant_images(variant_id);
+ CREATE INDEX idx_collection_products_collection_id ON collection_products(collection_id);
+
+ -- Prevent multiple primary images per variant at DB level
+ CREATE UNIQUE INDEX idx_variant_images_one_primary
+   ON variant_images(variant_id) WHERE is_primary = true;
+
+ updated_at Trigger (applied to products and product_variants)
+
+ CREATE OR REPLACE FUNCTION set_updated_at()
+ RETURNS TRIGGER AS $$
+ BEGIN NEW.updated_at = now(); RETURN NEW; END;
+ $$ LANGUAGE plpgsql;
+
+ CREATE TRIGGER trg_products_updated_at
+   BEFORE UPDATE ON products
+   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ CREATE TRIGGER trg_variants_updated_at
+   BEFORE UPDATE ON product_variants
+   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ Row Level Security
+
+ -- Public can read published products and all supporting tables
+ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ CREATE POLICY "public read published" ON products FOR SELECT USING (status = 'published');
+ CREATE POLICY "admin full access" ON products USING (auth.role() = 'authenticated');
+
+ -- Same pattern for: product_variants, variant_images, categories, collections, collection_products
+ -- (public SELECT, authenticated full access)
+
+ -- Inquiries and subscribers: public INSERT only, no public SELECT
+ CREATE POLICY "public insert inquiries" ON inquiries FOR INSERT WITH CHECK (true);
+ CREATE POLICY "admin read inquiries" ON inquiries FOR SELECT USING (auth.role() = 'authenticated');
+
+ CREATE POLICY "public insert subscribers" ON whatsapp_subscribers FOR INSERT WITH CHECK (true);
+ CREATE POLICY "admin read subscribers" ON whatsapp_subscribers FOR SELECT USING (auth.role() = 'authenticated');
+
+ ---
+ Application Architecture
+
+ saree-website/
+ ├── .env.example                           # All required env vars, values empty
+ ├── middleware.ts                          # Edge auth guard for /admin/* routes
+ ├── docs/
+ │   ├── setup.md                           # Local dev setup (Node, Supabase CLI, env vars, `supabase start`)
+ │   ├── deployment.md                      # Vercel + Supabase + Cloudinary + domain configuration
+ │   ├── admin-guide.md                     # Non-technical guide: add products, manage inquiries, export subscribers
+ │   └── content-guide.md                   # How to write product descriptions, collection pages, image guidelines
+ ├── supabase/
+ │   └── migrations/
+ │       ├── 001_schema.sql                 # Tables + indexes + triggers + RLS
+ │       └── 002_seed_categories.sql        # Pre-seed 10 categories
+ ├── src/
+ │   ├── app/
+ │   │   ├── (public)/
+ │   │   │   ├── page.tsx                  # Home
+ │   │   │   ├── catalog/
+ │   │   │   │   ├── page.tsx              # All products + filters (revalidate: 3600)
+ │   │   │   │   └── [category]/page.tsx   # Category page (revalidate: 3600)
+ │   │   │   ├── collections/
+ │   │   │   │   └── [slug]/page.tsx       # Collection landing (revalidate: 3600)
+ │   │   │   ├── sarees/[slug]/page.tsx    # Product detail (revalidate: 1800)
+ │   │   │   ├── about/page.tsx
+ │   │   │   ├── wholesale/page.tsx
+ │   │   │   └── contact/page.tsx
+ │   │   ├── admin/
+ │   │   │   ├── login/page.tsx            # Login form
+ │   │   │   ├── layout.tsx                # Secondary auth check + admin shell UI
+ │   │   │   ├── page.tsx                  # Dashboard: row counts only
+ │   │   │   ├── products/
+ │   │   │   │   ├── page.tsx
+ │   │   │   │   ├── new/page.tsx
+ │   │   │   │   └── [id]/page.tsx         # Edit: product fields + variant manager + collection checkboxes
+ │   │   │   ├── inquiries/page.tsx
+ │   │   │   └── subscribers/page.tsx
+ │   │   ├── api/
+ │   │   │   ├── inquiries/route.ts        # POST: validate → DB insert → Resend email
+ │   │   │   ├── upload/route.ts           # POST (admin-only): generate Cloudinary signed upload URL
+ │   │   │   └── revalidate/route.ts       # POST (admin-only): revalidatePath after product save
+ │   │   ├── sitemap.ts                    # Next.js dynamic sitemap (products + categories + collections)
+ │   │   ├── robots.ts
+ │   │   └── layout.tsx                    # GA4 + Pinterest Tag scripts
+ │   ├── components/
+ │   │   ├── ui/                           # shadcn/ui base components
+ │   │   ├── catalog/
+ │   │   │   ├── ProductCard.tsx           # Primary variant image + color swatches
+ │   │   │   ├── ProductGrid.tsx
+ │   │   │   ├── FilterPanel.tsx           # category + fabric + price range
+ │   │   │   └── CategoryCard.tsx
+ │   │   ├── collections/
+ │   │   │   └── CollectionCard.tsx
+ │   │   ├── product/
+ │   │   │   ├── VariantSelector.tsx       # Color swatch → swap gallery + price
+ │   │   │   ├── ImageGallery.tsx          # Active variant images
+ │   │   │   ├── WhatsAppCTA.tsx
+ │   │   │   └── ProductSchema.tsx         # JSON-LD script tag
+ │   │   ├── lead/
+ │   │   │   ├── InquiryForm.tsx           # Shared; embeds honeypot + source
+ │   │   │   └── WhatsAppSubscribeForm.tsx # Direct Supabase insert (no API route)
+ │   │   ├── layout/
+ │   │   │   ├── Navbar.tsx
+ │   │   │   ├── Footer.tsx
+ │   │   │   └── WhatsAppFloat.tsx         # Fixed floating button
+ │   │   └── admin/
+ │   │       ├── ProductForm.tsx
+ │   │       ├── VariantManager.tsx
+ │   │       ├── ImageUploader.tsx         # Fetches signed URL from /api/upload, then uploads
+ │   │       ├── CollectionCheckboxes.tsx  # Simple checkbox list; no multi-select needed
+ │   │       ├── StatusBadge.tsx
+ │   │       ├── InquiryTable.tsx
+ │   │       └── SubscriberTable.tsx       # Includes client-side CSV export
+ │   └── lib/
+ │       ├── supabase/client.ts            # createBrowserClient (ANON key only)
+ │       ├── supabase/server.ts            # createServerClient (ANON key for public, SERVICE_ROLE for admin writes)
+ │       ├── supabase/types.ts             # `supabase gen types typescript --local` output
+ │       ├── price.ts                      # Single source of truth for price display logic
+ │       ├── whatsapp.ts
+ │       ├── source-tracking.ts
+ │       └── analytics.ts
+
+ ---
+ Caching Strategy
+
+ Next.js 14 App Router pages are dynamic by default. Without caching, every catalog page view hits Supabase. Use ISR:
+
+ // catalog/page.tsx, catalog/[category]/page.tsx, collections/[slug]/page.tsx
+ export const revalidate = 3600  // regenerate at most once per hour
+
+ // sarees/[slug]/page.tsx
+ export const revalidate = 1800  // regenerate at most once per 30 minutes
+
+ When admin saves a product, call revalidatePath via /api/revalidate to purge cache immediately:
+ // api/revalidate/route.ts — admin-only (check auth first)
+ revalidatePath('/catalog')
+ revalidatePath(`/sarees/${slug}`)
+ revalidatePath('/collections/[slug]', 'page')
+
+ This means: public pages are CDN-served (fast), and changes by admin appear within seconds via on-demand revalidation.
+
+ ---
+ Security Architecture
+
+ Admin Route Protection — middleware.ts
+
+ // middleware.ts — runs at Vercel Edge before any /admin/* request
+ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+ export async function middleware(req: NextRequest) {
+   const res = NextResponse.next()
+   const supabase = createMiddlewareClient({ req, res })
+   const { data: { session } } = await supabase.auth.getSession()
+   if (!session && req.nextUrl.pathname.startsWith('/admin')
+       && req.nextUrl.pathname !== '/admin/login') {
+     return NextResponse.redirect(new URL('/admin/login', req.url))
+   }
+   return res
+ }
+ export const config = { matcher: ['/admin/:path*'] }
+
+ layout.tsx provides a secondary check and renders the admin shell. Both layers protect the routes.
+
+ Cloudinary Upload — Server-Signed
+
+ Admin image uploads never go to Cloudinary unsigned. Flow:
+ 1. Admin selects image in ImageUploader.tsx
+ 2. Client POSTs to /api/upload with auth cookie
+ 3. /api/upload verifies admin session → generates Cloudinary signed upload URL using CLOUDINARY_API_SECRET (server-only)
+ 4. Client uploads directly from browser to Cloudinary using the signed URL
+ 5. Cloudinary returns secure_url → stored in variant_images
+
+ CLOUDINARY_API_SECRET never leaves the server. CLOUDINARY_API_KEY and CLOUDINARY_CLOUD_NAME are used server-side for signing only.
+
+ Spam Protection — Inquiry Form Honeypot
+
+ // InquiryForm.tsx — hidden field; bots fill it, humans don't
+ <input
+   type="text"
+   name="website"
+   className="hidden"
+   tabIndex={-1}
+   autoComplete="off"
+ />
+ // API route: if req.body.website is non-empty, return 200 silently (don't store)
+
+ Simple, zero dependencies, works for the vast majority of bot spam.
+
+ Service Role Key — Server Only
+
+ SUPABASE_SERVICE_ROLE_KEY is only imported in:
+ - lib/supabase/server.ts (used in Server Components and API routes)
+ - Never in lib/supabase/client.ts
+ - Never prefixed NEXT_PUBLIC_ (which would expose it to the browser)
+
+ ---
+ Price Display — Single Utility
+
+ All price display logic lives in one place:
+
+ // lib/price.ts
+ export type PriceRange = { min: number; max: number } | null
+
+ export function getDisplayPrice(
+   product: { base_price_min: number | null; base_price_max: number | null },
+   variant?: { price_min: number | null; price_max: number | null } | null
+ ): PriceRange {
+   if (variant?.price_min) return { min: variant.price_min, max: variant.price_max! }
+   if (product.base_price_min) return { min: product.base_price_min, max: product.base_price_max! }
+   return null
+ }
+
+ export function formatPrice(range: PriceRange): string {
+   if (!range) return 'Price on request'
+   if (range.min === range.max) return `₹${range.min.toLocaleString('en-IN')}`
+   return `₹${range.min.toLocaleString('en-IN')} – ₹${range.max.toLocaleString('en-IN')}`
+ }
+
+ ProductCard, VariantSelector, ProductSchema all import from here.
+
+ ---
+ Lead Source Attribution
+
+ // lib/source-tracking.ts
+ const VALID_SOURCES = ['instagram','facebook','pinterest','google','direct','whatsapp'] as const
+ type Source = typeof VALID_SOURCES[number] | 'unknown'
+
+ export function captureSource(): void {
+   const params = new URLSearchParams(window.location.search)
+   const raw = params.get('ref') || params.get('utm_source') || ''
+   const source = VALID_SOURCES.includes(raw as any) ? raw : null
+   if (source) sessionStorage.setItem('lead_source', source)
+ }
+
+ export function getSource(): Source {
+   const stored = sessionStorage.getItem('lead_source') as Source | null
+   return stored ?? 'direct'
+ }
+
+ Validate source values against the allowlist — never store arbitrary user-supplied strings in the DB.
+
+ Why cookie over sessionStorage: sessionStorage is cleared when the browser tab closes. A user who clicks an Instagram link today and returns to inquire 3 days later (different session) would lose attribution. A 30-day cookie correctly attributes that inquiry to
+ Instagram.
+
+ // lib/source-tracking.ts (revised — cookie-based, 30-day expiry)
+ const VALID_SOURCES = ['instagram','facebook','pinterest','google','direct','whatsapp'] as const
+ type Source = typeof VALID_SOURCES[number] | 'unknown'
+ const COOKIE_NAME = 'lead_source'
+ const EXPIRY_DAYS = 30
+
+ export function captureSource(): void {
+   const params = new URLSearchParams(window.location.search)
+   const raw = params.get('ref') || params.get('utm_source') || ''
+   const source = VALID_SOURCES.includes(raw as any) ? raw : null
+   if (source) {
+     const expires = new Date()
+     expires.setDate(expires.getDate() + EXPIRY_DAYS)
+     document.cookie = `${COOKIE_NAME}=${source}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`
+   }
+ }
+
+ export function getSource(): Source {
+   const match = document.cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))
+   const stored = match?.[1]
+   return VALID_SOURCES.includes(stored as any) ? (stored as Source) : 'direct'
+ }
+
+ captureSource() is called in the public root layout.tsx via a Client Component wrapper. First-touch attribution: a cookie already set will not be overwritten (only set when a valid source param is present).
+
+ ---
+ Product Code
+
+ products.product_code is a short, optional human-readable reference code assigned by the admin (e.g. "GAD-001", "KAN-042"). It surfaces in three places:
+
+ 1. Admin product list: code column shown alongside name for quick identification
+ 2. Product detail page: displayed below the product name as a small reference — Code: GAD-001
+ 3. WhatsApp inquiry messages: included in the pre-filled message so the seller immediately knows which item is being asked about
+
+ The UNIQUE constraint allows NULL (multiple products can have no code), but prevents two products sharing the same code.
+
+ ---
+ WhatsApp Integration
+
+ // lib/whatsapp.ts
+ const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER!
+
+ export function buildWhatsAppURL(opts?: {
+   productName?: string
+   productCode?: string
+   variantColor?: string
+ }): string {
+   let message = "Hi, I'd like to know more about your saree collection."
+   if (opts?.productName) {
+     const codeRef = opts.productCode ? ` [${opts.productCode}]` : ''
+     const colorRef = opts.variantColor ? ` in ${opts.variantColor}` : ''
+     message = `Hi, I'm interested in the ${opts.productName}${codeRef}${colorRef}. Can you share the price and availability?`
+     // e.g. "Hi, I'm interested in the Gadwal Silk [GAD-001] in Maroon. Can you share the price and availability?"
+   }
+   return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
+ }
+
+ WhatsApp number in NEXT_PUBLIC_WHATSAPP_NUMBER. Changing the number = update env var + redeploy.
+
+ ---
+ Product Variant UX
+
+ Catalog card:
+ - Shows primary variant's primary image
+ - Color dot swatches below card (one per variant)
+ - Clicking a swatch navigates to /sarees/[slug]
+
+ Product detail page:
+ - Color swatches with color_hex background
+ - Sold-out variants: strikethrough label + disabled swatch (still visible)
+ - Selecting swatch: swaps gallery images + updates price display + updates WhatsApp CTA message
+ - "Enquire on WhatsApp" button: buildWhatsAppURL({ productName, variantColor })
+
+ ---
+ WhatsApp Subscriber System
+
+ WhatsAppSubscribeForm is a Client Component that:
+ 1. Captures name + phone
+ 2. Calls getSource() from source-tracking
+ 3. Inserts directly into whatsapp_subscribers via Supabase browser client (RLS allows INSERT)
+ 4. No API route needed — no server-side processing required
+
+ Placement: Homepage (after featured products), Footer (always), Collection pages (below product grid).
+
+ Admin /admin/subscribers:
+ - Table: opted_in_at, name, phone, source
+ - Filter by source
+ - "Export CSV" button — client-side, no server: Object.values(rows) → CSV string → download link
+
+ ---
+ Pinterest Strategy
+
+ Images: Upload at minimum 1000×1500px (2:3 ratio). Cloudinary transform: c_fill,w_1000,h_1500,q_auto.
+
+ Rich Pins meta tags (on product pages):
+ <meta property="og:type" content="product" />
+ <meta property="product:price:amount" content="3500" />
+ <meta property="product:price:currency" content="INR" />
+ Pinterest domain verification + Rich Pin validation is Phase 2.
+
+ "Save to Pinterest" button on product gallery images:
+ `https://pinterest.com/pin/create/button/?url=${pageUrl}&media=${imageUrl}&description=${productName}`
+
+ Pinterest Tag in layout.tsx: page_visit, view_category, view_item events.
+
+ UTM links from Pinterest boards: ?ref=pinterest
+
+ ---
+ Collection Landing Pages
+
+ Each /collections/[slug] page:
+ - generateMetadata: title = collections.name, description = first 160 chars of collections.description
+ - H1: collection name
+ - Intro paragraph: collections.description
+ - Curated product grid from collection_products JOIN products (published only)
+ - WhatsApp CTA section + WhatsApp subscriber form
+
+ Price-based collections ("Sarees Under ₹5,000") are manually curated — admin adds qualifying products. No price filter query needed.
+
+ Why this beats blog for MVP: Collections use existing products (zero new content creation), target high purchase-intent keywords, and drive direct WhatsApp inquiries.
+
+ ---
+ SEO Strategy
+
+ Per-Page Metadata (generateMetadata)
+
+ - Products: "[Name] – [Category] Saree | [Brand]"
+ - Categories: "Buy [Category] Sarees Online | Direct from Weavers | [Brand]"
+ - Collections: collections.name + " | [Brand]"
+ - Home: "[Brand] – Handloom & Silk Sarees Direct from Weavers"
+
+ Structured Data (JSON-LD)
+
+ - Product pages: @type: Product with offers, image[], name, description
+ - Collection pages: @type: CollectionPage
+ - Home/About: @type: LocalBusiness
+
+ Technical
+
+ - sitemap.ts (Next.js built-in): lists all published products + categories + active collections
+ - robots.ts: allow all, point to sitemap
+ - next/image: WebP auto, lazy load, responsive sizes
+ - Image alt: [Product name] – [Color] [Category] saree
+ - Core Web Vitals target: LCP < 2.5s, CLS < 0.1
+
+ ---
+ Analytics Strategy
+
+ GA4 Custom Events
+
+ ┌───────────────────┬───────────────────────┬────────────────────────────────────────┐
+ │       Event       │        Trigger        │               Parameters               │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ product_view      │ Product page load     │ product_id, name, category             │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ variant_select    │ Swatch clicked        │ product_id, color                      │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ whatsapp_click    │ Any WhatsApp CTA      │ product_id, source_page, variant_color │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ inquiry_submit    │ Form submit           │ inquiry_type, source                   │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ subscriber_opt_in │ Subscribe form submit │ source                                 │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ collection_view   │ Collection page load  │ collection_name                        │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ catalog_filter    │ Filter applied        │ filter_type, value                     │
+ ├───────────────────┼───────────────────────┼────────────────────────────────────────┤
+ │ pinterest_share   │ Save button clicked   │ product_id                             │
+ └───────────────────┴───────────────────────┴────────────────────────────────────────┘
+
+ Microsoft Clarity (free)
+
+ Session recordings + heatmaps. Set up on day 1.
+
+ Pinterest Tag
+
+ page_visit, view_category, view_item for Pinterest attribution.
+
+ ---
+ Admin System
+
+ Auth: Supabase email/password. Single admin account. Protected by middleware.ts + secondary check in layout.tsx.
+
+ Products List:
+ - Table: name, category, status badge (color-coded), variant count, featured toggle
+ - Quick inline status change (select: draft / published / archived) — triggers revalidatePath on save
+ - Search by name
+
+ Product Edit:
+ - Product fields: name, slug (auto-generated), category, fabric, description, highlights, base price range, featured toggle, stock type
+ - Variant manager: add/edit/remove variants inline. Per variant: color name, hex picker, status toggle, optional price override, drag-to-reorder (display_order)
+ - Image uploader per variant: signed upload to Cloudinary; reorder; mark primary
+ - Collection assignment: checkbox list of all collections — simple, zero custom component complexity
+
+ Inquiries: date, name, phone, type badge, source badge, product, message preview. Filter by type + source. Click phone number → opens WhatsApp with that contact.
+
+ Subscribers: date, name, phone, source. Filter by source. Export CSV (client-side).
+
+ ---
+ Deployment Architecture
+
+ User → Vercel Edge Network
+            ↓ (middleware auth check for /admin/*)
+        Next.js App on Vercel
+            ↓
+        Supabase (PostgreSQL + Auth + RLS)     Cloudinary (Image CDN)
+            ↓
+        Resend (transactional email)
+
+ - Vercel: Auto-deploy from main. Preview deploys per PR. On-demand revalidation via /api/revalidate.
+ - Supabase: Enable PITR backups. Use pgBouncer connection pooling. Local dev via supabase start.
+ - Cloudinary: Named transforms — thumbnail: c_fill,w_400,h_500,q_auto,f_auto; Pinterest: c_fill,w_1000,h_1500,q_auto.
+ - Domain: Custom domain → Vercel. Free SSL auto-provisioned.
+ - Secrets: All in Vercel environment variables. SUPABASE_SERVICE_ROLE_KEY is server-only (never NEXT_PUBLIC_).
+
+ ---
+ Phased Roadmap
+
+ Phase 1 — MVP (Weeks 1–5)
+
+ Week 1: Foundation
+ - npx create-next-app + TypeScript + Tailwind + shadcn/ui
+ - Supabase: local dev setup (supabase init, supabase start), schema migration, RLS policies, seed categories
+ - .env.example + .env.local with local Supabase credentials
+ - middleware.ts for admin route protection
+ - lib/ utilities: supabase clients, whatsapp, source-tracking (cookie-based), price, analytics
+ - Cloudinary config + /api/upload signed URL route
+ - docs/setup.md, docs/deployment.md, docs/admin-guide.md, docs/content-guide.md
+
+ Week 2: Public Catalog
+ - Home page: hero, featured products grid, collection cards, subscriber form
+ - Catalog page: product grid + filter panel (category, fabric, price)
+ - Category pages
+
+ Week 3: Product + Collections
+ - Product detail: variant selector, image gallery, WhatsApp CTA
+ - Collection landing pages
+ - WhatsApp float button
+ - Pinterest "Save" button on product images
+
+ Week 4: Lead Capture + Content
+ - Inquiry form + /api/inquiries (validation + DB + Resend email)
+ - WhatsApp subscriber form (direct Supabase insert)
+ - Source tracking on all forms
+ - About page + Wholesale page
+
+ Week 5: Admin + SEO + Deploy
+ - Admin: product CRUD + variant manager + image uploader + collection checkboxes
+ - Admin: inquiry list + subscriber list + CSV export
+ - /api/revalidate for on-demand cache purge
+ - sitemap.ts, robots.ts, generateMetadata on all pages, JSON-LD schemas
+ - GA4 + Clarity + Pinterest Tag
+ - Lighthouse audit (target: 90+ performance, 100 SEO, 90+ accessibility)
+ - Deploy to Vercel, custom domain, all env vars set
+
+ Phase 2 — Growth (Months 2–3)
+
+ - Pinterest Rich Pins domain verification
+ - Exit intent subscriber popup
+ - Color-based filtering in catalog
+ - WhatsApp Business API auto-reply on inquiry
+ - Product video (Cloudinary)
+ - Cloudinary orphan image cleanup job
+
+ Phase 3 — Wholesale Portal (Months 4–6)
+
+ - Password-protected reseller catalog with price tiers
+ - Bulk quote builder (multi-product inquiry)
+ - Reseller account creation via Supabase Auth
+
+ Phase 4 — E-Commerce (Month 6+, only if needed)
+
+ - RazorPay checkout for retail
+ - Evaluate only when WhatsApp inquiry volume is unmanageable
+
+ ---
+ Environment Variables
+
+ # .env.example — copy to .env.local and fill in values
+
+ # Supabase (use local values for dev, production values for Vercel)
+ NEXT_PUBLIC_SUPABASE_URL=
+ NEXT_PUBLIC_SUPABASE_ANON_KEY=
+ SUPABASE_SERVICE_ROLE_KEY=          # SERVER ONLY — never prefix with NEXT_PUBLIC_
+
+ # Cloudinary (API key and secret are server-only)
+ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
+ CLOUDINARY_API_KEY=
+ CLOUDINARY_API_SECRET=
+
+ # Business config
+ NEXT_PUBLIC_WHATSAPP_NUMBER=91XXXXXXXXXX
+ NEXT_PUBLIC_BUSINESS_NAME=
+
+ # Email
+ RESEND_API_KEY=
+ INQUIRY_NOTIFICATION_EMAIL=
+
+ # Analytics (public — safe in browser)
+ NEXT_PUBLIC_GA_MEASUREMENT_ID=
+ NEXT_PUBLIC_PINTEREST_TAG_ID=
+
+ ---
+ Risks & Mitigations
+
+ ┌────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────┐
+ │                    Risk                    │                              Mitigation                              │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Admin too complex for non-technical family │ Simple list views + inline toggles; no dashboards; video walkthrough │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ No product photos at launch                │ Graceful placeholder states on all cards/detail pages                │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ SEO takes 3–6 months to show results       │ Share collection URLs on Instagram/Pinterest/WhatsApp immediately    │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ WhatsApp number changes                    │ Single env var + redeploy                                            │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Supabase free tier limits                  │ Monitor from day 1; upgrade is $25/mo                                │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Variant model adds build complexity        │ MVP scope: color swatches only; no size/blouse variants              │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Cloudinary orphan images on deletion       │ Acceptable for MVP (25GB free); cleanup job in Phase 2               │
+ ├────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤
+ │ Cache stale after admin update             │ On-demand revalidatePath called from admin on every save             │
+ └────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────┘
+
+ ---
+ Verification Plan
+
+ 1. Local dev: supabase start → npm run dev → all pages render, no DB errors
+ 2. RLS: Direct Supabase client attempt to INSERT a product without auth → rejected; INSERT an inquiry → succeeds
+ 3. Admin auth: curl /admin/products without cookie → 302 redirect to /admin/login
+ 4. Variants: Select different swatches → gallery swaps, price updates, WhatsApp message includes color name
+ 5. Sold-out variant: Mark one variant sold-out → swatch disabled; other variants still selectable
+ 6. Source tracking: Land on /?ref=instagram → submit inquiry → verify source = 'instagram' in Supabase
+ 7. Signed upload: Upload image in admin → no Cloudinary credentials in browser network tab
+ 8. Honeypot: Submit inquiry form with website field filled → 200 response, no row in DB
+ 9. Cache revalidation: Save a product in admin → /api/revalidate called → product page reflects change immediately
+ 10. SEO: validator.schema.org on product page → valid Product schema; /sitemap.xml lists all published products
+ 11. Performance: Lighthouse → 90+ Performance, 100 SEO, 90+ Accessibility
+ 12. Mobile: Real device test — WhatsApp float visible and tappable; variant swatches are finger-sized
+ 13. Deploy: Vercel production → custom domain resolves → SSL valid → env vars confirmed set

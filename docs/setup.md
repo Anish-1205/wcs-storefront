@@ -43,13 +43,24 @@ supabase db reset
 ## 3. Create the admin user
 
 The site uses a single Supabase Auth email/password account. Signups are
-disabled, so create the admin via the local Studio or CLI:
+disabled, so create the admin directly:
 
-```bash
-supabase auth admin create-user --email you@example.com --password "a-strong-password"
-```
+- **Studio (simplest)** — open <http://localhost:54323> → Authentication →
+  Add user. Check "Auto confirm user".
+- **CLI / scripts** — current Supabase CLI versions have no
+  `auth admin create-user` command; call the GoTrue admin API instead, using
+  the `service_role` key from step 2:
 
-(Or use Studio at <http://localhost:54323> → Authentication → Add user.)
+  ```bash
+  curl -X POST 'http://127.0.0.1:54321/auth/v1/admin/users' \
+    -H "apikey: <service_role key>" \
+    -H "Authorization: Bearer <service_role key>" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"you@example.com","password":"a-strong-password","email_confirm":true}'
+  ```
+
+Also set `ADMIN_EMAILS` in `.env.local` (step 4) to this email — the app
+checks it independently of Supabase Auth.
 
 ## 4. Configure environment variables
 
@@ -75,6 +86,28 @@ npm run dev
 
 - Public site: <http://localhost:3000>
 - Admin: <http://localhost:3000/admin> (redirects to login)
+
+## Running the full e2e suite locally
+
+`e2e/public-site.spec.ts` runs against whatever `npm run test:e2e` builds and
+starts — no backend dependency. `e2e/admin-auth.spec.ts` and
+`e2e/admin-product-crud.spec.ts` exercise real admin login and product CRUD,
+so they need a running local Supabase stack with two specific users first:
+
+```bash
+supabase start
+# create both users via Studio or the curl command from step 3:
+#   admin@example.com / TestPassw0rd!23  (matches ADMIN_EMAILS below)
+#   staff@example.com / TestPassw0rd!23  (used to test the non-admin-rejection case)
+npm run test:e2e
+```
+
+`playwright.config.ts` points its managed dev server at the local Supabase
+instance (`127.0.0.1:54321`, fixed demo keys, `ADMIN_EMAILS=admin@example.com`)
+— no `.env.local` needed for this. Cloudinary and the WhatsApp webhook aren't
+hit for real; those specs mock the relevant network calls (see
+`e2e/helpers.ts`). Change the credentials in `e2e/helpers.ts` if you'd rather
+use different ones.
 
 ## Useful commands
 

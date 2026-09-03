@@ -10,6 +10,7 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
    - `supabase/migrations/001_schema.sql`
    - `supabase/migrations/002_seed_categories.sql`
    - **Skip** `003_seed_sample_data.sql` in production (it's demo data).
+   - Run `004` through `008` in filename order.
 3. Create the admin user: Authentication → Users → Add user (email + password).
    Keep **Email signups disabled** under Authentication → Providers.
 4. (Recommended) Settings → Database → enable **Point-in-Time Recovery** and use
@@ -52,8 +53,14 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
    | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | optional |
    | `NEXT_PUBLIC_CLARITY_PROJECT_ID` | optional |
    | `NEXT_PUBLIC_PINTEREST_TAG_ID` | optional |
+   | `ADMIN_EMAILS` | comma-separated admin email allowlist |
+   | `UPSTASH_REDIS_REST_URL` | server-only rate limiting |
+   | `UPSTASH_REDIS_REST_TOKEN` | server-only rate limiting |
+   | `WHATSAPP_APP_SECRET` | required when admin image ingestion is enabled |
+   | `WHATSAPP_ADMIN_NUMBERS` | comma-separated phone allowlist for ingestion |
 
-4. Deploy. Vercel builds and serves on a global CDN with automatic SSL.
+4. Run `npm run check:env` locally or in CI before deploying.
+5. Deploy. Vercel builds and serves on a global CDN with automatic SSL.
 
 ## 5. Custom domain
 
@@ -70,6 +77,9 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
 - [ ] Subscribe via the footer form → row appears in admin Subscribers.
 - [ ] `/sitemap.xml` and `/robots.txt` resolve.
 - [ ] Run Lighthouse (target: Performance 90+, SEO 100, Accessibility 90+).
+- [ ] Test at 320, 360, 390 and 430px widths with no horizontal overflow.
+- [ ] Verify unsigned WhatsApp webhook requests return 401 and non-admin senders are ignored.
+- [ ] Confirm anonymous Supabase clients cannot insert leads or read draft-product assets.
 - [ ] Validate a product page at <https://validator.schema.org>.
 
 ## Caching / revalidation

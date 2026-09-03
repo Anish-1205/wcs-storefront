@@ -25,8 +25,14 @@ enabled = true
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["http://localhost:3000"]
 jwt_expiry = 3600
-enable_signup = false   # single admin account; create via dashboard or CLI
+enable_signup = false   # single admin account; create via dashboard or admin API — see docs/setup.md
 
 [auth.email]
-enable_signup = false
+# `enabled` + this `enable_signup` together gate the email/password provider
+# itself (i.e. whether anyone can sign IN) on current Supabase CLI versions —
+# distinct from `[auth] enable_signup` above, which only gates public
+# self-registration. Both must stay as set here or local admin login breaks;
+# self-signup stays blocked via `[auth] enable_signup = false`.
+enabled = true
+enable_signup = true
 enable_confirmations = false
