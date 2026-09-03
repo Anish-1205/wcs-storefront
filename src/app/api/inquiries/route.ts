@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { inquirySchema } from "@/lib/validation";
 import { SITE } from "@/lib/site";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -42,8 +42,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Insert into DB (RLS permits public INSERT).
-  const supabase = createClient();
+  // Write server-side so anonymous clients cannot bypass validation/rate limits.
+  const supabase = createAdminClient();
   const { error: dbError } = await supabase.from("inquiries").insert({
     name: data.name,
     phone: data.phone,

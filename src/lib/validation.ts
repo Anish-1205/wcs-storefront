@@ -23,7 +23,7 @@ export const inquirySchema = z.object({
   product_name: z.string().max(200).optional().nullable(),
   source: z.enum([...VALID_SOURCES, "unknown"]).default("unknown"),
   // Honeypot — must be empty for a real human.
-  website: z.string().max(0).optional().or(z.literal("")),
+  website: z.string().max(500).optional().or(z.literal("")),
 });
 
 export type InquiryInput = z.infer<typeof inquirySchema>;
@@ -70,6 +70,34 @@ export const productInputSchema = z.object({
   stock_type: z.enum(["held", "supplier"]),
   variants: z.array(variantInputSchema),
   collection_ids: z.array(z.string().uuid()),
+}).superRefine((product, context) => {
+  if (
+    product.base_price_min != null &&
+    product.base_price_max != null &&
+    product.base_price_max < product.base_price_min
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["base_price_max"],
+      message: "Maximum price cannot be lower than minimum price",
+    });
+  }
+
+  if (product.status !== "published") return;
+
+  const requirements: Array<[boolean, (string | number)[], string]> = [
+    [!!product.category_id, ["category_id"], "Published products need a category"],
+    [!!product.fabric_type?.trim(), ["fabric_type"], "Published products need a fabric type"],
+    [!!product.description?.trim() && product.description.trim().length >= 40, ["description"], "Published products need a description of at least 40 characters"],
+    [product.base_price_min != null, ["base_price_min"], "Published products need a starting price"],
+    [product.variants.length > 0, ["variants"], "Published products need at least one variant"],
+    [product.variants.some((variant) => variant.status === "available"), ["variants"], "Published products need at least one available variant"],
+    [product.variants.some((variant) => variant.images.length > 0), ["variants"], "Published products need at least one product image"],
+  ];
+
+  for (const [passes, path, message] of requirements) {
+    if (!passes) context.addIssue({ code: z.ZodIssueCode.custom, path, message });
+  }
 });
 
 export const collectionInputSchema = z.object({

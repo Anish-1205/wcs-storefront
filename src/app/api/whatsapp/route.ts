@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { signUpload } from "@/lib/cloudinary";
+import {
+  isAllowedWhatsAppAdmin,
+  MAX_WEBHOOK_BYTES,
+  verifyWhatsAppSignature,
+} from "@/lib/webhook-security";
 
 export const runtime = "nodejs";
 
 const GRAPH_API_VERSION = "v20.0";
-const VERIFY_FALLBACK = "my_saree_bot_secret_token_123";
 
 type WhatsAppProfile = {
   name?: string;
@@ -117,7 +121,7 @@ function getWhatsAppPhoneNumberId(): string {
 }
 
 function getWhatsAppVerifyToken(): string {
-  return requireEnv("WHATSAPP_VERIFY_TOKEN", VERIFY_FALLBACK);
+  return requireEnv("WHATSAPP_VERIFY_TOKEN");
 }
 
 function normalizeCaption(message: WhatsAppMessage): string {
@@ -322,8 +326,29 @@ export async function POST(req: Request) {
   let variantId: string | null = null;
   let savedImageUrl = "";
 
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_WEBHOOK_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  let rawBody: string;
   try {
-    payload = (await req.json()) as WhatsAppWebhookPayload;
+    rawBody = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Could not read payload" }, { status: 400 });
+  }
+
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_WEBHOOK_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  if (!verifyWhatsAppSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+    console.warn("whatsapp webhook: rejected invalid signature");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  try {
+    payload = JSON.parse(rawBody) as WhatsAppWebhookPayload;
   } catch (error) {
     console.error("whatsapp webhook: invalid json payload", error);
     return NextResponse.json({ ok: true }, { status: 200 });
@@ -340,6 +365,11 @@ export async function POST(req: Request) {
   const caption = normalizeCaption(message);
 
   if (!senderPhone || !mediaId) {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  if (!isAllowedWhatsAppAdmin(senderPhone)) {
+    console.warn("whatsapp webhook: ignored message from a non-admin sender");
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
