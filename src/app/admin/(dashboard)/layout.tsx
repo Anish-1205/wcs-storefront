@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { SITE } from "@/lib/site";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { AdminMobileNav } from "@/components/admin/AdminMobileNav";
 
 const NAV = [
   { href: "/admin", label: "Dashboard" },
@@ -54,15 +55,9 @@ export default async function AdminLayout({
 
       {/* Mobile top bar */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-white px-4 py-3 md:hidden">
+        <header className="relative flex items-center justify-between border-b border-border bg-white px-4 py-3 md:hidden">
           <span className="font-serif font-semibold text-burgundy">Admin</span>
-          <nav className="flex gap-3 text-sm">
-            {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className="text-foreground/70">
-                {n.label}
-              </Link>
-            ))}
-          </nav>
+          <AdminMobileNav links={NAV} />
         </header>
         <main className="flex-1 p-5 sm:p-8">{children}</main>
       </div>

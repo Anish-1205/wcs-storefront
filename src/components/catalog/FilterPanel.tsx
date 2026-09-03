@@ -80,10 +80,11 @@ export function FilterPanel({ categories, hideCategory }: Props) {
 
       {!hideCategory && (
         <div className="space-y-1.5">
-          <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <label htmlFor="catalog-category" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Category
           </label>
           <Select
+            id="catalog-category"
             value={params.get("category") ?? ""}
             onChange={(e) => setParam("category", e.target.value)}
           >
@@ -98,10 +99,11 @@ export function FilterPanel({ categories, hideCategory }: Props) {
       )}
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <label htmlFor="catalog-fabric" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Fabric
         </label>
         <Select
+          id="catalog-fabric"
           value={params.get("fabric") ?? ""}
           onChange={(e) => setParam("fabric", e.target.value)}
         >
@@ -115,10 +117,10 @@ export function FilterPanel({ categories, hideCategory }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <label htmlFor="catalog-price" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Price
         </label>
-        <Select value={priceValue} onChange={(e) => setPriceBand(e.target.value)}>
+        <Select id="catalog-price" value={priceValue} onChange={(e) => setPriceBand(e.target.value)}>
           {PRICE_BANDS.map((b) => (
             <option key={b.label} value={`${b.min}-${b.max}`}>
               {b.label}

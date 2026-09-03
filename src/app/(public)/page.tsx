@@ -44,6 +44,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section aria-label="Why shop with us" className="border-b border-border bg-white/60">
+        <div className="container-px mx-auto grid max-w-7xl gap-5 py-7 text-center sm:grid-cols-3">
+          <p className="text-sm"><span className="block font-serif text-base text-burgundy">Sourced with care</span><span className="text-muted-foreground">Selected directly through trusted weaving partners</span></p>
+          <p className="text-sm"><span className="block font-serif text-base text-burgundy">Personal assistance</span><span className="text-muted-foreground">Availability and details confirmed on WhatsApp</span></p>
+          <p className="text-sm"><span className="block font-serif text-base text-burgundy">Retail & wholesale</span><span className="text-muted-foreground">Support for individual buyers, boutiques and resellers</span></p>
+        </div>
+      </section>
+
       {/* Featured products */}
       {featured.length > 0 && (
         <section className="container-px mx-auto max-w-7xl py-16">
@@ -102,14 +110,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Floating WhatsApp button on homepage */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <a href={buildWhatsAppURL()} target="_blank" rel="noopener noreferrer">
-          <Button size="lg" className="rounded-full px-5 shadow-lg">
-            Chat on WhatsApp
-          </Button>
-        </a>
-      </div>
     </>
   );
 }

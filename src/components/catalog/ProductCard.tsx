@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { cld } from "@/lib/cloudinary";
 import { getDisplayPrice, formatPrice } from "@/lib/price";
@@ -62,11 +63,14 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
       className="group block focus-visible:outline-none"
     >
       <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-secondary">
-        <img
+        <Image
           src={currentSrc}
           alt={`${product.name}${primaryVariant ? ` – ${primaryVariant.color}` : ""} ${product.fabric_type ?? ""} saree`}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          unoptimized={currentSrc.startsWith("data:")}
           onError={() => {
             if (currentSrc !== fallbackSrc) {
               setCurrentSrc(fallbackSrc);

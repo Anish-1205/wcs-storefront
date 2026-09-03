@@ -14,7 +14,7 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-ivory/95 backdrop-blur">
       <nav className="container-px mx-auto flex h-16 max-w-7xl items-center justify-between">
         {/* Wordmark — no logo file yet */}
-        <Link href="/" className="flex flex-col leading-none" onClick={() => setOpen(false)}>
+        <Link href="/" className="min-w-0 flex flex-col leading-none" onClick={() => setOpen(false)}>
           <span className="font-serif text-xl font-semibold tracking-wide text-burgundy">
             {SITE.name}
           </span>
@@ -43,9 +43,10 @@ export function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden"
+          className="ml-3 shrink-0 rounded-sm p-2 md:hidden"
           onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
         >
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>

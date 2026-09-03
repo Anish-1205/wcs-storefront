@@ -17,10 +17,12 @@ interface Props {
 /** Active-variant image gallery: large image + thumbnail strip. */
 export function ImageGallery({ images, alt, productId, pageUrl }: Props) {
   const [active, setActive] = useState(0);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   // Reset to the first image whenever the variant (image set) changes.
   useEffect(() => {
     setActive(0);
+    setFailedUrl(null);
   }, [images]);
 
   const current = images[active];
@@ -38,14 +40,23 @@ export function ImageGallery({ images, alt, productId, pageUrl }: Props) {
   return (
     <div className="space-y-3">
       <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-secondary">
-        <Image
-          src={cld(current.image_url, "full")}
-          alt={alt}
-          fill
-          priority
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover"
-        />
+        {failedUrl === current.image_url ? (
+          <div className="flex h-full items-center justify-center px-6 text-center">
+            <span className="font-serif text-muted-foreground">
+              Photo temporarily unavailable
+            </span>
+          </div>
+        ) : (
+          <Image
+            src={cld(current.image_url, "full")}
+            alt={alt}
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover"
+            onError={() => setFailedUrl(current.image_url)}
+          />
+        )}
         <div className="absolute right-3 top-3">
           <PinterestSaveButton
             productId={productId}

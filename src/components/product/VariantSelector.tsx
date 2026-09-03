@@ -148,6 +148,12 @@ export function VariantSelector({
           )}
         </div>
 
+        <div className="grid gap-3 border-y border-border py-5 text-sm text-foreground/75 sm:grid-cols-3">
+          <p><span className="block font-medium text-foreground">Availability</span>Confirmed personally on WhatsApp</p>
+          <p><span className="block font-medium text-foreground">Delivery</span>Dispatch details shared before purchase</p>
+          <p><span className="block font-medium text-foreground">Colour note</span>Actual shades may vary by screen</p>
+        </div>
+
         {/* Description */}
         {product.description && (
           <div className="border-t border-border pt-6">
