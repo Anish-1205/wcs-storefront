@@ -60,7 +60,7 @@ export function ContactForm({ initial }: Props) {
 
     setSaving(true);
     try {
-      await saveContact({
+      const result = await saveContact({
         id: initial?.id,
         name: name.trim(),
         phone: phone.trim(),
@@ -74,6 +74,11 @@ export function ContactForm({ initial }: Props) {
         last_contacted_at: parseContactDateTimeValue(lastContactedAt),
         next_follow_up_on: parseContactDateValue(nextFollowUpOn),
       });
+      if (!result.ok) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
       router.push("/admin/contacts");
       router.refresh();
     } catch (err) {

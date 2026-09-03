@@ -13,12 +13,17 @@ export function CategoryDeleteButton({ id, name }: { id: string; name: string })
   function onDelete() {
     if (!confirm(`Delete "${name}"?`)) return;
     setError(null);
-    startTransition(() => {
-      void deleteCategory(id)
-        .then(() => router.refresh())
-        .catch((e) => {
-          setError(e instanceof Error ? e.message : "Could not delete category.");
-        });
+    startTransition(async () => {
+      try {
+        const result = await deleteCategory(id);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not delete category.");
+      }
     });
   }
 

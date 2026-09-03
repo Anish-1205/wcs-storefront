@@ -32,6 +32,31 @@ import {
   type ProductInputShape,
 } from "@/lib/validation";
 
+/**
+ * Next.js redacts thrown Server Action error messages in production builds
+ * (`e.message` becomes a generic "omitted in production builds" string) — by
+ * design, to stop server internals leaking to the client. That's correct for
+ * genuinely unexpected errors, but every mutating action below throws for
+ * *expected* validation/business-rule failures the admin needs to actually
+ * read (e.g. "Published products need a category"). Wrapping each action's
+ * body in `toResult` converts those into a plain returned value instead of a
+ * thrown error, so the message survives into production. Internal logic is
+ * unchanged — every function still throws internally, `toResult` just catches
+ * it before it crosses the Server Action boundary.
+ */
+export type ActionResult<T extends object = Record<string, unknown>> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string };
+
+async function toResult<T extends object>(fn: () => Promise<T>): Promise<ActionResult<T>> {
+  try {
+    const data = await fn();
+    return { ok: true, ...data };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Something went wrong." };
+  }
+}
+
 function revalidatePublic(slug: string) {
   revalidatePath("/");
   revalidatePath("/catalog");
@@ -168,158 +193,171 @@ export async function listContacts(query: Partial<ContactsQueryShape> = {}) {
   return listContactsInternal(admin, parsed.data);
 }
 
-export async function saveContact(input: ContactInputShape): Promise<{ id: string }> {
-  const { admin } = await assertAdmin();
-  const parsed = contactSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contact");
-  input = parsed.data;
+export async function saveContact(input: ContactInputShape): Promise<ActionResult<{ id: string }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const parsed = contactSchema.safeParse(input);
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contact");
+    input = parsed.data;
 
-  const row = {
-    name: input.name,
-    phone: input.phone,
-    role: input.role,
-    status_tag: input.status_tag,
-    city: input.city,
-    source: input.source,
-    whatsapp_opt_in: input.whatsapp_opt_in,
-    rating: input.rating,
-    notes: input.notes,
-    last_contacted_at: parseContactDateTimeValue(input.last_contacted_at),
-    next_follow_up_on: parseContactDateValue(input.next_follow_up_on),
-  };
+    const row = {
+      name: input.name,
+      phone: input.phone,
+      role: input.role,
+      status_tag: input.status_tag,
+      city: input.city,
+      source: input.source,
+      whatsapp_opt_in: input.whatsapp_opt_in,
+      rating: input.rating,
+      notes: input.notes,
+      last_contacted_at: parseContactDateTimeValue(input.last_contacted_at),
+      next_follow_up_on: parseContactDateValue(input.next_follow_up_on),
+    };
 
-  let id = input.id;
-  if (id) {
-    const { error } = await admin.from("contacts").update(row).eq("id", id);
-    if (error) throw new Error(error.message);
-  } else {
-    const existing = await getContactByNormalizedPhone(admin, input.phone);
-    if (existing) {
-      const { error } = await admin.from("contacts").update(row).eq("id", existing.id);
+    let id = input.id;
+    if (id) {
+      const { error } = await admin.from("contacts").update(row).eq("id", id);
       if (error) throw new Error(error.message);
-      id = existing.id;
     } else {
-      const { data, error } = await admin.from("contacts").insert(row).select("id").single();
-      if (error) throw new Error(error.message);
-      id = data.id as string;
+      const existing = await getContactByNormalizedPhone(admin, input.phone);
+      if (existing) {
+        const { error } = await admin.from("contacts").update(row).eq("id", existing.id);
+        if (error) throw new Error(error.message);
+        id = existing.id;
+      } else {
+        const { data, error } = await admin.from("contacts").insert(row).select("id").single();
+        if (error) throw new Error(error.message);
+        id = data.id as string;
+      }
     }
-  }
 
-  revalidatePath("/admin/contacts");
-  return { id };
+    revalidatePath("/admin/contacts");
+    return { id };
+  });
 }
 
-export async function deleteContact(id: string) {
-  const { admin } = await assertAdmin();
-  const { error } = await admin.from("contacts").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/admin/contacts");
-}
-
-export async function saveCategory(input: CategoryInputShape): Promise<{ id: string }> {
-  const { admin } = await assertAdmin();
-  const parsed = categoryInputSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid category");
-  input = parsed.data;
-
-  let previousSlug: string | null = null;
-  if (input.id) {
-    previousSlug = await getCategorySlugById(admin, input.id);
-  }
-
-  const refs = await loadExistingProductRefs(admin);
-  const slugSource = input.slug?.trim() || input.name;
-  const slug = input.id
-    ? makeStableSlug(slugSource, refs.categorySlugs, previousSlug)
-    : makeUniqueSlug(slugSource, refs.categorySlugs);
-
-  const row = {
-    name: input.name,
-    slug,
-    description: input.description,
-    image_url: input.image_url,
-    display_order: input.display_order,
-  };
-
-  let categoryId = input.id;
-  if (categoryId) {
-    const { error } = await admin.from("categories").update(row).eq("id", categoryId);
+export async function deleteContact(id: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { error } = await admin.from("contacts").delete().eq("id", id);
     if (error) throw new Error(error.message);
-  } else {
-    const { data, error } = await admin.from("categories").insert(row).select("id").single();
+    revalidatePath("/admin/contacts");
+    return {};
+  });
+}
+
+export async function saveCategory(input: CategoryInputShape): Promise<ActionResult<{ id: string }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const parsed = categoryInputSchema.safeParse(input);
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid category");
+    input = parsed.data;
+
+    let previousSlug: string | null = null;
+    if (input.id) {
+      previousSlug = await getCategorySlugById(admin, input.id);
+    }
+
+    const refs = await loadExistingProductRefs(admin);
+    const slugSource = input.slug?.trim() || input.name;
+    const slug = input.id
+      ? makeStableSlug(slugSource, refs.categorySlugs, previousSlug)
+      : makeUniqueSlug(slugSource, refs.categorySlugs);
+
+    const row = {
+      name: input.name,
+      slug,
+      description: input.description,
+      image_url: input.image_url,
+      display_order: input.display_order,
+    };
+
+    let categoryId = input.id;
+    if (categoryId) {
+      const { error } = await admin.from("categories").update(row).eq("id", categoryId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await admin.from("categories").insert(row).select("id").single();
+      if (error) throw new Error(error.message);
+      categoryId = data.id as string;
+    }
+
+    if (previousSlug && previousSlug !== slug) {
+      revalidatePath(`/catalog/${previousSlug}`);
+    }
+    revalidatePath("/");
+    revalidatePath("/catalog");
+    revalidatePath("/admin/categories");
+    revalidatePath(`/catalog/${slug}`);
+    if (categoryId) await revalidateCategoryProducts(admin, categoryId);
+    revalidateCatalogShell();
+    return { id: categoryId };
+  });
+}
+
+export async function deleteCategory(id: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data: category } = await admin.from("categories").select("slug").eq("id", id).maybeSingle();
+    const { count } = await admin
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", id);
+
+    if ((count ?? 0) > 0) {
+      throw new Error("Move or reassign products before deleting this category.");
+    }
+
+    const { error } = await admin.from("categories").delete().eq("id", id);
     if (error) throw new Error(error.message);
-    categoryId = data.id as string;
-  }
 
-  if (previousSlug && previousSlug !== slug) {
-    revalidatePath(`/catalog/${previousSlug}`);
-  }
-  revalidatePath("/");
-  revalidatePath("/catalog");
-  revalidatePath("/admin/categories");
-  revalidatePath(`/catalog/${slug}`);
-  if (categoryId) await revalidateCategoryProducts(admin, categoryId);
-  revalidateCatalogShell();
-  return { id: categoryId };
+    const slug = (category as { slug?: string } | null)?.slug;
+    if (slug) revalidatePath(`/catalog/${slug}`);
+    revalidatePath("/");
+    revalidatePath("/catalog");
+    revalidatePath("/admin/categories");
+    revalidateCatalogShell();
+    return {};
+  });
 }
 
-export async function deleteCategory(id: string) {
-  const { admin } = await assertAdmin();
-  const { data: category } = await admin.from("categories").select("slug").eq("id", id).maybeSingle();
-  const { count } = await admin
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("category_id", id);
-
-  if ((count ?? 0) > 0) {
-    throw new Error("Move or reassign products before deleting this category.");
-  }
-
-  const { error } = await admin.from("categories").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-
-  const slug = (category as { slug?: string } | null)?.slug;
-  if (slug) revalidatePath(`/catalog/${slug}`);
-  revalidatePath("/");
-  revalidatePath("/catalog");
-  revalidatePath("/admin/categories");
-  revalidateCatalogShell();
-}
-
-export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {}) {
-  const { admin } = await assertAdmin();
-  const parsed = contactsQuerySchema.safeParse(query);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contacts query");
-  const rows = await listContactsInternal(admin, parsed.data);
-  const header = [
-    "name",
-    "phone",
-    "role",
-    "status_tag",
-    "city",
-    "source",
-    "whatsapp_opt_in",
-    "rating",
-    "notes",
-    "last_contacted_at",
-    "next_follow_up_on",
-  ];
-  return [
-    header.join(","),
-    ...rows.map((row) => [
-      row.name,
-      row.phone,
-      row.role,
-      row.status_tag,
-      row.city ?? "",
-      row.source,
-      row.whatsapp_opt_in,
-      row.rating ?? "",
-      row.notes ?? "",
-      row.last_contacted_at ?? "",
-      row.next_follow_up_on ?? "",
-    ].map(csvEscape).join(",")),
-  ].join("\n");
+export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {}): Promise<ActionResult<{ csv: string }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const parsed = contactsQuerySchema.safeParse(query);
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contacts query");
+    const rows = await listContactsInternal(admin, parsed.data);
+    const header = [
+      "name",
+      "phone",
+      "role",
+      "status_tag",
+      "city",
+      "source",
+      "whatsapp_opt_in",
+      "rating",
+      "notes",
+      "last_contacted_at",
+      "next_follow_up_on",
+    ];
+    const csv = [
+      header.join(","),
+      ...rows.map((row) => [
+        row.name,
+        row.phone,
+        row.role,
+        row.status_tag,
+        row.city ?? "",
+        row.source,
+        row.whatsapp_opt_in,
+        row.rating ?? "",
+        row.notes ?? "",
+        row.last_contacted_at ?? "",
+        row.next_follow_up_on ?? "",
+      ].map(csvEscape).join(",")),
+    ].join("\n");
+    return { csv };
+  });
 }
 
 export async function importContactsCsv(csvText: string) {
@@ -415,7 +453,8 @@ async function revalidateCategoryProducts(admin: Awaited<ReturnType<typeof asser
  * assignments. Variants/images are replaced wholesale (delete + recreate) for
  * simplicity and correctness in the MVP.
  */
-export async function saveProduct(input: ProductInputShape): Promise<{ id: string }> {
+export async function saveProduct(input: ProductInputShape): Promise<ActionResult<{ id: string }>> {
+  return toResult(async () => {
   const { admin } = await assertAdmin();
   const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product");
@@ -596,9 +635,11 @@ export async function saveProduct(input: ProductInputShape): Promise<{ id: strin
   revalidatePublic(slug);
   revalidateCatalogShell();
   return { id: productId };
+  });
 }
 
-export async function duplicateProduct(id: string): Promise<{ id: string }> {
+export async function duplicateProduct(id: string): Promise<ActionResult<{ id: string }>> {
+  return toResult(async () => {
   const { admin } = await assertAdmin();
   const { data: product, error } = await admin
     .from("products")
@@ -679,48 +720,59 @@ export async function duplicateProduct(id: string): Promise<{ id: string }> {
   revalidatePublic(slugify(source.slug));
   revalidateCatalogShell();
   return { id: newId };
+  });
 }
 
-export async function updateProductStatus(id: string, status: ProductStatus) {
-  const { admin } = await assertAdmin();
-  const { data, error } = await admin
-    .from("products")
-    .update({ status })
-    .eq("id", id)
-    .select("slug")
-    .single();
-  if (error) throw new Error(error.message);
-  revalidatePublic(data.slug as string);
-  revalidatePath("/admin/products");
+export async function updateProductStatus(id: string, status: ProductStatus): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data, error } = await admin
+      .from("products")
+      .update({ status })
+      .eq("id", id)
+      .select("slug")
+      .single();
+    if (error) throw new Error(error.message);
+    revalidatePublic(data.slug as string);
+    revalidatePath("/admin/products");
+    return {};
+  });
 }
 
-export async function toggleFeatured(id: string, is_featured: boolean) {
-  const { admin } = await assertAdmin();
-  const { data, error } = await admin
-    .from("products")
-    .update({ is_featured })
-    .eq("id", id)
-    .select("slug")
-    .single();
-  if (error) throw new Error(error.message);
-  revalidatePublic(data.slug as string);
-  revalidateCatalogShell();
+export async function toggleFeatured(id: string, is_featured: boolean): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data, error } = await admin
+      .from("products")
+      .update({ is_featured })
+      .eq("id", id)
+      .select("slug")
+      .single();
+    if (error) throw new Error(error.message);
+    revalidatePublic(data.slug as string);
+    revalidateCatalogShell();
+    return {};
+  });
 }
 
-export async function deleteProduct(id: string) {
-  const { admin } = await assertAdmin();
-  const { data } = await admin
-    .from("products")
-    .select("slug")
-    .eq("id", id)
-    .single();
-  const { error } = await admin.from("products").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-  if (data?.slug) revalidatePublic(data.slug as string);
-  revalidateCatalogShell();
+export async function deleteProduct(id: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data } = await admin
+      .from("products")
+      .select("slug")
+      .eq("id", id)
+      .single();
+    const { error } = await admin.from("products").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    if (data?.slug) revalidatePublic(data.slug as string);
+    revalidateCatalogShell();
+    return {};
+  });
 }
 
-export async function saveCollection(input: CollectionInputShape): Promise<{ id: string }> {
+export async function saveCollection(input: CollectionInputShape): Promise<ActionResult<{ id: string }>> {
+  return toResult(async () => {
   const { admin } = await assertAdmin();
   const parsed = collectionInputSchema.safeParse(input);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid collection");
@@ -774,39 +826,43 @@ export async function saveCollection(input: CollectionInputShape): Promise<{ id:
   revalidateCatalogShell();
   revalidatePath(`/collections/${slug}`);
   return { id: collectionId };
+  });
 }
 
-export async function reorderCollectionProducts(collectionId: string, productIds: string[]) {
-  const { admin } = await assertAdmin();
-  const slug = await getCollectionSlugById(admin, collectionId);
+export async function reorderCollectionProducts(collectionId: string, productIds: string[]): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const slug = await getCollectionSlugById(admin, collectionId);
 
-  if (productIds.length === 0) {
-    const { error: clearError } = await admin
-      .from("collection_products")
-      .delete()
-      .eq("collection_id", collectionId);
-    if (clearError) throw new Error(clearError.message);
-  } else {
-    const { error: deleteError } = await admin
-      .from("collection_products")
-      .delete()
-      .eq("collection_id", collectionId)
-      .not("product_id", "in", `(${productIds.join(",")})`);
-    if (deleteError) throw new Error(deleteError.message);
-  }
+    if (productIds.length === 0) {
+      const { error: clearError } = await admin
+        .from("collection_products")
+        .delete()
+        .eq("collection_id", collectionId);
+      if (clearError) throw new Error(clearError.message);
+    } else {
+      const { error: deleteError } = await admin
+        .from("collection_products")
+        .delete()
+        .eq("collection_id", collectionId)
+        .not("product_id", "in", `(${productIds.join(",")})`);
+      if (deleteError) throw new Error(deleteError.message);
+    }
 
-  const { error } = await admin
-    .from("collection_products")
-    .upsert(
-      productIds.map((product_id, index) => ({
-        collection_id: collectionId,
-        product_id,
-        display_order: index,
-      })),
-      { onConflict: "collection_id,product_id" },
-    );
-  if (error) throw new Error(error.message);
-  if (slug) revalidatePath(`/collections/${slug}`);
-  revalidateCatalogShell();
+    const { error } = await admin
+      .from("collection_products")
+      .upsert(
+        productIds.map((product_id, index) => ({
+          collection_id: collectionId,
+          product_id,
+          display_order: index,
+        })),
+        { onConflict: "collection_id,product_id" },
+      );
+    if (error) throw new Error(error.message);
+    if (slug) revalidatePath(`/collections/${slug}`);
+    revalidateCatalogShell();
+    return {};
+  });
 }
 

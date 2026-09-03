@@ -31,6 +31,7 @@ export function ContactTable({ contacts, query }: Props) {
   const [sort, setSort] = useState<ContactsQueryShape["sort"]>(query?.sort ?? "updated_at");
   const [dir, setDir] = useState<ContactsQueryShape["dir"]>(query?.dir ?? "desc");
   const [importSummary, setImportSummary] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -59,15 +60,22 @@ export function ContactTable({ contacts, query }: Props) {
 
   function onDelete(id: string, name: string) {
     if (!confirm(`Delete contact "${name}"?`)) return;
-    startTransition(() => {
-      void deleteContact(id);
+    setActionError(null);
+    startTransition(async () => {
+      const result = await deleteContact(id);
+      if (!result.ok) setActionError(result.error);
     });
   }
 
   function onExport() {
+    setActionError(null);
     startTransition(async () => {
-      const csv = await exportContactsCsv({ q: search, role: role || undefined, status_tag: statusTag || undefined, source: source || undefined, sort, dir });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const result = await exportContactsCsv({ q: search, role: role || undefined, status_tag: statusTag || undefined, source: source || undefined, sort, dir });
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -80,6 +88,7 @@ export function ContactTable({ contacts, query }: Props) {
   async function onImport(file: File | null) {
     if (!file) return;
     const text = await file.text();
+    setActionError(null);
     startTransition(async () => {
       const result = await importContactsCsv(text);
       setImportSummary(`Imported ${result.inserted} new, updated ${result.updated}, skipped ${result.skipped}.`);
@@ -88,6 +97,11 @@ export function ContactTable({ contacts, query }: Props) {
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <p className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
       <div className="grid gap-3 lg:grid-cols-6">
         <Input placeholder="Search name, phone, notes…" value={search} onChange={(e) => setSearch(e.target.value)} className="lg:col-span-2" />
         <Select value={role} onChange={(e) => setRole(e.target.value as ContactsQueryShape["role"]) }>

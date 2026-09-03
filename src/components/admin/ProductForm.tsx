@@ -94,7 +94,12 @@ export function ProductForm({ categories, collections, initial }: Props) {
     };
 
     try {
-      await saveProduct(payload);
+      const result = await saveProduct(payload);
+      if (!result.ok) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
       router.push("/admin/products");
       router.refresh();
     } catch (e) {

@@ -60,7 +60,7 @@ export function CollectionForm({ products, initial }: Props) {
 
     setSaving(true);
     try {
-      await saveCollection({
+      const result = await saveCollection({
         id: initial?.id,
         name: name.trim(),
         slug: slug.trim() || null,
@@ -70,6 +70,11 @@ export function CollectionForm({ products, initial }: Props) {
         display_order: Number(displayOrder) || 0,
         product_ids: productIds,
       });
+      if (!result.ok) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
       router.push("/admin/collections");
       router.refresh();
     } catch (e) {

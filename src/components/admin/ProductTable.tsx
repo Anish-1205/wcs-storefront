@@ -39,6 +39,7 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
   const [featuredFilter, setFeaturedFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -71,24 +72,43 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
   ) as string[];
 
   function onStatusChange(id: string, status: ProductStatus) {
-    startTransition(() => updateProductStatus(id, status));
+    setActionError(null);
+    startTransition(async () => {
+      const result = await updateProductStatus(id, status);
+      if (!result.ok) setActionError(result.error);
+    });
   }
   function onFeatured(id: string, v: boolean) {
-    startTransition(() => toggleFeatured(id, v));
+    setActionError(null);
+    startTransition(async () => {
+      const result = await toggleFeatured(id, v);
+      if (!result.ok) setActionError(result.error);
+    });
   }
   function onDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    startTransition(() => deleteProduct(id));
+    setActionError(null);
+    startTransition(async () => {
+      const result = await deleteProduct(id);
+      if (!result.ok) setActionError(result.error);
+    });
   }
   function onDuplicate(id: string, name: string) {
     if (!confirm(`Duplicate "${name}"?`)) return;
-    startTransition(() => {
-      void duplicateProduct(id);
+    setActionError(null);
+    startTransition(async () => {
+      const result = await duplicateProduct(id);
+      if (!result.ok) setActionError(result.error);
     });
   }
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <p className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
       <div className="grid gap-3 lg:grid-cols-5">
         <Input
           placeholder="Search name, slug, product code…"

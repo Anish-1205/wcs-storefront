@@ -41,7 +41,7 @@ export function CategoryForm({ initial }: Props) {
 
     setSaving(true);
     try {
-      await saveCategory({
+      const result = await saveCategory({
         id: initial?.id,
         name: name.trim(),
         slug: slug.trim() || slugify(name),
@@ -49,6 +49,11 @@ export function CategoryForm({ initial }: Props) {
         image_url: imageUrl.trim() || null,
         display_order: Number(displayOrder) || 0,
       });
+      if (!result.ok) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
       router.push("/admin/categories");
       router.refresh();
     } catch (e) {
