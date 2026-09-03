@@ -6,6 +6,7 @@ import { subscriberSchema } from "@/lib/validation";
 import { analytics } from "@/lib/analytics";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface Props {
   source?: string; // placement label, e.g. "footer" | "home" | "collection"
@@ -82,6 +83,16 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
         className={compact ? "h-10" : ""}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
+      <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+        <input type="checkbox" required className="mt-0.5 h-4 w-4 shrink-0 accent-[#B8860B]" />
+        <span>
+          I agree to receive new-arrival and offer messages on WhatsApp. I can
+          opt out at any time. See our{" "}
+          <Link href="/privacy" className="underline hover:text-burgundy">
+            privacy policy
+          </Link>.
+        </span>
+      </label>
       <Button
         type="submit"
         variant="gold"

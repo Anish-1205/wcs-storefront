@@ -69,7 +69,11 @@ export async function Footer() {
           <p>
             © {new Date().getFullYear()} {SITE.name}. All rights reserved.
           </p>
-          <p>Crafted with care, woven with tradition.</p>
+          <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+            <Link href="/privacy" className="hover:text-burgundy">Privacy</Link>
+            <Link href="/terms" className="hover:text-burgundy">Terms</Link>
+            <Link href="/shipping-returns" className="hover:text-burgundy">Shipping & Returns</Link>
+          </nav>
         </div>
       </div>
     </footer>

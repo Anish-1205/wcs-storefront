@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import type { InquiryType } from "@/lib/supabase/types";
+import Link from "next/link";
 
 interface Props {
   defaultType?: InquiryType;
@@ -141,6 +142,14 @@ export function InquiryForm({
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        By sending this enquiry, you agree that we may contact you about this
+        request by phone or WhatsApp. See our{" "}
+        <Link href="/privacy" className="underline hover:text-burgundy">
+          privacy policy
+        </Link>.
+      </p>
 
       <Button type="submit" disabled={status === "loading"} className="w-full sm:w-auto">
         {status === "loading" ? "Sending…" : "Send Enquiry"}
