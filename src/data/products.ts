@@ -26,6 +26,7 @@
  */
 import RAW_DIMS from "../../public/media/dimensions.json";
 import RAW_VIDEO_DIMS from "../../public/media/video-dimensions.json";
+import RAW_QUALITY from "../../public/media/media-quality.json";
 
 type DimMap = Record<string, Record<string, { w: number; h: number }>>;
 const DIMS = RAW_DIMS as DimMap;
@@ -33,6 +34,17 @@ const VIDEO_DIMS = RAW_VIDEO_DIMS as Record<
   string,
   Record<string, { w: number; h: number; bytes: number }>
 >;
+/** Objective quality score per prepared photo (scripts/score-media.mjs).
+ *  Used to pick the sharpest, best-exposed frame as the primary image. */
+const QUALITY = RAW_QUALITY as Record<
+  string,
+  Record<string, { score: number }>
+>;
+
+function imageScore(src: string): number {
+  const m = src.match(/\/media\/([^/]+)\/([^/]+)$/);
+  return m ? QUALITY[m[1]]?.[m[2]]?.score ?? 0 : 0;
+}
 
 export type MediaRole =
   | "full"
@@ -572,15 +584,66 @@ export function filterProducts(filters: CatalogFilters): Product[] {
   });
 }
 
+/** Below this the frame is visibly soft / badly exposed (calibrated from the set). */
+const SOFT = 0.22;
+/** Genuine focus failure — demote even an authored hero this far down. */
+const BAD_HERO = 0.33;
+
+const rankSort = (a: ProductImage, b: ProductImage) =>
+  imageScore(b.src) - imageScore(a.src);
+
+/**
+ * The image a customer sees first — card thumbnail + product-page hero.
+ * The curator's first full-frame shot is kept (composition matters more than
+ * raw sharpness), EXCEPT when that frame is genuinely out of focus and another
+ * full shot is clearly crisper — then the sharper one wins.
+ */
 export function primaryImage(p: Product): ProductImage {
-  return p.images.find((i) => i.role === "full") ?? p.images[0];
+  const fulls = p.images.filter((i) => i.role === "full");
+  const authored =
+    fulls[0] ??
+    p.images.find((i) => i.role === "drape" || i.role === "flatlay") ??
+    p.images[0];
+  if (fulls.length < 2) return authored;
+
+  const best = fulls.slice().sort(rankSort)[0];
+  const soft = imageScore(authored.src) < BAD_HERO;
+  const clearlyBetter =
+    imageScore(best.src) >= imageScore(authored.src) * 1.4;
+  return soft && clearlyBetter ? best : authored;
 }
 
 /** A secondary still for card hover when the product has no video. */
 export function secondaryImage(p: Product): ProductImage | undefined {
-  return (
-    p.images.find((i) => i.role === "drape" || i.role === "pallu") ?? p.images[1]
+  const primary = primaryImage(p);
+  const pool = p.images.filter(
+    (i) =>
+      i.src !== primary.src &&
+      (["full", "drape", "pallu", "flatlay"] as MediaRole[]).includes(i.role),
   );
+  return pool.slice().sort(rankSort)[0] ??
+    p.images.find((i) => i.src !== primary.src);
+}
+
+/** Non-hero gallery images: narrative role order, sharper first within a role,
+ *  visibly soft frames pushed to the very end. */
+export function galleryOrder(p: Product): ProductImage[] {
+  const primary = primaryImage(p);
+  const rank: Record<MediaRole, number> = {
+    full: 0,
+    drape: 1,
+    pallu: 2,
+    flatlay: 3,
+    blouse: 4,
+    detail: 5,
+    "colour-range": 9,
+  };
+  const key = (i: ProductImage) =>
+    imageScore(i.src) < SOFT ? 8 : rank[i.role];
+  return p.images
+    .filter((i) => i.src !== primary.src && i.role !== "colour-range")
+    .slice()
+    .sort((a, b) => key(a) - key(b) || rankSort(a, b));
 }
 
 export function colourRangeImage(p: Product): ProductImage | undefined {

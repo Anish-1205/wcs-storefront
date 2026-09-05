@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { Product, ProductImage, MediaRole } from "@/data/products";
+import { primaryImage, galleryOrder } from "@/data/products";
 import { PortraitVideo } from "@/components/media/PortraitMedia";
 import { Reveal } from "@/components/media/Reveal";
 
@@ -26,13 +27,11 @@ const ROLE_CAPTION: Partial<Record<MediaRole, string>> = {
 
 export function ProductGallery({ product }: { product: Product }) {
   const posterSrcs = new Set(product.videos.map((v) => v.poster));
-  const gallery = product.images.filter((i) => !posterSrcs.has(i.src));
-
-  const hero = gallery.find((i) => i.role === "full");
-  const colourRange = gallery.filter((i) => i.role === "colour-range");
-  const rest = gallery.filter(
-    (i) => i !== hero && i.role !== "colour-range",
+  const hero = primaryImage(product);
+  const colourRange = product.images.filter(
+    (i) => i.role === "colour-range" && !posterSrcs.has(i.src),
   );
+  const rest = galleryOrder(product).filter((i) => !posterSrcs.has(i.src));
 
   // Group consecutive close-ups so they read as a pair, not a stack.
   const blocks: Array<

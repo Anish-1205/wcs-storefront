@@ -119,6 +119,7 @@ Run from the repo root, in order, whenever source media changes:
 ```bash
 node scripts/prepare-media.mjs "C:/Users/anish/OneDrive/Desktop/wcs pics"
 node scripts/optimize-video.mjs
+node scripts/score-media.mjs          # writes media-quality.json
 ```
 
 - **`prepare-media.mjs`** (sharp) — resizes stills (long edge <= 1600 px,
@@ -133,6 +134,14 @@ node scripts/optimize-video.mjs
   frame ~1.2s in) — the product video uses this, never one of the gallery
   photos, so the page never looks like it's repeating an image. Writes
   `video-dimensions.json`.
+
+- **`score-media.mjs`** (sharp) — an objective, inspectable quality score per
+  photo (Laplacian variance for focus, plus exposure/contrast sanity and a mild
+  resolution bonus), written to `media-quality.json`. No model. `products.ts`
+  uses it to (a) keep the curator's first `full` shot as the hero **unless** it's
+  a genuine focus failure and another `full` is clearly sharper, (b) pick the
+  card-hover still, (c) order the gallery — sharper first within a role, visibly
+  soft frames pushed to the end.
 
 The gallery (`ProductGallery.tsx`) also de-dupes: no image is shown twice, all
 photos render (not just the first "full" shot), close-ups pair into a 2-col
