@@ -1,59 +1,94 @@
 import type { Metadata } from "next";
 import { InquiryForm } from "@/components/lead/InquiryForm";
+import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Wholesale & Bulk Orders",
-  description: `Wholesale saree sourcing for boutiques, resellers, and retailers. Partner with ${SITE.name} for bulk orders at trade prices.`,
+  title: "Wholesale & Trade",
+  description: `Wholesale enquiries for boutiques, retailers and resellers at ${SITE.name}. Tell us your city and what you carry, and we'll come back with terms.`,
+  alternates: { canonical: "/wholesale" },
 };
+
+const POINTS = [
+  [
+    "For boutiques, retailers & resellers",
+    "The same curated pieces you see here, available for trade — plus sourcing on request through our weaving partners.",
+  ],
+  [
+    "Sourcing to a brief",
+    "Tell us the colours, occasions and price points your customers ask for. We come back with options.",
+  ],
+  [
+    "Availability, confirmed",
+    "Many pieces are made in limited runs. We confirm what can be supplied — and in what quantity — before you commit.",
+  ],
+  [
+    "Terms on enquiry",
+    "Pricing, minimums and dispatch are agreed directly with you. Nothing is fixed here until we've spoken.",
+  ],
+];
 
 export default function WholesalePage() {
   return (
-    <div className="container-px mx-auto max-w-5xl py-14">
-      <span className="gold-rule" />
-      <h1 className="mt-4 font-serif text-4xl text-burgundy">
-        Wholesale & Bulk Orders
-      </h1>
-      <p className="mt-3 max-w-2xl text-muted-foreground">
-        Boutiques, resellers, and retailers — partner with us for consistent
-        quality, competitive trade pricing, and a constantly refreshed catalog
-        sourced directly from weavers.
-      </p>
+    <div className="container-px mx-auto max-w-[80rem] py-14">
+      <header className="max-w-2xl">
+        <p className="eyebrow">Wholesale &amp; trade</p>
+        <h1 className="display mt-4 text-oxblood">
+          For boutiques,
+          <br />
+          retailers &amp; resellers.
+        </h1>
+        <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
+          Stock a considered selection, and source specific weaves, colours and
+          occasions through our network. Tell us your city and what you carry, and
+          we&apos;ll come back with terms.
+        </p>
+      </header>
 
-      <div className="mt-10 grid gap-10 md:grid-cols-2">
-        <div className="space-y-5">
-          {[
-            {
-              h: "Trade pricing",
-              p: "Volume-based pricing tiers tailored to your order size.",
-            },
-            {
-              h: "Wide selection",
-              p: "Gadwal, Kanjivaram, Banarasi, silk, cotton, and more — in bulk.",
-            },
-            {
-              h: "Reliable supply",
-              p: "Steady restocks and the ability to source specific weaves on request.",
-            },
-            {
-              h: "Pan-India shipping",
-              p: "Safe, tracked dispatch to your store or warehouse.",
-            },
-          ].map((item) => (
-            <div key={item.h} className="border-l-2 border-gold pl-4">
-              <h3 className="font-serif text-lg text-burgundy">{item.h}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{item.p}</p>
-            </div>
-          ))}
+      <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
+        <div>
+          <dl className="grid gap-8 sm:grid-cols-2">
+            {POINTS.map(([h, p]) => (
+              <div key={h}>
+                <dt className="text-[0.8rem] uppercase tracking-[0.18em] text-deep-brown">
+                  {h}
+                </dt>
+                <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {p}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-12 border-t border-line pt-10">
+            <InquiryForm
+              heading="Wholesale enquiry"
+              defaultType="wholesale"
+              lockType
+            />
+          </div>
         </div>
 
-        <div className="rounded-sm border border-border bg-white p-6">
-          <InquiryForm
-            heading="Request a wholesale quote"
-            defaultType="wholesale"
-            lockType
-          />
-        </div>
+        <aside className="lg:border-l lg:border-line lg:pl-10">
+          <h2 className="eyebrow">Prefer WhatsApp?</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Send your city, the categories you carry and a rough monthly volume.
+          </p>
+          {WHATSAPP_CONFIGURED ? (
+            <a
+              href={buildWhatsAppURL()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-underline mt-3 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+            >
+              Open WhatsApp ↗
+            </a>
+          ) : (
+            <p className="mt-3 text-sm text-deep-brown">
+              Use the enquiry form and we&apos;ll be in touch.
+            </p>
+          )}
+        </aside>
       </div>
     </div>
   );

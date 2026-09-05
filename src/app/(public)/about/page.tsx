@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { WhatsAppBanner } from "@/components/layout/WhatsAppBanner";
+import Link from "next/link";
 import { jsonLdScript } from "@/lib/json-ld";
 import { SITE } from "@/lib/site";
+import { buildWhatsAppURL } from "@/lib/whatsapp";
+import { PortraitImage } from "@/components/media/PortraitMedia";
+import { Reveal } from "@/components/media/Reveal";
 
 export const metadata: Metadata = {
   title: "Our Story",
-  description: `Learn about ${SITE.name} — a family business sourcing handloom and silk sarees directly from India's master weavers.`,
+  description: `${SITE.name} — a private saree showroom. Pieces sourced through weaving partners, with availability personally confirmed before purchase.`,
 };
 
 const schema = {
@@ -14,55 +17,89 @@ const schema = {
   name: SITE.name,
   description: SITE.description,
   url: SITE.url,
+  ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
 };
 
 export default function AboutPage() {
   return (
-    <div className="container-px mx-auto max-w-3xl py-14">
+    <div className="container-px mx-auto max-w-[80rem] py-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
       />
 
-      <span className="gold-rule" />
-      <h1 className="mt-4 font-serif text-4xl text-burgundy">Our Story</h1>
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,36vw)_1fr] lg:gap-16">
+        <Reveal settle className="overflow-hidden">
+          <PortraitImage
+            src="/media/purple-tanchoi-silk/03-drape.jpg"
+            width={1035}
+            height={1600}
+            alt="A purple silk saree draped in the showroom"
+            ratio="portrait"
+            priority
+            sizes="(min-width:1024px) 36vw, 90vw"
+          />
+        </Reveal>
 
-      <div className="mt-8 space-y-6 leading-relaxed text-foreground/80">
-        <p>
-          {SITE.name} began as a family passion for India&apos;s timeless weaving
-          traditions. For years, we&apos;ve travelled to weaving clusters across
-          the country — Gadwal, Kanchipuram, Varanasi, and beyond — building
-          relationships with the master weavers whose hands turn silk and cotton
-          into heirlooms.
-        </p>
-        <p>
-          Today we bring those sarees directly to you. By sourcing straight from
-          the loom, we cut out the middlemen, ensure fair prices for our weavers,
-          and offer you authentic craftsmanship at honest prices.
-        </p>
-        <p>
-          Every saree we offer is chosen with care — for the quality of its
-          weave, the richness of its color, and the story it carries. Whether
-          you&apos;re a bride, a boutique owner, or simply someone who loves a
-          beautiful drape, we&apos;d be honoured to help you find yours.
-        </p>
+        <Reveal className="max-w-xl">
+          <p className="eyebrow">Our story</p>
+          <h1 className="display mt-4 text-oxblood">
+            A private
+            <br />
+            saree showroom.
+          </h1>
+          <div className="mt-8 space-y-5 text-[0.98rem] leading-relaxed text-deep-brown/85">
+            <p>
+              {SITE.name} is a curated selection of premium Indian sarees and
+              handloom pieces, brought together through trusted weaving partners.
+              Rather than a warehouse of stock, it works like a showroom: a
+              considered set of pieces, photographed exactly as they are.
+            </p>
+            <p>
+              Many of our sarees are sourced in limited quantities or on request.
+              Because of that, we do not promise automatic stock. When you send a
+              selection, we personally check availability — with our own shelves
+              and with the weaving partner — before anything is confirmed.
+            </p>
+            <p>
+              There is no payment at checkout. The conversation continues on
+              WhatsApp, directly with us, from availability through to the order.
+            </p>
+          </div>
 
-        <div className="grid gap-6 pt-4 sm:grid-cols-3">
-          {[
-            { h: "Direct from weavers", p: "Sourced at the loom, not the warehouse." },
-            { h: "Authentic craft", p: "Genuine handloom and pure silk weaves." },
-            { h: "Personal service", p: "Real conversations on WhatsApp, not bots." },
-          ].map((item) => (
-            <div key={item.h} className="rounded-sm border border-border bg-white p-5">
-              <h3 className="font-serif text-lg text-burgundy">{item.h}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{item.p}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+          <div className="mt-10 grid gap-6 sm:grid-cols-3">
+            {[
+              ["Sourced with care", "Selected through trusted weaving partners."],
+              ["Honest photography", "Real media, no colour shifts or retouching."],
+              ["Personal service", "Availability confirmed by us, not a bot."],
+            ].map(([h, p]) => (
+              <div key={h}>
+                <h3 className="text-[0.78rem] uppercase tracking-[0.18em] text-deep-brown">
+                  {h}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">{p}</p>
+              </div>
+            ))}
+          </div>
 
-      <div className="mt-14">
-        <WhatsAppBanner />
+          <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
+            <Link
+              href="/catalog"
+              className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-[0.8rem] font-medium uppercase tracking-[0.2em] text-oxblood"
+            >
+              Explore the catalog
+              <span className="arrow-shift">→</span>
+            </Link>
+            <a
+              href={buildWhatsAppURL()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70"
+            >
+              Speak to Us ↗
+            </a>
+          </div>
+        </Reveal>
       </div>
     </div>
   );

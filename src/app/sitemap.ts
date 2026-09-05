@@ -1,14 +1,11 @@
 import type { MetadataRoute } from "next";
-import {
-  getAllPublishedSlugs,
-  getCategories,
-  getActiveCollections,
-} from "@/lib/queries";
+import { getAllSlugs, getCategories } from "@/data/products";
+import { getAllCollectionSlugs } from "@/data/collections";
 import { SITE } from "@/lib/site";
 
 export const revalidate = 3600;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE.url.replace(/\/$/, "");
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -24,37 +21,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "" ? 1 : 0.7,
   }));
 
-  let dynamicRoutes: MetadataRoute.Sitemap = [];
-  try {
-    const [slugs, categories, collections] = await Promise.all([
-      getAllPublishedSlugs(),
-      getCategories(),
-      getActiveCollections(),
-    ]);
-
-    dynamicRoutes = [
-      ...categories.map((c) => ({
-        url: `${base}/catalog/${c.slug}`,
-        lastModified: new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      })),
-      ...collections.map((c) => ({
-        url: `${base}/collections/${c.slug}`,
-        lastModified: new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      })),
-      ...slugs.map((slug) => ({
-        url: `${base}/sarees/${slug}`,
-        lastModified: new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.9,
-      })),
-    ];
-  } catch {
-    // DB unavailable at build — fall back to static routes only.
-  }
+  const dynamicRoutes: MetadataRoute.Sitemap = [
+    ...getCategories().map((c) => ({
+      url: `${base}/catalog/${c.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
+    ...getAllCollectionSlugs().map((slug) => ({
+      url: `${base}/collections/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
+    ...getAllSlugs().map((slug) => ({
+      url: `${base}/sarees/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    })),
+  ];
 
   return [...staticRoutes, ...dynamicRoutes];
 }

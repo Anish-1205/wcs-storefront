@@ -1,63 +1,87 @@
 import Link from "next/link";
 import { SITE } from "@/lib/site";
-import { getCategories } from "@/lib/queries";
+import { getCategories } from "@/data/products";
+import { COLLECTIONS } from "@/data/collections";
+import { buildWhatsAppURL } from "@/lib/whatsapp";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 
-export async function Footer() {
-  const categories = await getCategories();
+export function Footer() {
+  const categories = getCategories();
 
   return (
-    <footer className="mt-24 border-t border-border bg-secondary/40">
-      <div className="container-px mx-auto max-w-7xl py-14">
-        <div className="grid gap-10 md:grid-cols-4">
-          {/* Brand */}
-          <div className="md:col-span-1">
-            <p className="font-serif text-lg font-semibold text-burgundy">
-              {SITE.name}
+    <footer className="mt-28 border-t border-line bg-warm-cream/60">
+      <div className="container-px mx-auto max-w-[90rem] py-16">
+        <div className="grid gap-12 md:grid-cols-12">
+          <div className="md:col-span-4">
+            <p className="font-serif text-2xl tracking-[0.06em] text-oxblood">
+              {SITE.name.toUpperCase()}
             </p>
-            <p className="mt-3 text-sm text-muted-foreground">{SITE.tagline}</p>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              A private digital saree showroom. Pieces sourced through trusted
+              weaving partners, with availability personally confirmed before
+              purchase.
+            </p>
+            <a
+              href={buildWhatsAppURL()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-underline mt-6 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+            >
+              Speak to Us ↗
+            </a>
           </div>
 
-          {/* Shop */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-gold-dark">
-              Shop
-            </h4>
-            <ul className="mt-4 space-y-2 text-sm">
+          <div className="md:col-span-2">
+            <h4 className="eyebrow">Catalog</h4>
+            <ul className="mt-4 space-y-2.5 text-sm">
               <li>
-                <Link href="/catalog" className="hover:text-burgundy">
+                <Link href="/catalog" className="text-deep-brown/80 hover:text-oxblood">
                   All Sarees
                 </Link>
               </li>
-              {categories.slice(0, 5).map((category) => (
-                <li key={category.id}>
-                  <Link href={`/catalog/${category.slug}`} className="hover:text-burgundy">
-                    {category.name}
+              {categories.map((c) => (
+                <li key={c.slug}>
+                  <Link
+                    href={`/catalog/${c.slug}`}
+                    className="text-deep-brown/80 hover:text-oxblood"
+                  >
+                    {c.name}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Company */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-gold-dark">
-              Company
-            </h4>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/about" className="hover:text-burgundy">Our Story</Link></li>
-              <li><Link href="/wholesale" className="hover:text-burgundy">Wholesale</Link></li>
-              <li><Link href="/contact" className="hover:text-burgundy">Contact</Link></li>
+          <div className="md:col-span-2">
+            <h4 className="eyebrow">Collections</h4>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {COLLECTIONS.map((c) => (
+                <li key={c.slug}>
+                  <Link
+                    href={`/collections/${c.slug}`}
+                    className="text-deep-brown/80 hover:text-oxblood"
+                  >
+                    {c.title}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/about" className="text-deep-brown/80 hover:text-oxblood">
+                  Our Story
+                </Link>
+              </li>
+              <li>
+                <Link href="/wholesale" className="text-deep-brown/80 hover:text-oxblood">
+                  Wholesale
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Subscribe */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-gold-dark">
-              Get New Arrivals on WhatsApp
-            </h4>
+          <div className="md:col-span-4">
+            <h4 className="eyebrow">New arrivals on WhatsApp</h4>
             <p className="mt-4 text-sm text-muted-foreground">
-              Be the first to see new weaves and offers.
+              First look at new weaves and colourways.
             </p>
             <div className="mt-4">
               <WhatsAppSubscribeForm source="footer" compact />
@@ -65,14 +89,17 @@ export async function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
+        <div className="mt-14 flex flex-col gap-3 border-t border-line pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © {new Date().getFullYear()} {SITE.name}. All rights reserved.
+            © {new Date().getFullYear()} {SITE.name}
+            {SITE.gstin ? ` · GSTIN ${SITE.gstin}` : ""}
           </p>
-          <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-4 gap-y-2">
-            <Link href="/privacy" className="hover:text-burgundy">Privacy</Link>
-            <Link href="/terms" className="hover:text-burgundy">Terms</Link>
-            <Link href="/shipping-returns" className="hover:text-burgundy">Shipping & Returns</Link>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
+            <Link href="/privacy" className="hover:text-oxblood">Privacy</Link>
+            <Link href="/terms" className="hover:text-oxblood">Terms</Link>
+            <Link href="/shipping-returns" className="hover:text-oxblood">
+              Shipping &amp; Returns
+            </Link>
           </nav>
         </div>
       </div>

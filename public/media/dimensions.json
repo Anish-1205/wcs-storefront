@@ -1,0 +1,302 @@
+{
+  "purple-tanchoi-silk": {
+    "01-full.jpg": {
+      "w": 909,
+      "h": 1600
+    },
+    "02-full-length.jpg": {
+      "w": 485,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 1035,
+      "h": 1600
+    },
+    "04-pallu.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "05-weave-detail.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "06-colour-range.jpg": {
+      "w": 854,
+      "h": 1280
+    }
+  },
+  "coral-tissue-paithani-pallu": {
+    "01-full.jpg": {
+      "w": 984,
+      "h": 1600
+    },
+    "02-drape.jpg": {
+      "w": 895,
+      "h": 1600
+    },
+    "03-pallu-spread.jpg": {
+      "w": 1123,
+      "h": 1600
+    },
+    "04-full-side.jpg": {
+      "w": 807,
+      "h": 1600
+    },
+    "05-shoulder.jpg": {
+      "w": 1020,
+      "h": 1600
+    },
+    "06-pallu-detail.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "07-border-detail.jpg": {
+      "w": 1092,
+      "h": 1600
+    }
+  },
+  "antique-gold-patola-tissue": {
+    "01-full.jpg": {
+      "w": 819,
+      "h": 1600
+    },
+    "02-full-pallu.jpg": {
+      "w": 691,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 878,
+      "h": 1600
+    },
+    "04-pallu-spread.jpg": {
+      "w": 960,
+      "h": 1600
+    },
+    "05-tone.jpg": {
+      "w": 1049,
+      "h": 1600
+    },
+    "06-torso.jpg": {
+      "w": 1161,
+      "h": 1600
+    },
+    "07-border-detail.jpg": {
+      "w": 955,
+      "h": 1600
+    },
+    "08-patola-macro.jpg": {
+      "w": 1159,
+      "h": 1600
+    },
+    "09-colour-range.jpg": {
+      "w": 836,
+      "h": 1280
+    }
+  },
+  "bandhani-patola-indigo": {
+    "01-full.jpg": {
+      "w": 912,
+      "h": 1600
+    },
+    "02-drape.jpg": {
+      "w": 986,
+      "h": 1600
+    },
+    "03-pallu.jpg": {
+      "w": 867,
+      "h": 1600
+    },
+    "04-full-alt.jpg": {
+      "w": 986,
+      "h": 1600
+    },
+    "05-border-detail.jpg": {
+      "w": 688,
+      "h": 1600
+    },
+    "06-detail.jpg": {
+      "w": 952,
+      "h": 1600
+    }
+  },
+  "bandhani-patola-vermilion": {
+    "01-full.jpg": {
+      "w": 938,
+      "h": 1600
+    },
+    "02-drape.jpg": {
+      "w": 903,
+      "h": 1600
+    },
+    "03-pallu.jpg": {
+      "w": 726,
+      "h": 1600
+    },
+    "04-border.jpg": {
+      "w": 1148,
+      "h": 1600
+    },
+    "05-pair.jpg": {
+      "w": 1463,
+      "h": 1600
+    }
+  },
+  "bandhani-patola-emerald": {
+    "01-full.jpg": {
+      "w": 828,
+      "h": 1600
+    },
+    "02-drape.jpg": {
+      "w": 1141,
+      "h": 1600
+    },
+    "03-pallu.jpg": {
+      "w": 1023,
+      "h": 1600
+    },
+    "04-detail.jpg": {
+      "w": 994,
+      "h": 1600
+    },
+    "05-border.jpg": {
+      "w": 1102,
+      "h": 1600
+    }
+  },
+  "bandhani-patola-parrot": {
+    "01-full.jpg": {
+      "w": 1029,
+      "h": 1600
+    },
+    "02-drape.jpg": {
+      "w": 939,
+      "h": 1600
+    },
+    "03-pallu.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "04-full-alt.jpg": {
+      "w": 1268,
+      "h": 1544
+    },
+    "05-detail.jpg": {
+      "w": 734,
+      "h": 1600
+    },
+    "06-border.jpg": {
+      "w": 1004,
+      "h": 1600
+    },
+    "07-pallu-close.jpg": {
+      "w": 703,
+      "h": 1599
+    },
+    "08-flatlay.jpg": {
+      "w": 1599,
+      "h": 1486
+    }
+  },
+  "red-hansa-jamdani-silk": {
+    "01-full.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "02-flatlay.jpg": {
+      "w": 1178,
+      "h": 1600
+    },
+    "03-torso.jpg": {
+      "w": 1037,
+      "h": 1600
+    },
+    "04-drape.jpg": {
+      "w": 1343,
+      "h": 1600
+    },
+    "05-flatlay-alt.jpg": {
+      "w": 1128,
+      "h": 1600
+    },
+    "06-body-detail.jpg": {
+      "w": 1174,
+      "h": 1600
+    },
+    "07-pallu.jpg": {
+      "w": 1511,
+      "h": 1600
+    },
+    "08-fold-detail.jpg": {
+      "w": 878,
+      "h": 1600
+    },
+    "09-colour-range.jpg": {
+      "w": 1200,
+      "h": 1600
+    }
+  },
+  "indigo-blockprint-modal-silk": {
+    "01-full.jpg": {
+      "w": 640,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 1089,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 842,
+      "h": 1600
+    },
+    "04-pallu.jpg": {
+      "w": 933,
+      "h": 1600
+    },
+    "05-pallu-detail.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "06-colour-range.jpg": {
+      "w": 789,
+      "h": 1600
+    },
+    "07-colour-range.jpg": {
+      "w": 959,
+      "h": 1600
+    },
+    "08-colour-range.jpg": {
+      "w": 923,
+      "h": 1599
+    }
+  },
+  "rajwadi-patchwork-mirror-saree": {
+    "01-full.jpg": {
+      "w": 1440,
+      "h": 1534
+    },
+    "02-drape.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "03-with-dupatta.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "04-flatlay.jpg": {
+      "w": 1053,
+      "h": 1600
+    },
+    "05-detail.jpg": {
+      "w": 982,
+      "h": 1600
+    },
+    "06-mirror-border.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "07-full-alt.jpg": {
+      "w": 1154,
+      "h": 1599
+    }
+  }
+}

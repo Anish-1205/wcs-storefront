@@ -17,17 +17,29 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Brand palette — premium / luxury
-        ivory: "#FAF7F2",
+        // ── Editorial showroom palette ───────────────────────────
+        // The photographs provide the colour; the UI stays restrained.
+        ivory: "hsl(var(--ivory) / <alpha-value>)",
+        "warm-cream": "hsl(var(--warm-cream) / <alpha-value>)",
+        sand: "hsl(var(--sand) / <alpha-value>)",
+        oxblood: {
+          DEFAULT: "hsl(var(--oxblood) / <alpha-value>)",
+          soft: "hsl(var(--oxblood-soft) / <alpha-value>)",
+        },
+        "deep-brown": "hsl(var(--deep-brown) / <alpha-value>)",
+        "antique-gold": "hsl(var(--antique-gold) / <alpha-value>)",
+        line: "hsl(var(--line) / <alpha-value>)",
+        // Legacy aliases kept so the existing admin UI + shadcn buttons
+        // don't need a sweep. burgundy -> oxblood, gold -> antique-gold.
         gold: {
-          DEFAULT: "#B8860B",
-          light: "#D4AF37",
-          dark: "#7A5A07",
+          DEFAULT: "#A67C44",
+          light: "#C29A63",
+          dark: "#8A6636",
         },
         burgundy: {
-          DEFAULT: "#6B1E2E",
-          light: "#8B2A3F",
-          dark: "#4F1622",
+          DEFAULT: "#58202B",
+          light: "#77323F",
+          dark: "#431821",
         },
         // shadcn/ui tokens
         border: "hsl(var(--border))",
@@ -61,8 +73,13 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["var(--font-playfair)", "Georgia", "serif"],
+        serif: ["var(--font-playfair)", "Cormorant Garamond", "Georgia", "serif"],
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      aspectRatio: {
+        portrait: "4 / 5",
+        "portrait-tall": "3 / 4",
+        story: "9 / 16",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -82,11 +99,21 @@ const config: Config = {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+        "overlay-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out",
+        "slide-in-right": "slide-in-right 0.32s cubic-bezier(0.22,1,0.36,1)",
+        "overlay-in": "overlay-in 0.24s ease-out",
       },
     },
   },

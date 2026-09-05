@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Next.js 14 (App Router) storefront + admin panel for a saree wholesale/retail business. Public catalog with WhatsApp-based lead capture (no e-commerce checkout — inquiries and WhatsApp are the conversion path), backed by Supabase (Postgres + Auth), Cloudinary for images, Upstash Redis for rate limiting, Resend for email notifications, and Sentry for error tracking.
 
+**Two data sources, on purpose.** As of Sept 2026 the customer-facing storefront (`src/app/(public)/**`) is **file-driven** — it reads from `src/data/products.ts` / `src/data/collections.ts` with media in `public/media/<slug>/`, and adds a client-side enquiry cart that hands off to WhatsApp. The **admin panel and import pipeline (`src/app/admin/**`, `src/lib/queries.ts`, all Supabase/Cloudinary) are unchanged** and still run against Postgres. See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the storefront (product data, media pipeline, cart, WhatsApp handoff, env vars, the "nothing is invented" claims rule). The Supabase sections below still describe the admin half.
+
 ## Commands
 
 ```bash
@@ -28,11 +30,16 @@ supabase db reset     # Reapplies all supabase/migrations/*.sql in order + seed 
 supabase gen types typescript --local > src/lib/supabase/types.ts   # Regenerate DB types after schema changes
 ```
 
-See [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.
+```bash
+node scripts/prepare-media.mjs "<source folder>"   # (re)build public/media from the raw photo/video library
+node scripts/optimize-video.mjs                      # re-encode public/media/**/*.mp4 (H.264 CRF 28, audio stripped)
+```
+
+See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-driven storefront (products, media, cart, WhatsApp), [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.
 
 ## Architecture
 
-**Route groups**: `src/app/(public)/` is the storefront (catalog, product pages, collections, static pages); `src/app/admin/` is the admin panel, split into `admin/login` (unauthenticated) and `admin/(dashboard)/` (authenticated CRUD for products, variants, categories, collections, inquiries, contacts, subscribers).
+**Route groups**: `src/app/(public)/` is the storefront (catalog, product pages, collections, cart, `/enquiry`, static pages) — file-driven, see [docs/storefront-catalogue.md](docs/storefront-catalogue.md); `src/app/admin/` is the admin panel, split into `admin/login` (unauthenticated) and `admin/(dashboard)/` (authenticated CRUD for products, variants, categories, collections, inquiries, contacts, subscribers).
 
 **Auth**: Single Supabase Auth email/password account gates the admin — there is no multi-user role system. Signups are disabled; the admin user is created out-of-band via the Supabase CLI/Studio. Two layers of defense:
 - `src/middleware.ts` — edge guard on `/admin/:path*`, refreshes the session cookie and redirects unauthenticated requests to `/admin/login`.
@@ -42,7 +49,7 @@ See [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](do
 
 **Data model** (see `supabase/migrations/001_schema.sql` for the source of truth): `products` → `product_variants` (color/status/price per variant) → `variant_images`. Products have a `status` (`draft`/`published`/`archived`) and `stock_type` (`held`/`supplier`). Separate `categories` and `collections` (with a join table) organize the catalog. `contacts` is a lightweight CRM (customers/resellers/suppliers/weavers) fed by manual entry, inquiries, and subscribers. `admin_upload_sessions` and `whatsapp_ingest_events` support image upload flow and WhatsApp webhook processing respectively. Migrations are numbered and additive — never edit an applied migration; add a new one (see `supabase/migrations/008_harden_public_policies.sql` for the RLS-hardening pattern).
 
-**Lead capture flow**: There's no cart/checkout. Product pages drive users to WhatsApp (`src/lib/whatsapp.ts`, `WhatsAppCTA`, `WhatsAppFloat`, `WhatsAppBanner`) or an inquiry form (`InquiryForm` → `POST /api/inquiries`). `/api/whatsapp` is a webhook receiver — verify its signature via `src/lib/webhook-security.ts` (`verifyWhatsAppSignature`, HMAC-SHA256 over `WHATSAPP_APP_SECRET`, timing-safe compare) before trusting payloads, and check the sender against `WHATSAPP_ADMIN_NUMBERS` via `isAllowedWhatsAppAdmin`. `src/lib/source-tracking.ts` + `SourceTracker` attribute inquiries/subscribers to their referral source.
+**Lead capture flow**: There's no payment/checkout. The storefront has an enquiry cart (`src/lib/cart/CartContext.tsx`, `localStorage` `wcs.cart.v1`, synchronous persist) → `/enquiry` form → opens a pre-filled `wa.me` message **synchronously inside the click gesture** (before any `await`, or popup blockers kill it) → `/enquiry/sent` (clears the cart only when the customer clicks through). The WhatsApp number lives in one place: `NEXT_PUBLIC_WHATSAPP_NUMBER` → `src/lib/whatsapp.ts` (`WHATSAPP_CONFIGURED`, falls back to `/contact` when unset). Product pages also drive users to WhatsApp directly (`WhatsAppCTA`, `WhatsAppFloat`, `WhatsAppBanner`) or an inquiry form (`InquiryForm` → `POST /api/inquiries`). `/api/whatsapp` is a webhook receiver — verify its signature via `src/lib/webhook-security.ts` (`verifyWhatsAppSignature`, HMAC-SHA256 over `WHATSAPP_APP_SECRET`, timing-safe compare) before trusting payloads, and check the sender against `WHATSAPP_ADMIN_NUMBERS` via `isAllowedWhatsAppAdmin`. `src/lib/source-tracking.ts` + `SourceTracker` attribute inquiries/subscribers to their referral source.
 
 **Rate limiting**: `src/lib/rate-limit.ts` wraps Upstash Redis (`Ratelimit.slidingWindow`, keyed by `x-forwarded-for`) — used on public-facing POST endpoints (`/api/inquiries`, `/api/subscribe`, `/api/whatsapp`) to throttle abuse.
 

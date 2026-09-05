@@ -1,94 +1,95 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCollectionBySlug, getActiveCollections } from "@/lib/queries";
-import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
-import { WhatsAppBanner } from "@/components/layout/WhatsAppBanner";
-import { CollectionView } from "@/components/collections/CollectionView";
-import { jsonLdScript } from "@/lib/json-ld";
+import Link from "next/link";
+import {
+  getCollection,
+  getCollectionProducts,
+  getAllCollectionSlugs,
+  COLLECTIONS,
+} from "@/data/collections";
 import { SITE } from "@/lib/site";
+import { SareeCard } from "@/components/catalog/SareeCard";
+import { PortraitImage } from "@/components/media/PortraitMedia";
+import { Reveal } from "@/components/media/Reveal";
 
 export const revalidate = 3600;
 
-export async function generateStaticParams() {
-  const collections = await getActiveCollections();
-  return collections.map((c) => ({ slug: c.slug }));
+export function generateStaticParams() {
+  return getAllCollectionSlugs().map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({
+export function generateMetadata({
   params,
 }: {
   params: { slug: string };
-}): Promise<Metadata> {
-  const data = await getCollectionBySlug(params.slug);
-  if (!data) return { title: "Collection" };
-  return {
-    title: data.collection.name,
-    description:
-      data.collection.description?.slice(0, 160) ??
-      `Explore the ${data.collection.name} collection at ${SITE.name}.`,
-  };
+}): Metadata {
+  const c = getCollection(params.slug);
+  if (!c) return { title: "Collection" };
+  return { title: c.title, description: c.description };
 }
 
-export default async function CollectionPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const data = await getCollectionBySlug(params.slug);
-  if (!data) notFound();
-  const { collection, products } = data;
-
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    name: collection.name,
-    description: collection.description ?? undefined,
-    url: `${SITE.url}/collections/${collection.slug}`,
-  };
+export default function CollectionPage({ params }: { params: { slug: string } }) {
+  const collection = getCollection(params.slug);
+  if (!collection) notFound();
+  const products = getCollectionProducts(params.slug);
+  const others = COLLECTIONS.filter((c) => c.slug !== params.slug);
 
   return (
-    <div className="container-px mx-auto max-w-7xl py-10">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
-      />
-      <CollectionView name={collection.name} />
-
-      <header className="mb-10 max-w-3xl">
-        <span className="gold-rule" />
-        <h1 className="mt-4 font-serif text-4xl text-burgundy">
-          {collection.name}
-        </h1>
-        {collection.description && (
-          <p className="mt-3 leading-relaxed text-muted-foreground">
+    <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+      <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,38vw)_1fr] lg:gap-16">
+        <Reveal settle className="overflow-hidden">
+          <PortraitImage
+            src={collection.cover}
+            width={1200}
+            height={1600}
+            alt={collection.title}
+            ratio="portrait"
+            priority
+            sizes="(min-width:1024px) 38vw, 90vw"
+          />
+        </Reveal>
+        <Reveal>
+          <p className="eyebrow">{collection.tagline}</p>
+          <h1 className="display mt-4 text-oxblood">{collection.title}</h1>
+          <p className="mt-6 max-w-md text-[0.98rem] leading-relaxed text-muted-foreground">
             {collection.description}
           </p>
-        )}
-      </header>
-
-      <ProductGrid
-        products={products}
-        emptyMessage="This collection is being curated. Check back soon!"
-      />
-
-      <div className="mt-16 grid gap-10 md:grid-cols-2">
-        <WhatsAppBanner
-          title={`Love the ${collection.name}?`}
-          subtitle="Message us for prices, more colors, and personal styling help."
-        />
-        <div className="rounded-sm border border-border bg-white p-6">
-          <h3 className="font-serif text-xl text-burgundy">
-            Get new arrivals on WhatsApp
-          </h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Be the first to know when we add to this collection.
-          </p>
-          <div className="mt-4">
-            <WhatsAppSubscribeForm source="collection" />
-          </div>
-        </div>
+        </Reveal>
       </div>
+
+      <div className="mt-20 grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:gap-x-8">
+        {products.map((p, i) => (
+          <Reveal key={p.slug} delay={(i % 3) * 50}>
+            <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
+          </Reveal>
+        ))}
+      </div>
+
+      <section className="mt-24 border-t border-line pt-12">
+        <p className="eyebrow mb-8">Other collections</p>
+        <div className="grid gap-6 sm:grid-cols-2">
+          {others.map((c) => (
+            <Link key={c.slug} href={`/collections/${c.slug}`} className="group flex gap-5">
+              <div className="relative aspect-[4/5] w-28 shrink-0 overflow-hidden bg-warm-cream">
+                <PortraitImage
+                  src={c.cover}
+                  width={1200}
+                  height={1600}
+                  alt={c.title}
+                  ratio="portrait"
+                  sizes="112px"
+                />
+              </div>
+              <div className="self-center">
+                <h3 className="font-serif text-lg text-deep-brown group-hover:text-oxblood">
+                  {c.title}
+                </h3>
+                <p className="text-sm text-muted-foreground">{c.tagline}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

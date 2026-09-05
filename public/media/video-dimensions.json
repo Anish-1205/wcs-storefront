@@ -1,0 +1,58 @@
+{
+  "antique-gold-patola-tissue": {
+    "video-1.mp4": {
+      "w": 478,
+      "h": 850,
+      "bytes": 4066789
+    }
+  },
+  "bandhani-patola-emerald": {
+    "video-1.mp4": {
+      "w": 408,
+      "h": 848,
+      "bytes": 3294609
+    }
+  },
+  "bandhani-patola-indigo": {
+    "video-1.mp4": {
+      "w": 478,
+      "h": 850,
+      "bytes": 3659479
+    }
+  },
+  "bandhani-patola-parrot": {
+    "video-1.mp4": {
+      "w": 454,
+      "h": 850,
+      "bytes": 4333840
+    }
+  },
+  "bandhani-patola-vermilion": {
+    "video-1.mp4": {
+      "w": 466,
+      "h": 848,
+      "bytes": 3441578
+    }
+  },
+  "coral-tissue-paithani-pallu": {
+    "video-1.mp4": {
+      "w": 418,
+      "h": 848,
+      "bytes": 1731729
+    }
+  },
+  "indigo-blockprint-modal-silk": {
+    "video-1.mp4": {
+      "w": 478,
+      "h": 850,
+      "bytes": 5278792
+    }
+  },
+  "purple-tanchoi-silk": {
+    "video-1.mp4": {
+      "w": 478,
+      "h": 850,
+      "bytes": 5219726
+    }
+  }
+}

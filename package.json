@@ -42,6 +42,8 @@
     "autoprefixer": "^10.5.2",
     "eslint": "^8",
     "eslint-config-next": "^14.2.35",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
     "lighthouse": "^13.4.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.14",

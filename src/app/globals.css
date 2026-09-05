@@ -4,26 +4,37 @@
 
 @layer base {
   :root {
-    /* Premium / luxury palette mapped to shadcn tokens.
-       background = ivory, foreground = near-black, primary = burgundy, accent = gold */
-    --background: 38 33% 96%;        /* #FAF7F2 ivory */
-    --foreground: 20 14% 12%;        /* warm near-black */
+    /* ── Brand environment ───────────────────────────────────────
+       The sarees carry the colour. The UI stays a restrained,
+       warm, gallery-neutral shell so the photographs breathe. */
+    --ivory: 38 40% 97%;            /* #FBF8F3 page ground */
+    --warm-cream: 36 34% 93%;       /* #F1EADE raised panels */
+    --sand: 34 26% 87%;             /* #E4D9C8 hairline fills */
+    --oxblood: 348 44% 24%;         /* #58202B primary ink / burgundy */
+    --oxblood-soft: 348 38% 34%;    /* #77323F hover */
+    --deep-brown: 24 22% 16%;       /* #31261F body text */
+    --antique-gold: 36 40% 46%;     /* #A67C44 muted metallic accent */
+    --line: 32 20% 82%;             /* warm hairline border */
+
+    /* shadcn/ui token bridge (kept so existing admin UI is unaffected) */
+    --background: var(--ivory);
+    --foreground: var(--deep-brown);
     --card: 0 0% 100%;
-    --card-foreground: 20 14% 12%;
-    --primary: 347 56% 27%;          /* #6B1E2E burgundy */
-    --primary-foreground: 38 33% 96%;
-    --secondary: 40 30% 92%;
-    --secondary-foreground: 20 14% 12%;
-    --muted: 40 20% 90%;
-    --muted-foreground: 25 8% 40%;
-    --accent: 43 89% 38%;            /* #B8860B gold */
-    --accent-foreground: 38 33% 96%;
-    --destructive: 0 72% 42%;
-    --destructive-foreground: 38 33% 96%;
-    --border: 40 18% 85%;
-    --input: 40 18% 85%;
-    --ring: 43 89% 38%;
-    --radius: 0.25rem;
+    --card-foreground: var(--deep-brown);
+    --primary: var(--oxblood);
+    --primary-foreground: var(--ivory);
+    --secondary: var(--warm-cream);
+    --secondary-foreground: var(--deep-brown);
+    --muted: var(--warm-cream);
+    --muted-foreground: 26 12% 38%;
+    --accent: var(--antique-gold);
+    --accent-foreground: var(--ivory);
+    --destructive: 0 62% 40%;
+    --destructive-foreground: var(--ivory);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--antique-gold);
+    --radius: 0.125rem;
   }
 }
 
@@ -33,18 +44,96 @@
   }
   body {
     @apply overflow-x-clip bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4 {
-    @apply font-serif tracking-tight;
+    @apply font-serif;
+    letter-spacing: -0.015em;
+  }
+  ::selection {
+    background: hsl(var(--oxblood) / 0.14);
   }
 }
 
 @layer components {
-  /* Thin gold rule used as a section divider */
-  .gold-rule {
-    @apply h-px w-16 bg-gold;
-  }
   .container-px {
-    @apply px-5 sm:px-8 lg:px-12;
+    @apply px-5 sm:px-8 lg:px-14;
+  }
+  /* Thin rule divider (used on legal / 404 pages) */
+  .gold-rule {
+    @apply block h-px w-12 bg-antique-gold;
+  }
+  /* Small editorial eyebrow label */
+  .eyebrow {
+    @apply text-[0.7rem] font-medium uppercase tracking-[0.32em] text-antique-gold;
+  }
+  /* Oversized display type used beside vertical imagery */
+  .display {
+    @apply font-serif;
+    font-size: clamp(2.75rem, 7vw, 6.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+  }
+  .display-sm {
+    @apply font-serif;
+    font-size: clamp(2rem, 4.5vw, 3.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.018em;
+  }
+  .link-underline {
+    @apply relative inline-flex items-center gap-1.5;
+  }
+  .link-underline::after {
+    content: "";
+    @apply absolute -bottom-0.5 left-0 h-px w-full origin-right scale-x-0 bg-current transition-transform duration-300 ease-out;
+  }
+  .link-underline:hover::after,
+  .link-underline:focus-visible::after {
+    @apply origin-left scale-x-100;
+  }
+  .arrow-shift {
+    @apply transition-transform duration-300 ease-out;
+  }
+  .group:hover .arrow-shift,
+  .arrow-shift-host:hover .arrow-shift {
+    transform: translateX(4px);
+  }
+}
+
+@layer utilities {
+  /* Scroll-reveal: masked line / clip-path entrance, restrained. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+  }
+  /* Subtle image "settle" as it scrolls into view (1.05 -> 1.0). */
+  .settle > * {
+    transform: scale(1.05);
+    transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .settle[data-shown="true"] > * {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .settle > * {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .arrow-shift {
+    transition: none !important;
+  }
+  html {
+    scroll-behavior: auto !important;
   }
 }

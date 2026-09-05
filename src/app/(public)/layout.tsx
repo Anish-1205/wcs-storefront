@@ -2,6 +2,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { SourceTracker } from "@/components/layout/SourceTracker";
+import { CartProvider } from "@/lib/cart/CartContext";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 
 export default function PublicLayout({
   children,
@@ -9,12 +11,13 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <CartProvider>
       <SourceTracker />
       <Navbar />
       <main className="min-h-[60vh]">{children}</main>
       <Footer />
       <WhatsAppFloat />
-    </>
+      <CartDrawer />
+    </CartProvider>
   );
 }
