@@ -127,8 +127,18 @@ node scripts/optimize-video.mjs
   matters for a textile business.
 - **`optimize-video.mjs`** (ffmpeg-static / ffprobe-static, both devDeps) —
   re-encodes each MP4 at H.264 CRF 28, strips the unused audio track, enables
-  `+faststart`. **No resolution change, no filters** (`yuv420p`, same as source).
-  Only replaces a file if the result is smaller. Writes `video-dimensions.json`.
+  `+faststart`. **No resolution change, no filters** (`yuv420p`, same as
+  source). Skips clips already at/under ~1.75 Mbps so repeated runs don't
+  re-compress. Also writes a dedicated **`<name>.poster.jpg`** per clip (a real
+  frame ~1.2s in) — the product video uses this, never one of the gallery
+  photos, so the page never looks like it's repeating an image. Writes
+  `video-dimensions.json`.
+
+The gallery (`ProductGallery.tsx`) also de-dupes: no image is shown twice, all
+photos render (not just the first "full" shot), close-ups pair into a 2-col
+grid, and each non-hero shot gets a small role caption. The clip autoplays
+muted/looped only while ≥30% on screen and pauses (keeping its frame) once it's
+almost gone — `prefers-reduced-motion` / Save-Data fall back to tap-to-play.
 
 Poster/OG images (`hero-poster.jpg`, `og.jpg`) were generated ad-hoc with sharp;
 regenerate them by hand if the hero or the featured share image changes.

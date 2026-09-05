@@ -18,7 +18,7 @@ export function AccountButton() {
       href={user ? "/account" : "/signin"}
       aria-label={label}
       title={label}
-      className="relative text-deep-brown/80 transition-colors hover:text-oxblood"
+      className="nav-icon relative"
     >
       <User className="h-[1.05rem] w-[1.05rem]" />
       {!loading && user && (

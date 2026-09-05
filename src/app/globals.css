@@ -122,6 +122,21 @@
   ::selection {
     background: hsl(var(--oxblood) / 0.14);
   }
+
+  /* Ease the ground/panel colours when the theme flips (the pre-paint script
+     sets data-theme before first paint, so this never fires on load). */
+  @media (prefers-reduced-motion: no-preference) {
+    body,
+    header,
+    footer,
+    aside,
+    main,
+    section {
+      transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease;
+    }
+  }
 }
 
 @layer components {
@@ -148,6 +163,10 @@
     font-size: clamp(2rem, 4.5vw, 3.5rem);
     line-height: 0.98;
     letter-spacing: -0.018em;
+  }
+  /* Consistent focus ring for the small icon controls in the navbar. */
+  .nav-icon {
+    @apply rounded-sm text-deep-brown/80 transition-colors hover:text-oxblood focus-visible:text-oxblood focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-antique-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-ivory;
   }
   .link-underline {
     @apply relative inline-flex items-center gap-1.5;

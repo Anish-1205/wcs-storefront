@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X, Search, Home } from "lucide-react";
 import { NAV_LINKS, SITE } from "@/lib/site";
@@ -13,6 +14,10 @@ import { cn } from "@/lib/utils";
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -43,7 +48,7 @@ export function Navbar() {
           href="/"
           onClick={() => setOpen(false)}
           aria-label="Home"
-          className="hidden shrink-0 text-deep-brown/80 transition-colors hover:text-oxblood sm:inline-flex md:-ml-1"
+          className="nav-icon hidden shrink-0 sm:inline-flex md:-ml-1"
         >
           <Home className="h-[1.05rem] w-[1.05rem]" />
         </Link>
@@ -54,7 +59,11 @@ export function Navbar() {
             <Link
               key={l.href}
               href={l.href}
-              className="link-underline whitespace-nowrap text-[0.78rem] uppercase tracking-[0.12em] text-deep-brown/80 hover:text-oxblood lg:text-[0.82rem] lg:tracking-[0.14em]"
+              aria-current={isActive(l.href) ? "page" : undefined}
+              className={cn(
+                "link-underline whitespace-nowrap text-[0.78rem] uppercase tracking-[0.12em] transition-colors hover:text-oxblood lg:text-[0.82rem] lg:tracking-[0.14em]",
+                isActive(l.href) ? "text-oxblood" : "text-deep-brown/80",
+              )}
             >
               {l.label}
             </Link>
@@ -77,7 +86,7 @@ export function Navbar() {
           <Link
             href="/search"
             aria-label="Search"
-            className="hidden text-deep-brown/80 hover:text-oxblood sm:block"
+            className="nav-icon hidden sm:block"
           >
             <Search className="h-[1.05rem] w-[1.05rem]" />
           </Link>
@@ -112,7 +121,11 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="py-3 text-[0.9rem] uppercase tracking-[0.14em] text-deep-brown/85"
+                aria-current={isActive(l.href) ? "page" : undefined}
+                className={cn(
+                  "py-3 text-[0.9rem] uppercase tracking-[0.14em]",
+                  isActive(l.href) ? "text-oxblood" : "text-deep-brown/85",
+                )}
               >
                 {l.label}
               </Link>

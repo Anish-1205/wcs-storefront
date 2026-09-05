@@ -155,16 +155,19 @@ export function PortraitVideo(props: VideoProps) {
     const wrap = wrapRef.current;
     if (!el || !wrap) return;
 
+    // Hysteresis: start once a third of the clip is on screen, pause only
+    // once it's almost gone — so scrolling past pauses it "right there" and
+    // scrolling back resumes from the same frame, with no flicker at the edge.
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry.intersectionRatio >= 0.3) {
           el.play().then(() => setPlaying(true)).catch(() => {});
-        } else {
+        } else if (entry.intersectionRatio <= 0.05) {
           el.pause();
           setPlaying(false);
         }
       },
-      { threshold: 0.35 },
+      { threshold: [0, 0.05, 0.3, 0.6] },
     );
     io.observe(wrap);
     return () => io.disconnect();
@@ -211,6 +214,7 @@ export function PortraitVideo(props: VideoProps) {
         loop
         playsInline
         preload={preload}
+        poster={poster}
         aria-label={alt}
         onPlaying={() => setVideoReady(true)}
         onClick={manual ? tapPlay : undefined}

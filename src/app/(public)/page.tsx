@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getFeaturedProducts, getAllProducts, getCategories } from "@/data/products";
 import { COLLECTIONS } from "@/data/collections";
-import { COLOUR_STORY, DETAIL_STORY } from "@/lib/site";
+import { COLOUR_STORY, DETAIL_STORY, HERO } from "@/lib/site";
 import { buildWhatsAppURL } from "@/lib/whatsapp";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SareeCard } from "@/components/catalog/SareeCard";
@@ -21,8 +21,16 @@ const STEPS = [
 ];
 
 export default function HomePage() {
-  const featured = getFeaturedProducts(6);
-  const selection = getAllProducts().slice(0, 4);
+  // The hero already showcases one piece; the two product sections below are
+  // deliberately disjoint from it and from each other, so nothing repeats.
+  const heroSlug = HERO.href.split("/").pop();
+  const selection = getFeaturedProducts(5)
+    .filter((p) => p.slug !== heroSlug)
+    .slice(0, 4);
+  const shown = new Set([heroSlug, ...selection.map((p) => p.slug)]);
+  const more = getAllProducts()
+    .filter((p) => !shown.has(p.slug))
+    .slice(0, 6);
   const categories = getCategories();
 
   return (
@@ -154,12 +162,20 @@ export default function HomePage() {
       {/* 06 — Featured grid */}
       <section className="bg-warm-cream/50 py-20 lg:py-28">
         <div className="container-px mx-auto max-w-[90rem]">
-          <Reveal className="mb-12">
-            <p className="eyebrow">Featured</p>
-            <h2 className="display-sm mt-3 text-oxblood">Pieces to begin with</h2>
+          <Reveal className="mb-12 flex items-end justify-between gap-6">
+            <div>
+              <p className="eyebrow">More from the room</p>
+              <h2 className="display-sm mt-3 text-oxblood">The rest of the shelf</h2>
+            </div>
+            <Link
+              href="/catalog"
+              className="link-underline hidden shrink-0 text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70 sm:inline-flex"
+            >
+              View all
+            </Link>
           </Reveal>
           <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 lg:gap-x-8">
-            {featured.map((p, i) => (
+            {more.map((p, i) => (
               <Reveal key={p.slug} delay={(i % 3) * 60}>
                 <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
               </Reveal>

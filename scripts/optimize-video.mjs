@@ -7,8 +7,11 @@
  * and faststart enabled — NO resolution change, NO filters, so textile
  * detail and colour are untouched (yuv420p H.264, same as the source).
  *
- * Also writes public/media/video-dimensions.json so the player can reserve
- * the exact aspect ratio and never shift layout.
+ * Also extracts a dedicated poster frame per clip (<name>.poster.jpg) — a
+ * real still from ~1.2s in, distinct from the product's gallery photos so the
+ * page never looks like it's repeating an image — and writes
+ * public/media/video-dimensions.json so the player can reserve the exact
+ * aspect ratio and never shift layout.
  *
  * The originals in the Desktop "wcs pics" folder are the backup and are
  * never touched. Run:  node scripts/optimize-video.mjs
@@ -40,13 +43,24 @@ async function probe(file) {
   const { stdout } = await run(ffprobeStatic.path, [
     "-v", "error",
     "-select_streams", "v:0",
-    "-show_entries", "stream=width,height",
+    "-show_entries", "stream=width,height,bit_rate:format=duration,bit_rate",
     "-of", "json",
     file,
   ]);
-  const s = JSON.parse(stdout).streams?.[0] ?? {};
-  return { w: Number(s.width) || 0, h: Number(s.height) || 0 };
+  const j = JSON.parse(stdout);
+  const s = j.streams?.[0] ?? {};
+  const bitRate =
+    Number(s.bit_rate) || Number(j.format?.bit_rate) || 0;
+  return {
+    w: Number(s.width) || 0,
+    h: Number(s.height) || 0,
+    bitRate,
+  };
 }
+
+// Already-optimised clips (<= ~1.7 Mbps H.264) are left alone so repeated
+// runs don't re-compress and lose quality generation by generation.
+const ALREADY_OPTIMISED_BPS = 1_750_000;
 
 async function main() {
   const files = (await walk(MEDIA)).sort();
@@ -58,38 +72,71 @@ async function main() {
     const rel = path.relative(MEDIA, file).replace(/\\/g, "/");
     const [slug, name] = rel.split("/");
     const srcBytes = (await fs.stat(file)).size;
+    const src = await probe(file);
     const tmp = file.replace(/\.mp4$/i, ".opt.mp4");
 
+    let w = src.w;
+    let h = src.h;
+
+    if (src.bitRate && src.bitRate <= ALREADY_OPTIMISED_BPS) {
+      console.log(
+        `${rel}: already optimised (${Math.round(src.bitRate / 1000)} kbps) — poster only`,
+      );
+      before += srcBytes;
+      after += srcBytes;
+    } else {
+      await run(ffmpegPath, [
+        "-y",
+        "-i", file,
+        "-c:v", "libx264",
+        "-crf", CRF,
+        "-preset", PRESET,
+        "-profile:v", "main",
+        "-pix_fmt", "yuv420p",
+        "-an", // drop the (unused, muted) audio track
+        "-movflags", "+faststart",
+        tmp,
+      ]);
+
+      const outBytes = (await fs.stat(tmp)).size;
+      const probed = await probe(tmp);
+      w = probed.w;
+      h = probed.h;
+
+      if (outBytes < srcBytes) {
+        await fs.rename(tmp, file);
+        after += outBytes;
+      } else {
+        await fs.unlink(tmp);
+        after += srcBytes;
+      }
+      before += srcBytes;
+    }
+
+    // Dedicated poster frame (a real still, not one of the gallery photos).
+    const posterPath = file.replace(/\.mp4$/i, ".poster.jpg");
     await run(ffmpegPath, [
       "-y",
+      "-ss", "1.2",
       "-i", file,
-      "-c:v", "libx264",
-      "-crf", CRF,
-      "-preset", PRESET,
-      "-profile:v", "main",
-      "-pix_fmt", "yuv420p",
-      "-an", // drop the (unused, muted) audio track
-      "-movflags", "+faststart",
-      tmp,
-    ]);
+      "-frames:v", "1",
+      "-vf", "scale=800:-2",
+      "-q:v", "3",
+      posterPath,
+    ]).catch(async () => {
+      // very short clip — grab the first frame instead
+      await run(ffmpegPath, [
+        "-y", "-i", file, "-frames:v", "1",
+        "-vf", "scale=800:-2", "-q:v", "3", posterPath,
+      ]);
+    });
 
-    const outBytes = (await fs.stat(tmp)).size;
-    const { w, h } = await probe(tmp);
-
-    if (outBytes < srcBytes) {
-      await fs.rename(tmp, file);
-      after += outBytes;
-    } else {
-      await fs.unlink(tmp);
-      after += srcBytes;
-    }
-    before += srcBytes;
-
+    const finalBytes = (await fs.stat(file)).size;
     dims[slug] ??= {};
-    dims[slug][name] = { w, h, bytes: Math.min(outBytes, srcBytes) };
+    dims[slug][name] = { w, h, bytes: finalBytes };
     const kb = (n) => `${Math.round(n / 1024)} KB`;
     console.log(
-      `${rel}: ${kb(srcBytes)} -> ${kb(Math.min(outBytes, srcBytes))}  (${w}x${h})`,
+      `${rel}: ${kb(srcBytes)} -> ${kb(finalBytes)}  (${w}x${h})  + poster`,
     );
   }
 

@@ -83,7 +83,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className={`text-deep-brown/80 transition-colors hover:text-oxblood ${className}`}
+      className={`nav-icon ${className}`}
     >
       {mounted && theme === "dark" ? (
         <Sun className="h-[1.05rem] w-[1.05rem]" />
