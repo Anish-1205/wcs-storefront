@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type QueueStatus = "queued" | "signing" | "uploading" | "finishing" | "done" | "error" | "cancelled";
@@ -15,6 +15,7 @@ interface QueueItem {
   duplicateOfAssetId?: string | null;
   boundaryStart: boolean;
   xhr?: XMLHttpRequest;
+  previewUrl?: string;
 }
 
 interface Props {
@@ -44,6 +45,7 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<string[]>([]);
 
   function patchItem(id: string, patch: Partial<QueueItem>) {
     setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -88,6 +90,7 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
 
     patchItem(item.id, { status: "uploading", progress: 0 });
 
+    let cloudinaryError: string | null = null;
     const cloudinaryResult = await new Promise<Record<string, unknown> | null>((resolve) => {
       const fd = new FormData();
       fd.append("file", item.file);
@@ -108,13 +111,23 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
           try {
             resolve(JSON.parse(xhr.responseText));
           } catch {
+            cloudinaryError = "Cloudinary returned an unreadable response";
             resolve(null);
           }
         } else {
+          try {
+            const body = JSON.parse(xhr.responseText);
+            cloudinaryError = body?.error?.message || `Cloudinary upload failed (${xhr.status})`;
+          } catch {
+            cloudinaryError = `Cloudinary upload failed (${xhr.status})`;
+          }
           resolve(null);
         }
       };
-      xhr.onerror = () => resolve(null);
+      xhr.onerror = () => {
+        cloudinaryError = "Network error reaching Cloudinary";
+        resolve(null);
+      };
       xhr.onabort = () => resolve(null);
       patchItem(item.id, { xhr });
       xhr.send(fd);
@@ -124,7 +137,9 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
       setQueue((prev) => {
         const current = prev.find((q) => q.id === item.id);
         if (current?.status === "cancelled") return prev;
-        return prev.map((q) => (q.id === item.id ? { ...q, status: "error", error: "Upload to Cloudinary failed" } : q));
+        return prev.map((q) =>
+          q.id === item.id ? { ...q, status: "error", error: cloudinaryError || "Upload to Cloudinary failed" } : q,
+        );
       });
       return;
     }
@@ -173,11 +188,22 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
         status: "queued",
         progress: 0,
         boundaryStart: false,
+        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
       }));
     if (items.length === 0) return;
+    for (const item of items) if (item.previewUrl) previewUrlsRef.current.push(item.previewUrl);
     setQueue((prev) => [...prev, ...items]);
     for (const item of items) void uploadOne(item);
   }
+
+  // Intentionally reads the ref at cleanup time (not effect-run time) to
+  // revoke every preview URL accumulated over the component's lifetime.
+  useEffect(() => {
+    return () => {
+      const urls = previewUrlsRef.current;
+      for (const url of urls) URL.revokeObjectURL(url);
+    };
+  }, []);
 
   function retry(item: QueueItem) {
     void uploadOne(item);
@@ -273,7 +299,22 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
         <ul className="divide-y divide-border rounded-sm border border-border bg-white text-sm">
           {queue.map((item) => (
             <li key={item.id} className="flex items-center gap-3 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate">{item.file.name}</span>
+              {item.previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a remote/optimizable image
+                <img src={item.previewUrl} alt="" className="h-10 w-10 shrink-0 rounded-sm object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-muted text-[10px] text-muted-foreground">
+                  video
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <span className="block truncate">{item.file.name}</span>
+                {item.status === "error" && item.error && (
+                  <span className="block truncate text-[11px] text-destructive" title={item.error}>
+                    {item.error}
+                  </span>
+                )}
+              </div>
               <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
                 <input
                   type="checkbox"

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkImportRateLimit } from "@/lib/rate-limit";
 import { importUploadSignRequestSchema, MAX_IMPORT_ASSETS_PER_BATCH } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * upload will complete against.
  */
 export async function POST(req: Request) {
-  const rateLimit = await checkRateLimit(req);
+  const rateLimit = await checkImportRateLimit(req);
   if (!rateLimit.success) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

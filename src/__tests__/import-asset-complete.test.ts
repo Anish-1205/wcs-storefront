@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetUser = vi.hoisted(() => vi.fn());
-const mockCheckRateLimit = vi.hoisted(() => vi.fn());
+const mockCheckImportRateLimit = vi.hoisted(() => vi.fn());
 const mockBatchMaybeSingle = vi.hoisted(() => vi.fn());
 const mockUpsertSingle = vi.hoisted(() => vi.fn());
 const mockDuplicateLookup = vi.hoisted(() => vi.fn());
@@ -38,7 +38,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: mockCheckRateLimit }));
+vi.mock("@/lib/rate-limit", () => ({ checkImportRateLimit: mockCheckImportRateLimit }));
 
 import { POST } from "@/app/api/import/complete/route";
 
@@ -68,7 +68,7 @@ describe("POST /api/import/complete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_EMAILS = "admin@example.com";
-    mockCheckRateLimit.mockResolvedValue({ success: true });
+    mockCheckImportRateLimit.mockResolvedValue({ success: true });
     mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
     mockBatchMaybeSingle.mockResolvedValue({ data: { id: BATCH_ID, status: "open" } });
     mockUpsertSingle.mockResolvedValue({ data: { id: "asset-1", created_at: "2026-01-01T00:00:00Z" }, error: null });

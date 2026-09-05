@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkImportRateLimit } from "@/lib/rate-limit";
 import { importAssetCompleteSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -19,7 +19,7 @@ export const runtime = "nodejs";
  * admin without silently dropping anything.
  */
 export async function POST(req: Request) {
-  const rateLimit = await checkRateLimit(req);
+  const rateLimit = await checkImportRateLimit(req);
   if (!rateLimit.success) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

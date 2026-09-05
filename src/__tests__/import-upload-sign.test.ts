@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetUser = vi.hoisted(() => vi.fn());
-const mockCheckRateLimit = vi.hoisted(() => vi.fn());
+const mockCheckImportRateLimit = vi.hoisted(() => vi.fn());
 const mockSignUpload = vi.hoisted(() => vi.fn());
 const mockBatchMaybeSingle = vi.hoisted(() => vi.fn());
 const mockCount = vi.hoisted(() => vi.fn());
@@ -26,7 +26,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/cloudinary", () => ({ signUpload: mockSignUpload }));
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: mockCheckRateLimit }));
+vi.mock("@/lib/rate-limit", () => ({ checkImportRateLimit: mockCheckImportRateLimit }));
 
 import { POST } from "@/app/api/import/sign/route";
 
@@ -51,7 +51,7 @@ describe("POST /api/import/sign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_EMAILS = "admin@example.com";
-    mockCheckRateLimit.mockResolvedValue({ success: true });
+    mockCheckImportRateLimit.mockResolvedValue({ success: true });
     mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
     mockBatchMaybeSingle.mockResolvedValue({ data: { id: "batch", status: "open" } });
     mockCount.mockResolvedValue({ count: 3 });
