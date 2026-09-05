@@ -1,5 +1,6 @@
 import { getDisplayPrice } from "@/lib/price";
 import { cld } from "@/lib/cloudinary";
+import { jsonLdScript } from "@/lib/json-ld";
 import { SITE } from "@/lib/site";
 import type { ProductWithRelations } from "@/lib/supabase/types";
 
@@ -46,7 +47,7 @@ export function ProductSchema({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
     />
   );
 }

@@ -4,6 +4,13 @@ import Script from "next/script";
  * Loads GA4, Microsoft Clarity, and the Pinterest Tag.
  * Each block is rendered only when its env id is configured, so local dev
  * stays clean. Placed in the root layout.
+ *
+ * Deliberately not nonce'd: reading the per-request CSP nonce needs
+ * next/headers, which would force every page using this (i.e. every public
+ * page, via the root layout) out of static/ISR rendering. These 3 scripts
+ * are fixed, developer-authored snippets (not user input), so middleware.ts's
+ * CSP allows them via 'unsafe-inline' + an explicit host allowlist instead —
+ * still blocks loading any *other* remote script.
  */
 export function Analytics() {
   const ga = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;

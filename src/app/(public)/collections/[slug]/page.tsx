@@ -5,6 +5,7 @@ import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 import { WhatsAppBanner } from "@/components/layout/WhatsAppBanner";
 import { CollectionView } from "@/components/collections/CollectionView";
+import { jsonLdScript } from "@/lib/json-ld";
 import { SITE } from "@/lib/site";
 
 export const revalidate = 3600;
@@ -50,7 +51,7 @@ export default async function CollectionPage({
     <div className="container-px mx-auto max-w-7xl py-10">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
       />
       <CollectionView name={collection.name} />
 

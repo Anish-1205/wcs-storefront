@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { WhatsAppBanner } from "@/components/layout/WhatsAppBanner";
+import { jsonLdScript } from "@/lib/json-ld";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default function AboutPage() {
     <div className="container-px mx-auto max-w-3xl py-14">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
       />
 
       <span className="gold-rule" />
