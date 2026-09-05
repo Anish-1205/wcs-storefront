@@ -10,7 +10,12 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
    - `supabase/migrations/001_schema.sql`
    - `supabase/migrations/002_seed_categories.sql`
    - **Skip** `003_seed_sample_data.sql` in production (it's demo data).
-   - Run `004` through `008` in filename order.
+   - Run `004` through `010` in filename order (this includes the product
+     media import pipeline — `009_import_pipeline.sql` and
+     `010_fix_import_classification_and_rls.sql`). Applying a new migration
+     to an already-deployed project is exactly this step, repeated: paste
+     the new file into the SQL Editor and run it, in order, after every
+     `git pull` that adds one.
 3. Create the admin user: Authentication → Users → Add user (email + password).
    Keep **Email signups disabled** under Authentication → Providers.
 4. (Recommended) Settings → Database → enable **Point-in-Time Recovery** and use
