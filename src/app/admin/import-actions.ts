@@ -5,6 +5,7 @@ import { assertAdmin } from "@/lib/admin-auth";
 import { getAiProvider } from "@/lib/ai";
 import { classifyGroupCollection } from "@/lib/import/collection-classification";
 import { proposeGroups, type GroupableAsset } from "@/lib/import/grouping";
+import { selectPendingGroupIds } from "@/lib/import/ai-pipeline";
 import {
   collectionAliasInputSchema,
   importAssetMoveSchema,
@@ -115,6 +116,7 @@ export async function autoGroupBatchAssets(batchId: string): Promise<ActionResul
 
     const proposals = proposeGroups(ungrouped);
     let displayOrder = await nextGroupDisplayOrder(admin, batchId);
+    const newGroupIds: string[] = [];
 
     for (const proposal of proposals) {
       const { data: group, error: groupError } = await admin
@@ -129,6 +131,7 @@ export async function autoGroupBatchAssets(batchId: string): Promise<ActionResul
         .select("id")
         .single();
       if (groupError) throw new Error(groupError.message);
+      newGroupIds.push(group.id as string);
 
       const { error: assignError } = await admin
         .from("import_assets")
@@ -145,7 +148,143 @@ export async function autoGroupBatchAssets(batchId: string): Promise<ActionResul
     }
 
     revalidateImport(batchId);
+    // Best-effort so admins don't have to trigger AI naming/collection matching
+    // per group by hand — failures here never affect the grouping result above,
+    // which has already been committed.
+    await runAiPipelineForGroups(newGroupIds);
+    revalidateImport(batchId);
     return { groupsCreated: proposals.length };
+  });
+}
+
+/**
+ * Runs AI metadata suggestions + collection classification for a set of
+ * groups concurrently, swallowing any individual failure (each of the two
+ * underlying actions already never throws — see toResult — this is just an
+ * extra guard against a truly unexpected rejection breaking the batch).
+ */
+async function runAiPipelineForGroups(groupIds: string[]): Promise<void> {
+  await Promise.allSettled(
+    groupIds.flatMap((groupId) => [requestGroupAiSuggestions(groupId), requestGroupCollectionClassification(groupId)]),
+  );
+}
+
+/**
+ * Re-runs the AI pipeline for every group in a batch that doesn't yet have a
+ * classification and hasn't had AI suggestions generated — a manual retry
+ * for groups created before this ran automatically, or where the AI call
+ * failed the first time.
+ */
+export async function classifyAllGroups(batchId: string): Promise<ActionResult<{ groupsProcessed: number }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data: groups, error } = await admin
+      .from("import_product_groups")
+      .select("id, ai_generated_at")
+      .eq("batch_id", batchId);
+    if (error) throw new Error(error.message);
+
+    const groupRows = (groups ?? []) as Array<{ id: string; ai_generated_at: string | null }>;
+    if (groupRows.length === 0) return { groupsProcessed: 0 };
+
+    const groupIds = groupRows.map((g) => g.id);
+    const { data: classifications } = await admin
+      .from("import_collection_classifications")
+      .select("group_id")
+      .in("group_id", groupIds);
+    const classifiedIds = new Set(((classifications ?? []) as Array<{ group_id: string }>).map((c) => c.group_id));
+
+    const pending = selectPendingGroupIds(groupRows, classifiedIds);
+    await runAiPipelineForGroups(pending);
+
+    revalidateImport(batchId);
+    return { groupsProcessed: pending.length };
+  });
+}
+
+/**
+ * Deletes a draft group that has not yet become a product. Its assets are
+ * unlinked (group_id set null by the FK), not destroyed — they reappear in
+ * "Ungrouped" so nothing uploaded is silently lost.
+ */
+export async function deleteImportGroup(groupId: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data: group } = await admin
+      .from("import_product_groups")
+      .select("batch_id, product_id")
+      .eq("id", groupId)
+      .maybeSingle();
+    if (!group) throw new Error("Group not found.");
+    if ((group as { product_id: string | null }).product_id) {
+      throw new Error("This group already has a product — delete the draft product first.");
+    }
+
+    const { error } = await admin.from("import_product_groups").delete().eq("id", groupId);
+    if (error) throw new Error(error.message);
+
+    revalidateImport((group as { batch_id: string }).batch_id);
+    return {};
+  });
+}
+
+/**
+ * Permanently removes one uploaded file from the batch (e.g. a flagged
+ * duplicate, or something the admin doesn't want). Only ever removes the
+ * import_assets row, not the underlying Cloudinary resource.
+ */
+export async function deleteImportAsset(assetId: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data: asset } = await admin
+      .from("import_assets")
+      .select("batch_id")
+      .eq("id", assetId)
+      .maybeSingle();
+    if (!asset) throw new Error("Asset not found.");
+
+    const { error } = await admin.from("import_assets").delete().eq("id", assetId);
+    if (error) throw new Error(error.message);
+
+    revalidateImport((asset as { batch_id: string }).batch_id);
+    return {};
+  });
+}
+
+/**
+ * Deletes a draft product that was created from an import group, then resets
+ * the group so it can be recreated (or left as a plain draft group). Refuses
+ * once the product has left 'draft' status — use the normal product delete
+ * flow for anything already reviewed/published, which asks for that
+ * confirmation deliberately.
+ */
+export async function deleteImportedDraftProduct(input: { group_id: string; product_id: string }): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { data: product } = await admin
+      .from("products")
+      .select("status, slug")
+      .eq("id", input.product_id)
+      .maybeSingle();
+    if (!product) throw new Error("Product not found.");
+    if ((product as { status: string }).status !== "draft") {
+      throw new Error("This product is no longer a draft — delete it from the Products page instead.");
+    }
+
+    const { error: deleteError } = await admin.from("products").delete().eq("id", input.product_id);
+    if (deleteError) throw new Error(deleteError.message);
+
+    const { data: group, error: groupError } = await admin
+      .from("import_product_groups")
+      .update({ status: "draft" })
+      .eq("id", input.group_id)
+      .select("batch_id")
+      .maybeSingle();
+    if (groupError) throw new Error(groupError.message);
+
+    revalidatePath("/admin/products");
+    if (group) revalidateImport((group as { batch_id: string }).batch_id);
+    return {};
   });
 }
 

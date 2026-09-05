@@ -1,21 +1,23 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { cld } from "@/lib/cloudinary";
+import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, ReviewStatus } from "@/lib/supabase/types";
+import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, ProductStatus, ReviewStatus } from "@/lib/supabase/types";
 import { ImportUploader } from "./ImportUploader";
 import { ImportGroupCard } from "./ImportGroupCard";
-import { autoGroupBatchAssets, completeImportBatch, moveImportAsset } from "@/app/admin/import-actions";
+import { autoGroupBatchAssets, classifyAllGroups, completeImportBatch, moveImportAsset } from "@/app/admin/import-actions";
+import { saveCollection } from "@/app/admin/actions";
 
 interface GroupBundle {
   group: ImportProductGroup;
   assets: ImportAsset[];
   classification: ImportCollectionClassification | null;
   productReviewStatus: ReviewStatus | null;
+  productStatus: ProductStatus | null;
 }
 
 interface Props {
@@ -29,6 +31,8 @@ interface Props {
 export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups, collections }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [collectionError, setCollectionError] = useState<string | null>(null);
 
   function refresh() {
     router.refresh();
@@ -37,6 +41,36 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
   function groupAssets() {
     startTransition(async () => {
       await autoGroupBatchAssets(batchId);
+      router.refresh();
+    });
+  }
+
+  function classifyAll() {
+    startTransition(async () => {
+      await classifyAllGroups(batchId);
+      router.refresh();
+    });
+  }
+
+  function createCollection() {
+    const name = newCollectionName.trim();
+    if (!name) return;
+    setCollectionError(null);
+    startTransition(async () => {
+      const result = await saveCollection({
+        name,
+        slug: null,
+        description: null,
+        image_url: null,
+        is_active: true,
+        display_order: collections.length,
+        product_ids: [],
+      });
+      if (!result.ok) {
+        setCollectionError(result.error ?? "Could not create the collection.");
+        return;
+      }
+      setNewCollectionName("");
       router.refresh();
     });
   }
@@ -73,6 +107,8 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
                 <div className="relative h-20 w-20 overflow-hidden rounded-sm border border-border">
                   {asset.kind === "image" && asset.cloudinary_secure_url ? (
                     <Image src={cld(asset.cloudinary_secure_url, "thumbnail")} alt="" fill sizes="80px" className="object-cover" />
+                  ) : asset.kind === "video" && asset.cloudinary_secure_url ? (
+                    <Image src={cldVideoThumbnail(asset.cloudinary_secure_url)} alt="" fill sizes="80px" className="object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-white text-[10px] text-muted-foreground">
                       {asset.kind}
@@ -107,7 +143,32 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
 
       {groups.length > 0 && (
         <section className="space-y-4">
-          <h2 className="font-serif text-lg text-burgundy">Proposed products ({groups.length})</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-lg text-burgundy">Proposed products ({groups.length})</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={classifyAll}>
+                Classify all with AI
+              </Button>
+              <div className="flex items-center gap-1">
+                <input
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      createCollection();
+                    }
+                  }}
+                  placeholder="New collection name"
+                  className="h-8 rounded-sm border border-input px-2 text-xs"
+                />
+                <Button type="button" size="sm" variant="ghost" disabled={isPending || !newCollectionName.trim()} onClick={createCollection}>
+                  + Add
+                </Button>
+              </div>
+            </div>
+          </div>
+          {collectionError && <p className="text-xs text-destructive">{collectionError}</p>}
           {groups.map((bundle, i) => (
             <ImportGroupCard
               key={bundle.group.id}
@@ -117,6 +178,7 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
               collections={collections}
               otherGroups={groupLabels.filter((g) => g.id !== bundle.group.id)}
               productReviewStatus={bundle.productReviewStatus}
+              productStatus={bundle.productStatus}
             />
           ))}
         </section>

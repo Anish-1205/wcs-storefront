@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { cld } from "@/lib/cloudinary";
+import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,9 @@ import type { ImportAsset, ImportCollectionClassification, ImportProductGroup } 
 import {
   confirmGroupCollection,
   createProductFromGroup,
+  deleteImportAsset,
+  deleteImportedDraftProduct,
+  deleteImportGroup,
   moveImportAsset,
   requestGroupAiSuggestions,
   requestGroupCollectionClassification,
@@ -31,6 +34,16 @@ interface Props {
   collections: Array<{ id: string; name: string }>;
   otherGroups: Array<{ id: string; label: string }>;
   productReviewStatus: string | null;
+  productStatus: string | null;
+}
+
+function groupDisplayName(group: ImportProductGroup, assets: ImportAsset[]): string {
+  if (group.admin_description?.trim()) return group.admin_description.trim();
+  if (group.ai_metadata?.name?.value?.trim()) return group.ai_metadata.name.value.trim();
+  const imageCount = assets.filter((a) => a.kind === "image").length;
+  const videoCount = assets.filter((a) => a.kind === "video").length;
+  const parts = [imageCount > 0 ? `${imageCount} photo${imageCount === 1 ? "" : "s"}` : null, videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null];
+  return parts.filter(Boolean).join(", ") || "Empty group";
 }
 
 const STATE_BADGE: Record<string, { label: string; variant: "green" | "amber" | "red" }> = {
@@ -39,7 +52,7 @@ const STATE_BADGE: Record<string, { label: string; variant: "green" | "amber" | 
   unresolved: { label: "Collection unresolved", variant: "red" },
 };
 
-export function ImportGroupCard({ group, assets, classification, collections, otherGroups, productReviewStatus }: Props) {
+export function ImportGroupCard({ group, assets, classification, collections, otherGroups, productReviewStatus, productStatus }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [description, setDescription] = useState(group.admin_description ?? "");
@@ -75,32 +88,50 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
   return (
     <div className="rounded-sm border border-border bg-white p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-burgundy">Group ({group.grouping_method.replace(/_/g, " ")})</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-burgundy" title={groupDisplayName(group, assets)}>
+            {groupDisplayName(group, assets)}
+          </span>
           {group.status === "flagged_for_review" && <Badge variant="red">Needs review</Badge>}
           {group.status === "product_created" && <Badge variant="green">Product created</Badge>}
         </div>
-        {otherGroups.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
-            <Select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)} className="h-8 text-xs">
-              <option value="">Merge into…</option>
-              {otherGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.label}
-                </option>
-              ))}
-            </Select>
-            <Button
+        <div className="flex shrink-0 items-center gap-2 text-xs">
+          {otherGroups.length > 0 && (
+            <>
+              <Select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)} className="h-8 text-xs">
+                <option value="">Merge into…</option>
+                {otherGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={!mergeTarget || isPending}
+                onClick={() => run(() => mergeImportGroups({ source_group_id: group.id, target_group_id: mergeTarget }))}
+              >
+                Merge
+              </Button>
+            </>
+          )}
+          {!group.product_id && (
+            <button
               type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!mergeTarget || isPending}
-              onClick={() => run(() => mergeImportGroups({ source_group_id: group.id, target_group_id: mergeTarget }))}
+              className="text-destructive underline"
+              disabled={isPending}
+              onClick={() => {
+                if (confirm("Delete this draft group? Its photos/videos go back to Ungrouped, nothing is destroyed.")) {
+                  run(() => deleteImportGroup(group.id));
+                }
+              }}
             >
-              Merge
-            </Button>
-          </div>
-        )}
+              Delete group
+            </button>
+          )}
+        </div>
       </div>
 
       {group.flagged_reason && <p className="mb-3 rounded-sm bg-red-50 p-2 text-xs text-destructive">{group.flagged_reason}</p>}
@@ -111,6 +142,8 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
             <div className="relative h-24 w-24 overflow-hidden rounded-sm border border-border">
               {asset.kind === "image" && asset.cloudinary_secure_url ? (
                 <Image src={cld(asset.cloudinary_secure_url, "thumbnail")} alt="" fill sizes="96px" className="object-cover" />
+              ) : asset.kind === "video" && asset.cloudinary_secure_url ? (
+                <Image src={cldVideoThumbnail(asset.cloudinary_secure_url)} alt="" fill sizes="96px" className="object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-secondary text-[10px] text-muted-foreground">
                   {asset.kind === "video" ? "video" : asset.upload_status}
@@ -122,6 +155,19 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
               {asset.duplicate_of_asset_id && (
                 <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 px-1 text-center text-[9px] text-white">dup?</span>
               )}
+              <button
+                type="button"
+                title="Remove this file"
+                className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[10px] leading-none text-white hover:bg-destructive"
+                disabled={isPending}
+                onClick={() => {
+                  if (confirm("Remove this file from the import? This can't be undone.")) {
+                    run(() => deleteImportAsset(asset.id));
+                  }
+                }}
+              >
+                ×
+              </button>
             </div>
             <label className="flex items-center gap-1 text-[10px]">
               <input type="checkbox" checked={selectedAssetIds.has(asset.id)} onChange={() => toggleAssetSelected(asset.id)} />
@@ -325,6 +371,20 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
               </Button>
             )}
             {productReviewStatus === "approved" && <Badge variant="green">Review approved</Badge>}
+            {productStatus === "draft" && (
+              <button
+                type="button"
+                className="text-xs text-destructive underline"
+                disabled={isPending}
+                onClick={() => {
+                  if (confirm("Delete this draft product? This can't be undone.")) {
+                    run(() => deleteImportedDraftProduct({ group_id: group.id, product_id: group.product_id! }));
+                  }
+                }}
+              >
+                Delete draft
+              </button>
+            )}
           </>
         )}
       </div>

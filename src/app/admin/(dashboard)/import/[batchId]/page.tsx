@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ImportWorkspace } from "@/components/admin/import/ImportWorkspace";
-import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, ReviewStatus } from "@/lib/supabase/types";
+import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, ProductStatus, ReviewStatus } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,26 +34,27 @@ export default async function ImportBatchPage({ params }: { params: { batchId: s
     groupIds.length
       ? admin
           .from("products")
-          .select("id, review_status")
+          .select("id, review_status, status")
           .in(
             "id",
             groupRows.map((g) => g.product_id).filter((id): id is string => !!id),
           )
-      : Promise.resolve({ data: [] as Array<{ id: string; review_status: ReviewStatus }> }),
+      : Promise.resolve({ data: [] as Array<{ id: string; review_status: ReviewStatus; status: ProductStatus }> }),
   ]);
 
   const classificationByGroup = new Map(
     ((classifications ?? []) as ImportCollectionClassification[]).map((c) => [c.group_id, c]),
   );
-  const reviewStatusByProduct = new Map(
-    ((products ?? []) as Array<{ id: string; review_status: ReviewStatus }>).map((p) => [p.id, p.review_status]),
+  const productById = new Map(
+    ((products ?? []) as Array<{ id: string; review_status: ReviewStatus; status: ProductStatus }>).map((p) => [p.id, p]),
   );
 
   const groupBundles = groupRows.map((group) => ({
     group,
     assets: allAssets.filter((a) => a.group_id === group.id),
     classification: classificationByGroup.get(group.id) ?? null,
-    productReviewStatus: group.product_id ? reviewStatusByProduct.get(group.product_id) ?? null : null,
+    productReviewStatus: group.product_id ? productById.get(group.product_id)?.review_status ?? null : null,
+    productStatus: group.product_id ? productById.get(group.product_id)?.status ?? null : null,
   }));
 
   return (

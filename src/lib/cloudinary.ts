@@ -31,6 +31,21 @@ export function cld(url: string | null | undefined, transform: Transform = "card
 }
 
 /**
+ * Derive a poster-frame JPG for a Cloudinary video delivery URL (first
+ * frame, thumbnail-sized). If the URL isn't a Cloudinary upload URL it is
+ * returned unchanged.
+ */
+export function cldVideoThumbnail(url: string | null | undefined): string {
+  if (!url) return "";
+  const marker = "/upload/";
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const after = url.slice(idx + marker.length);
+  const withoutExt = after.replace(/\.[^./]+$/, "");
+  return `${url.slice(0, idx + marker.length)}so_0,c_fill,w_400,h_500,q_auto/${withoutExt}.jpg`;
+}
+
+/**
  * Build a signed-upload payload (SERVER ONLY).
  * Called from /api/upload (and the import pipeline's /api/import/sign) after
  * the admin session is verified. The API secret is used here only for SHA-1

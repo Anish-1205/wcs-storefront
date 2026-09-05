@@ -188,7 +188,7 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
         status: "queued",
         progress: 0,
         boundaryStart: false,
-        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+        previewUrl: URL.createObjectURL(file),
       }));
     if (items.length === 0) return;
     for (const item of items) if (item.previewUrl) previewUrlsRef.current.push(item.previewUrl);
@@ -299,12 +299,14 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
         <ul className="divide-y divide-border rounded-sm border border-border bg-white text-sm">
           {queue.map((item) => (
             <li key={item.id} className="flex items-center gap-3 px-3 py-2">
-              {item.previewUrl ? (
+              {item.previewUrl && item.kind === "video" ? (
+                <video src={item.previewUrl} muted playsInline preload="metadata" className="h-10 w-10 shrink-0 rounded-sm object-cover" />
+              ) : item.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a remote/optimizable image
                 <img src={item.previewUrl} alt="" className="h-10 w-10 shrink-0 rounded-sm object-cover" />
               ) : (
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-muted text-[10px] text-muted-foreground">
-                  video
+                  file
                 </span>
               )}
               <div className="min-w-0 flex-1">

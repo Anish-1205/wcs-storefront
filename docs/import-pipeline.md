@@ -61,8 +61,10 @@ before this ever ran against a real database:
   source. Only ever points at an existing collection.
 - **`import_processing_jobs`** — durable, idempotent (`unique(group_id,
   job_type)`) record of each AI attempt. There is no background queue in
-  this app — AI runs synchronously when an admin clicks "Get suggestions" —
-  but every attempt is recorded so retries are safe and visible.
+  this app — AI runs synchronously, either automatically right after
+  grouping (`autoGroupBatchAssets`) or on demand via "Get AI suggestions" /
+  "Classify all with AI" — but every attempt is recorded so retries are
+  safe and visible.
 - **`products.import_group_id` / `products.review_status`** — additive
   columns. Existing products default to `review_status = 'not_required'`,
   so legacy publish behaviour is completely unchanged. Imported products
@@ -132,6 +134,55 @@ list produces a confident split, a timestamp-proximity group larger than 8
 assets is flagged `flagged_for_review` instead of being treated as one
 product, per the "never silently merge ambiguous assets" requirement.
 
+## Less-manual review workflow
+
+`autoGroupBatchAssets` best-effort fires `requestGroupAiSuggestions` +
+`requestGroupCollectionClassification` for every group it just created
+(`src/lib/import/ai-pipeline.ts` holds the pure "which groups still need
+this" selector, kept out of `import-actions.ts` because Next.js requires
+every export of a `"use server"` file to be async). A failure for one group
+never blocks grouping itself or any other group — each call already
+degrades to `unresolved`/no-suggestion on its own. "Classify all with AI" on
+the batch page re-runs the same pipeline for any group that still lacks
+either result (e.g. groups created before this existed, or a prior AI call
+that failed). None of this changes what can reach `confirmed` — it only
+removes the need to click "Get suggestions" / "Check collection" per card.
+
+Admins can also create a new collection inline from the import page (a
+name-only quick form wired to the existing `saveCollection` action) instead
+of leaving to `/admin/collections` first — it does not change how
+classification works; a newly created collection just becomes selectable
+like any other existing one.
+
+## Deleting import state
+
+Three admin actions in `import-actions.ts` cover cleanup that has no other
+path once inside an import batch:
+
+- `deleteImportGroup` — only for a group with no product yet
+  (`product_id is null`); its assets are unlinked (`group_id` set null by
+  the FK), not destroyed, so they reappear in "Ungrouped" rather than being
+  silently lost.
+- `deleteImportAsset` — permanently removes one `import_assets` row (e.g. a
+  flagged duplicate). Only the database row is removed; the underlying
+  Cloudinary asset is left in place, same as product image deletion
+  elsewhere in this app.
+- `deleteImportedDraftProduct` — deletes a product created from a group and
+  resets the group's `status` back to `draft`, but only while the product is
+  still `status = 'draft'`. Once it's left draft (reviewed/published), this
+  refuses and points at the normal product-delete flow instead, which asks
+  for that confirmation deliberately.
+
+## Video thumbnails
+
+Both the pre-upload queue (`ImportUploader`) and already-uploaded video
+assets (`ImportGroupCard`, the "Ungrouped" grid) now show a real frame
+instead of a plain "video" label: the queue uses a muted, inline `<video>`
+pointed at the local `blob:` URL (first frame renders without playback);
+uploaded assets use `cldVideoThumbnail()` in `src/lib/cloudinary.ts`, which
+asks Cloudinary for the same video's first frame as a `.jpg` via the
+`so_0` transform.
+
 ## Known gap: video products
 
 The existing product schema (`product_variants` → `variant_images`) has no
@@ -163,6 +214,9 @@ transforms, etc.) and was out of scope here.
 - `import-review-gate.test.ts` — `saveProduct`/`updateProductStatus` refuse
   to publish a `pending_review` product and are unaffected for legacy
   (`not_required`) ones.
+- `import-delete-actions.test.ts` — the delete-group/delete-asset/
+  delete-draft-product guards above, and `selectPendingGroupIds`'s
+  needs-AI-pipeline logic.
 
 ## Not run in this environment
 
