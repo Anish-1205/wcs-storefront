@@ -23,9 +23,11 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
    - Authentication → Providers → **Email**: enable **Sign Ups**. Decide whether
      to require **Confirm email** (the app handles both). Customers are ordinary
      auth users and get no admin access — that stays gated by `ADMIN_EMAILS`.
-   - Authentication → Providers → **Google**: enable and paste a Google Cloud
-     OAuth client's ID/secret. In Google Cloud the authorised redirect URI is
-     `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - Authentication → Providers → **Google** (optional): enable and paste a
+     Google Cloud OAuth client's ID/secret. In Google Cloud the authorised
+     redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`.
+     Then set `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` in Vercel so the button
+     appears. Leave it unset to run email/password only.
    - Authentication → URL Configuration: **Site URL** = the production URL;
      **Redirect URLs** = `https://<domain>/auth/callback` plus
      `http://localhost:3000/**` for local dev.

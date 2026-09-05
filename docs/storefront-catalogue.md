@@ -228,7 +228,10 @@ the cart follow you across devices.
 - **Auth state:** `src/lib/auth/AuthContext.tsx` (`AuthProvider` / `useAuth`) —
   client-side, browser Supabase client, `onAuthStateChange`. Wraps the
   storefront in `(public)/layout.tsx`, outside `CartProvider`.
-- **Pages:** `/signin`, `/signup` (`AuthForm` — email+password and Google),
+- **Pages:** `/signin`, `/signup` (`AuthForm` — email+password always; the
+  "Continue with Google" button only renders when
+  `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`, so an unconfigured provider never
+  shows a dead button),
   `/forgot-password`, `/reset-password`, `/account`. All `noindex`.
   `/auth/callback` (route handler) exchanges the OAuth / email-link `code` for a
   session; `next` is validated to a same-origin path.
@@ -271,6 +274,7 @@ the cart follow you across devices.
 | `NEXT_PUBLIC_GSTIN` | optional | footer + contact + JSON-LD | e.g. `27AHSPV2813RIZA` |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | optional | email CTAs (`src/lib/contact.ts`) | if unset, email links point to `/contact` |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | optional | Instagram link | full `https://` URL |
+| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | optional | shows "Continue with Google" on the auth pages | set to `true` only after the Google provider is configured in Supabase + Google Cloud |
 
 ---
 

@@ -47,7 +47,7 @@ if (missing.length || invalid.length) {
   process.exit(1);
 }
 
-const optional = ["RESEND_API_KEY", "INQUIRY_NOTIFICATION_EMAIL", "RESEND_FROM_EMAIL", "NEXT_PUBLIC_GA_MEASUREMENT_ID", "NEXT_PUBLIC_CLARITY_PROJECT_ID", "NEXT_PUBLIC_PINTEREST_TAG_ID", "NEXT_PUBLIC_SENTRY_DSN", "ANTHROPIC_API_KEY", "NEXT_PUBLIC_GSTIN", "NEXT_PUBLIC_CONTACT_EMAIL", "NEXT_PUBLIC_INSTAGRAM_URL"];
+const optional = ["RESEND_API_KEY", "INQUIRY_NOTIFICATION_EMAIL", "RESEND_FROM_EMAIL", "NEXT_PUBLIC_GA_MEASUREMENT_ID", "NEXT_PUBLIC_CLARITY_PROJECT_ID", "NEXT_PUBLIC_PINTEREST_TAG_ID", "NEXT_PUBLIC_SENTRY_DSN", "ANTHROPIC_API_KEY", "NEXT_PUBLIC_GSTIN", "NEXT_PUBLIC_CONTACT_EMAIL", "NEXT_PUBLIC_INSTAGRAM_URL", "NEXT_PUBLIC_GOOGLE_AUTH_ENABLED"];
 const unsetOptional = optional.filter((name) => !values[name]);
 console.log("Production environment configuration passed required checks.");
 if (unsetOptional.length) console.warn(`Optional integrations not configured: ${unsetOptional.join(", ")}`);

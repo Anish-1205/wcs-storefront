@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup";
 
+/**
+ * Google sign-in only shows once the provider is actually configured in the
+ * Supabase dashboard + Google Cloud. Flip this on when that's done; until
+ * then it's email/password only (no dead "Continue with Google" button).
+ */
+const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+
 function safeNext(value: string | null): string {
   return value && value.startsWith("/") && !value.startsWith("//")
     ? value
@@ -119,23 +126,31 @@ export function AuthForm({ mode }: { mode: Mode }) {
           : "Access the cart and selections tied to your account."}
       </p>
 
-      <button
-        type="button"
-        onClick={handleGoogle}
-        disabled={busy !== ""}
-        className="mt-7 flex h-12 w-full items-center justify-center gap-3 border border-line text-[0.8rem] font-medium uppercase tracking-[0.16em] text-deep-brown transition-colors hover:bg-warm-cream disabled:opacity-60"
+      {GOOGLE_ENABLED && (
+        <>
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={busy !== ""}
+            className="mt-7 flex h-12 w-full items-center justify-center gap-3 border border-line text-[0.8rem] font-medium uppercase tracking-[0.16em] text-deep-brown transition-colors hover:bg-warm-cream disabled:opacity-60"
+          >
+            <GoogleMark />
+            {busy === "google" ? "Redirecting…" : "Continue with Google"}
+          </button>
+
+          <div className="my-6 flex items-center gap-4 text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="h-px flex-1 bg-line" />
+            or
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
+
+      <form
+        onSubmit={handleEmail}
+        noValidate
+        className={GOOGLE_ENABLED ? "space-y-4" : "mt-7 space-y-4"}
       >
-        <GoogleMark />
-        {busy === "google" ? "Redirecting…" : "Continue with Google"}
-      </button>
-
-      <div className="my-6 flex items-center gap-4 text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
-      </div>
-
-      <form onSubmit={handleEmail} noValidate className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
