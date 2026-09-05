@@ -1,8 +1,10 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 import { requireAdmin } from "@/lib/admin-auth";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import type { ImportBatch } from "@/lib/supabase/types";
+import { SITE } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,11 @@ export default async function AdminImportPage() {
     ImportBatch & { import_assets: { id: string }[]; import_product_groups: { id: string }[] }
   >;
 
+  // Points at the same auth-gated URL a desktop admin would use — scanning
+  // it just opens this URL on the phone, so login still gates access.
+  const newImportUrl = new URL("/admin/import/new", SITE.url).toString();
+  const qrDataUrl = await QRCode.toDataURL(newImportUrl, { margin: 1, width: 160 });
+
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
@@ -37,11 +44,19 @@ export default async function AdminImportPage() {
         </Link>
       </div>
 
+      <div className="mb-8 flex items-center gap-4 rounded-sm border border-border bg-white p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- small server-generated data URL, not a Cloudinary asset */}
+        <img src={qrDataUrl} alt="QR code linking to the new-import screen" width={80} height={80} />
+        <div className="text-sm">
+          <p className="font-medium text-burgundy">Start an import from your phone</p>
+          <p className="text-muted-foreground">
+            Scan this with your phone&apos;s camera to open the same new-import screen — you&apos;ll need to sign in there too.
+          </p>
+        </div>
+      </div>
+
       {batches.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No imports yet. Start one from here, or scan the import QR code from a phone — it opens this same admin-only
-          screen.
-        </p>
+        <p className="text-sm text-muted-foreground">No imports yet. Start one from here or scan the QR code above.</p>
       ) : (
         <div className="overflow-x-auto rounded-sm border border-border bg-white">
           <table className="w-full text-sm">
