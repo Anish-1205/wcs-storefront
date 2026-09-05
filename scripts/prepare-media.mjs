@@ -23,6 +23,8 @@ if (!SRC) {
   console.error('Pass the source folder, e.g. node scripts/prepare-media.mjs "C:/Users/you/Desktop/wcs pics"');
   process.exit(1);
 }
+/** Optional: process a single product, e.g. `… "<src>" magenta-bandhej-khaddi-georgette` */
+const ONLY = process.argv[3];
 
 const OUT = path.join(process.cwd(), "public", "media");
 const MAX_EDGE = 1600;
@@ -154,6 +156,15 @@ const MAP = {
     ],
     videos: [],
   },
+  "magenta-bandhej-khaddi-georgette": {
+    images: [
+      ["New folder/WhatsApp Image 2026-09-06 at 04.37.24.jpeg", "01-full.jpg"],
+      ["New folder/WhatsApp Image 2026-09-06 at 04.37.23.jpeg", "02-drape.jpg"],
+      ["New folder/WhatsApp Image 2026-09-06 at 04.37.23 (2).jpeg", "03-full-alt.jpg"],
+      ["New folder/WhatsApp Image 2026-09-06 at 04.37.22.jpeg", "04-pallu.jpg"],
+    ],
+    videos: [],
+  },
 };
 
 async function exists(p) {
@@ -174,9 +185,22 @@ async function processImage(src, dest) {
 
 async function main() {
   let images = 0, videos = 0, missing = 0;
-  const dimensions = {};
 
-  for (const [slug, group] of Object.entries(MAP)) {
+  // When rebuilding a single product, keep the other products' dimensions.
+  let dimensions = {};
+  if (ONLY) {
+    try {
+      dimensions = JSON.parse(
+        await fs.readFile(path.join(OUT, "dimensions.json"), "utf8"),
+      );
+    } catch { /* first run — start fresh */ }
+  }
+
+  const entries = ONLY
+    ? Object.entries(MAP).filter(([slug]) => slug === ONLY)
+    : Object.entries(MAP);
+
+  for (const [slug, group] of entries) {
     const dir = path.join(OUT, slug);
     await fs.mkdir(dir, { recursive: true });
     dimensions[slug] = {};

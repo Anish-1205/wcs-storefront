@@ -298,5 +298,23 @@
       "w": 1154,
       "h": 1599
     }
+  },
+  "magenta-bandhej-khaddi-georgette": {
+    "01-full.jpg": {
+      "w": 1260,
+      "h": 1599
+    },
+    "02-drape.jpg": {
+      "w": 1117,
+      "h": 1600
+    },
+    "03-full-alt.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "04-pallu.jpg": {
+      "w": 1234,
+      "h": 1600
+    }
   }
 }

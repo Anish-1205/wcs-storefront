@@ -122,6 +122,10 @@ node scripts/optimize-video.mjs
 node scripts/score-media.mjs          # writes media-quality.json
 ```
 
+Adding one product without reprocessing the rest:
+`node scripts/prepare-media.mjs "<src>" <slug>` (merges into `dimensions.json`),
+then `node scripts/score-media.mjs`.
+
 - **`prepare-media.mjs`** (sharp) — resizes stills (long edge <= 1600 px,
   quality 82, EXIF-rotate then strip metadata), copies videos verbatim, writes
   `dimensions.json`. **No colour / hue / saturation changes** — colour fidelity

@@ -531,6 +531,40 @@ const SEEDS: ProductSeed[] = [
     colourRangeNote: null,
     createdAt: "2026-08-03",
   },
+  {
+    id: "wcs-011",
+    slug: "magenta-bandhej-khaddi-georgette",
+    title: "Magenta Banarasi Khaddi Bandhej Saree with Hand-Work Border",
+    reference: "WCS-011",
+    weave: "Banarasi Khaddi Georgette",
+    material: "Khaddi georgette",
+    origin: null,
+    colour: "Magenta / rani pink ombré with gold zari",
+    colourFamily: "Pink",
+    price: 6290,
+    availability: "available",
+    availabilityNote: "Available in multiple pieces — book soon",
+    tags: ["Banarasi Khaddi", "Bandhej", "Hand-work border"],
+    description:
+      "An exclusive Banarasi Khaddi Georgette saree in bandhej (tie-dye). The magenta-to-pink ombré body is worked in a gold-zari diamond lattice and finished with a hand-worked border of mirrors, sequins and gota; the plain rani-pink end is scattered with sequins and edged with a scalloped hand-embroidered trim. Available in multiple pieces — book soon.",
+    details: [
+      "Banarasi Khaddi Georgette in bandhej (tie-dye)",
+      "Gold-zari diamond lattice across an ombré magenta-pink body",
+      "Hand-worked border — mirrors, sequins and gota",
+      "Scalloped, hand-embroidered pallu edge",
+    ],
+    includes: null,
+    images: [
+      img("magenta-bandhej-khaddi-georgette", "01-full.jpg", "full", "Magenta bandhej saree with a gold-zari lattice, spread out"),
+      img("magenta-bandhej-khaddi-georgette", "02-drape.jpg", "drape", "The magenta bandhej saree draped, showing the body and border"),
+      img("magenta-bandhej-khaddi-georgette", "03-full-alt.jpg", "full", "Alternative full view of the magenta bandhej saree"),
+      img("magenta-bandhej-khaddi-georgette", "04-pallu.jpg", "pallu", "Plain rani-pink pallu with a scalloped hand-embroidered edge"),
+    ],
+    videos: [],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-06",
+  },
 ];
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({

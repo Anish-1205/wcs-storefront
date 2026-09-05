@@ -253,6 +253,28 @@
       "brightness": 98
     }
   },
+  "magenta-bandhej-khaddi-georgette": {
+    "01-full.jpg": {
+      "score": 0.5159,
+      "sharpness": 3427,
+      "brightness": 126
+    },
+    "02-drape.jpg": {
+      "score": 0.3731,
+      "sharpness": 2483,
+      "brightness": 107
+    },
+    "03-full-alt.jpg": {
+      "score": 0.5094,
+      "sharpness": 3394,
+      "brightness": 119
+    },
+    "04-pallu.jpg": {
+      "score": 0.4171,
+      "sharpness": 2723,
+      "brightness": 113
+    }
+  },
   "purple-tanchoi-silk": {
     "01-full.jpg": {
       "score": 0.4155,
