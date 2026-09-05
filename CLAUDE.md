@@ -28,7 +28,7 @@ supabase db reset     # Reapplies all supabase/migrations/*.sql in order + seed 
 supabase gen types typescript --local > src/lib/supabase/types.ts   # Regenerate DB types after schema changes
 ```
 
-See [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, and [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage.
+See [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.
 
 ## Architecture
 
@@ -51,6 +51,8 @@ See [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](do
 **Validation**: Zod schemas in `src/lib/validation.ts` are the source of truth for input shapes on both API routes and admin forms/actions — validate at the API boundary, not just in the UI.
 
 **Observability**: Sentry (`@sentry/nextjs`) is wired via `src/instrumentation.ts` / `src/instrumentation-client.ts` / `sentry.*.config.ts`; `global-error.tsx` reports unhandled errors.
+
+**Product media import pipeline** (`/admin/import`, `supabase/migrations/009_import_pipeline.sql`): bulk desktop/mobile photo & video ingestion — direct-to-Cloudinary signed uploads (`/api/import/sign`, `/api/import/complete`), heuristic grouping into proposed products (`src/lib/import/grouping.ts`), and fail-closed collection assignment (`src/lib/import/collection-classification.ts`) that only ever reaches `confirmed` via a deterministic source or explicit admin action — AI can only produce a `suggested` state requiring confirmation. AI suggestions go through a small provider abstraction (`src/lib/ai/`, Anthropic by default, always safely degrading to a no-op provider). Imported products are always `draft` with `review_status = 'pending_review'` and are blocked from publishing (in both `saveProduct` and `updateProductStatus`) until `approveImportedProductReview` is called; pre-existing products are unaffected (`review_status = 'not_required'`). See [docs/import-pipeline.md](docs/import-pipeline.md) for the full design and known gaps (video assets aren't attached to the product yet; visual-similarity grouping isn't implemented).
 
 ## Testing
 

@@ -32,10 +32,18 @@ export function cld(url: string | null | undefined, transform: Transform = "card
 
 /**
  * Build a signed-upload payload (SERVER ONLY).
- * Called from /api/upload after the admin session is verified. The API secret
- * is used here only for SHA-1 signing and never leaves the server.
+ * Called from /api/upload (and the import pipeline's /api/import/sign) after
+ * the admin session is verified. The API secret is used here only for SHA-1
+ * signing and never leaves the server.
+ *
+ * `resourceType` selects Cloudinary's upload endpoint (image vs video) — it
+ * is a URL path segment, not a signed parameter, so passing it never changes
+ * the signature and is safe to omit for existing image-only callers.
  */
-export async function signUpload(params: Record<string, string | number>) {
+export async function signUpload(
+  params: Record<string, string | number>,
+  resourceType: "image" | "video" = "image",
+) {
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -62,6 +70,6 @@ export async function signUpload(params: Record<string, string | number>) {
     signature,
     apiKey,
     cloudName,
-    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
   };
 }

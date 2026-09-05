@@ -329,6 +329,124 @@ export const contactsQuerySchema = z.object({
   dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
+// ── Import pipeline ────────────────────────────────────────────────
+
+export const ALLOWED_IMPORT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+] as const;
+
+export const ALLOWED_IMPORT_VIDEO_MIME_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+] as const;
+
+export const MAX_IMPORT_IMAGE_BYTES = 25 * 1024 * 1024; // 25MB
+export const MAX_IMPORT_VIDEO_BYTES = 250 * 1024 * 1024; // 250MB
+export const MAX_IMPORT_ASSETS_PER_BATCH = 300;
+
+const importBatchSourceValues: ["web", "qr", "api"] = ["web", "qr", "api"];
+
+export const importBatchCreateSchema = z.object({
+  label: z.string().max(200).optional().nullable(),
+  source: z.enum(importBatchSourceValues).default("web"),
+  manifest_collection_id: z.string().uuid().optional().nullable(),
+  manifest: z.record(z.unknown()).optional().nullable(),
+});
+
+export const importUploadSignRequestSchema = z
+  .object({
+    batch_id: z.string().uuid(),
+    client_upload_id: z.string().uuid(),
+    filename: z.string().min(1).max(500),
+    mime_type: z.string().min(1).max(200),
+    kind: z.enum(["image", "video"]),
+    bytes: z.number().int().positive().max(MAX_IMPORT_VIDEO_BYTES),
+    boundary_start: z.boolean().default(false),
+    original_relative_path: z.string().max(1000).optional().nullable(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.kind === "image") {
+      if (!(ALLOWED_IMPORT_IMAGE_MIME_TYPES as readonly string[]).includes(value.mime_type)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mime_type"], message: "Unsupported image type" });
+      }
+      if (value.bytes > MAX_IMPORT_IMAGE_BYTES) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["bytes"], message: "Image exceeds the size limit" });
+      }
+    } else {
+      if (!(ALLOWED_IMPORT_VIDEO_MIME_TYPES as readonly string[]).includes(value.mime_type)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mime_type"], message: "Unsupported video type" });
+      }
+      if (value.bytes > MAX_IMPORT_VIDEO_BYTES) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["bytes"], message: "Video exceeds the size limit" });
+      }
+    }
+  });
+
+export const importAssetCompleteSchema = z.object({
+  batch_id: z.string().uuid(),
+  client_upload_id: z.string().uuid(),
+  kind: z.enum(["image", "video"]),
+  cloudinary_public_id: z.string().min(1).max(1000),
+  cloudinary_secure_url: z.string().url().max(2048),
+  cloudinary_etag: z.string().max(200).optional().nullable(),
+  bytes: z.number().int().positive().optional().nullable(),
+  width: z.number().int().positive().optional().nullable(),
+  height: z.number().int().positive().optional().nullable(),
+  duration_seconds: z.number().positive().optional().nullable(),
+  original_filename: z.string().max(500).optional().nullable(),
+  original_relative_path: z.string().max(1000).optional().nullable(),
+  boundary_start: z.boolean().optional().default(false),
+});
+
+export const importAssetMoveSchema = z.object({
+  asset_id: z.string().uuid(),
+  target_group_id: z.string().uuid().nullable(),
+});
+
+export const importGroupReorderAssetsSchema = z.object({
+  group_id: z.string().uuid(),
+  asset_ids_in_order: z.array(z.string().uuid()).min(1),
+});
+
+export const importGroupSetPrimarySchema = z.object({
+  group_id: z.string().uuid(),
+  asset_id: z.string().uuid(),
+});
+
+export const importGroupMergeSchema = z.object({
+  source_group_id: z.string().uuid(),
+  target_group_id: z.string().uuid(),
+});
+
+export const importGroupSplitSchema = z.object({
+  group_id: z.string().uuid(),
+  asset_ids_to_move: z.array(z.string().uuid()).min(1),
+});
+
+export const importGroupDescriptionSchema = z.object({
+  group_id: z.string().uuid(),
+  admin_description: z.string().max(5000).nullable(),
+});
+
+export const importCollectionOverrideSchema = z.object({
+  group_id: z.string().uuid(),
+  collection_id: z.string().uuid().nullable(),
+});
+
+export const collectionAliasInputSchema = z.object({
+  collection_id: z.string().uuid(),
+  alias: z.string().min(1).max(200),
+});
+
+export type ImportBatchCreateShape = z.infer<typeof importBatchCreateSchema>;
+export type ImportUploadSignRequestShape = z.infer<typeof importUploadSignRequestSchema>;
+export type ImportAssetCompleteShape = z.infer<typeof importAssetCompleteSchema>;
+
 export type VariantInputShape = z.infer<typeof variantInputSchema>;
 export type ProductInputShape = z.infer<typeof productInputSchema>;
 export type CollectionInputShape = z.infer<typeof collectionInputSchema>;

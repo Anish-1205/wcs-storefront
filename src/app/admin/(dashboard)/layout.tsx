@@ -7,6 +7,7 @@ import { AdminMobileNav } from "@/components/admin/AdminMobileNav";
 const NAV = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/import", label: "Import" },
   { href: "/admin/collections", label: "Collections" },
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/contacts", label: "Contacts" },

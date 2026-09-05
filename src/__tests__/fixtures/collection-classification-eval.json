@@ -1,0 +1,29 @@
+{
+  "_comment": "Verified examples drawn from the collections seeded in supabase/migrations/003_seed_sample_data.sql (Bridal Sarees / Sarees Under ₹5,000). Each case's admin description and alias set are what a real import would realistically supply; 'expected' is the slug a correct classification must land on, or null when the case is deliberately ambiguous and MUST resolve to UNRESOLVED rather than a guess.",
+  "collections": [
+    { "id": "col-bridal", "name": "Bridal Sarees", "slug": "bridal-sarees", "description": "Handpicked bridal sarees in pure silk and rich zari." },
+    { "id": "col-budget", "name": "Sarees Under ₹5,000", "slug": "sarees-under-5000", "description": "Beautiful, affordable handloom sarees under ₹5,000." }
+  ],
+  "aliases": [
+    { "alias": "bridal", "collection_id": "col-bridal" },
+    { "alias": "wedding silk", "collection_id": "col-bridal" },
+    { "alias": "budget cotton", "collection_id": "col-budget" }
+  ],
+  "cases": [
+    {
+      "name": "clear bridal match via alias",
+      "adminDescription": "Wedding silk Kanjivaram saree with heavy gold zari border, bridal piece",
+      "expectedSlug": "bridal-sarees"
+    },
+    {
+      "name": "clear budget match via alias",
+      "adminDescription": "Everyday budget cotton saree, lightweight handloom weave",
+      "expectedSlug": "sarees-under-5000"
+    },
+    {
+      "name": "genuinely ambiguous — must stay UNRESOLVED, never guess",
+      "adminDescription": "A nice saree",
+      "expectedSlug": null
+    }
+  ]
+}

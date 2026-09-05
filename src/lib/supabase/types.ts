@@ -20,6 +20,32 @@ export type ContactStatusTag =
   | "quality_inconsistent"
   | "blocked";
 export type ContactSource = "manual" | "import" | "inquiry" | "subscriber";
+export type ReviewStatus = "not_required" | "pending_review" | "approved";
+
+// ── Import pipeline ────────────────────────────────────────────────
+export type ImportBatchSource = "web" | "qr" | "api";
+export type ImportBatchStatus = "open" | "reviewing" | "completed" | "cancelled";
+export type ImportGroupingMethod =
+  | "explicit_boundary"
+  | "manifest"
+  | "filename_identifier"
+  | "order_timestamp"
+  | "visual_similarity"
+  | "ai_inference"
+  | "manual";
+export type ImportGroupStatus = "draft" | "flagged_for_review" | "confirmed" | "product_created";
+export type ImportAssetKind = "image" | "video";
+export type ImportAssetUploadStatus = "pending" | "uploaded" | "failed";
+export type CollectionClassificationState = "confirmed" | "suggested" | "unresolved";
+export type CollectionClassificationMethod =
+  | "explicit_admin"
+  | "known_batch_manifest"
+  | "trusted_manifest"
+  | "existing_mapping"
+  | "ai_suggested"
+  | "none";
+export type ImportJobType = "ai_group_metadata" | "ai_collection_classification";
+export type ImportJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface Category {
   id: string;
@@ -44,6 +70,8 @@ export interface Product {
   product_code: string | null;
   is_featured: boolean;
   stock_type: StockType;
+  import_group_id: string | null;
+  review_status: ReviewStatus;
   created_at: string;
   updated_at: string;
 }
@@ -125,6 +153,104 @@ export interface Contact {
   updated_at: string;
 }
 
+export interface ImportBatch {
+  id: string;
+  created_by_email: string;
+  source: ImportBatchSource;
+  label: string | null;
+  manifest: Record<string, unknown> | null;
+  manifest_collection_id: string | null;
+  status: ImportBatchStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportAiMetadata {
+  name?: { value: string; confidence: number; evidence?: string };
+  display_name?: { value: string; confidence: number; evidence?: string };
+  short_description?: { value: string; confidence: number; evidence?: string };
+  tagline?: { value: string; confidence: number; evidence?: string };
+  highlights?: { value: string[]; confidence: number; evidence?: string };
+  colour?: { value: string; confidence: number; evidence?: string };
+  tags?: { value: string[]; confidence: number; evidence?: string };
+  category_slug?: { value: string; confidence: number; evidence?: string };
+  alt_text?: { value: string[]; confidence: number; evidence?: string };
+  primary_asset_client_upload_id?: { value: string; confidence: number; evidence?: string };
+}
+
+export interface ImportProductGroup {
+  id: string;
+  batch_id: string;
+  grouping_method: ImportGroupingMethod;
+  status: ImportGroupStatus;
+  flagged_reason: string | null;
+  admin_description: string | null;
+  ai_metadata: ImportAiMetadata | null;
+  ai_generated_at: string | null;
+  ai_warning: string | null;
+  product_id: string | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportAsset {
+  id: string;
+  batch_id: string;
+  group_id: string | null;
+  client_upload_id: string;
+  kind: ImportAssetKind;
+  original_filename: string | null;
+  original_relative_path: string | null;
+  boundary_start: boolean;
+  upload_status: ImportAssetUploadStatus;
+  cloudinary_public_id: string | null;
+  cloudinary_secure_url: string | null;
+  cloudinary_etag: string | null;
+  bytes: number | null;
+  width: number | null;
+  height: number | null;
+  duration_seconds: number | null;
+  duplicate_of_asset_id: string | null;
+  is_primary: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionAlias {
+  id: string;
+  collection_id: string;
+  alias: string;
+  created_at: string;
+}
+
+export interface ImportCollectionClassification {
+  id: string;
+  group_id: string;
+  state: CollectionClassificationState;
+  method: CollectionClassificationMethod;
+  collection_id: string | null;
+  confidence: number | null;
+  evidence: Record<string, unknown> | null;
+  candidate_alternatives: Array<{ collection_id: string; collection_name: string; confidence: number }> | null;
+  decided_by: "system" | "admin";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportProcessingJob {
+  id: string;
+  batch_id: string;
+  group_id: string | null;
+  job_type: ImportJobType;
+  status: ImportJobStatus;
+  attempts: number;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Composed shapes used across the app ───────────────────────────
 
 export interface VariantWithImages extends ProductVariant {
@@ -134,4 +260,9 @@ export interface VariantWithImages extends ProductVariant {
 export interface ProductWithRelations extends Product {
   category: Category | null;
   product_variants: VariantWithImages[];
+}
+
+export interface ImportGroupWithRelations extends ImportProductGroup {
+  import_assets: ImportAsset[];
+  import_collection_classifications: ImportCollectionClassification[];
 }

@@ -48,7 +48,7 @@ export type ActionResult<T extends object = Record<string, unknown>> =
   | ({ ok: true } & T)
   | { ok: false; error: string };
 
-async function toResult<T extends object>(fn: () => Promise<T>): Promise<ActionResult<T>> {
+export async function toResult<T extends object>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
     const data = await fn();
     return { ok: true, ...data };
@@ -118,6 +118,31 @@ async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAd
 async function getProductSlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
   const { data } = await admin.from("products").select("slug").eq("id", id).maybeSingle();
   return (data as { slug?: string } | null)?.slug ?? null;
+}
+
+/**
+ * No AI-created/imported product may publish automatically or be published
+ * before its import review is approved. Products created directly through
+ * this admin panel (not via the import pipeline) default to
+ * review_status='not_required' and are never affected by this check.
+ */
+async function ensurePublishAllowed(
+  admin: Awaited<ReturnType<typeof assertAdmin>>["admin"],
+  productId: string | undefined,
+  targetStatus: ProductStatus,
+) {
+  if (targetStatus !== "published" || !productId) return;
+  const { data } = await admin
+    .from("products")
+    .select("review_status")
+    .eq("id", productId)
+    .maybeSingle();
+  const reviewStatus = (data as { review_status?: string } | null)?.review_status ?? "not_required";
+  if (reviewStatus === "pending_review") {
+    throw new Error(
+      "This product was created from an import and needs review approval before it can be published.",
+    );
+  }
 }
 
 function csvEscape(value: unknown) {
@@ -460,6 +485,8 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product");
   input = parsed.data;
 
+  await ensurePublishAllowed(admin, input.id, input.status);
+
   let previousSlug: string | null = null;
   if (input.id) {
     previousSlug = await getProductSlugById(admin, input.id);
@@ -726,6 +753,7 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
 export async function updateProductStatus(id: string, status: ProductStatus): Promise<ActionResult> {
   return toResult(async () => {
     const { admin } = await assertAdmin();
+    await ensurePublishAllowed(admin, id, status);
     const { data, error } = await admin
       .from("products")
       .update({ status })
