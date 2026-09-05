@@ -8,18 +8,19 @@
  *  (prepared by scripts/prepare-media.mjs).
  *
  *  NOTHING HERE IS INVENTED:
- *    • `title` / `description` / `details` describe only what is visibly
- *      present in the photographs — colour, motif, drape, what's included.
- *      No named weave / region / fibre is claimed (no "silk", "tissue",
- *      "Banarasi", "Bandhani", "Patola", "Ikat", "Paithani", …).
- *    • `weave`, `material`, `origin`, `price` are deliberately `null`.
- *      Fill them in when you have the real information. A `null` price
- *      renders as "Price on Enquiry"; unknown availability renders as
- *      "Availability on Request" (never "In Stock").
- *    • The catalogue is browsed by COLOUR — a neutral grouping that needs
- *      no verification. `category` mirrors `colourFamily`. When you have
- *      verified weave/collection names from your partners, you can add a
- *      proper category axis later without touching any page component.
+ *    • `title` / `description` / `details` / `tags` describe what is visibly
+ *      present in the photographs plus the weave / fabric / pricing the
+ *      business supplied in writing (2026-09-06). Do NOT add named weaves,
+ *      fibres, regions or celebrity references beyond what the business has
+ *      actually stated.
+ *    • `weave` / `material` are filled from the business's own product notes;
+ *      `origin` stays `null` (not stated). `price` is in INR — `null` still
+ *      renders as "Price on Enquiry", and `availability: "on-request"` still
+ *      renders as "Availability on Request" (never "In Stock").
+ *    • The catalogue is browsed by COLOUR — a neutral grouping. `category`
+ *      mirrors `colourFamily`. A verified weave axis can be added later
+ *      without touching any page component.
+ *    • WCS-010 still has no price / weave / description from the business.
  *
  *  To add a product: drop its media in public/media/<slug>/, re-run
  *  `node scripts/prepare-media.mjs "<source folder>"`, add an entry here.
@@ -100,6 +101,8 @@ export interface Product {
   includes: string | null;
   images: ProductImage[];
   videos: ProductVideo[];
+  /** short badges — weave family, occasion, or the look's provenance */
+  tags: string[];
   featured: boolean;
   /** shown next to a folded colour-assortment photo, if one exists */
   colourRangeNote: string | null;
@@ -152,23 +155,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-001",
     slug: "purple-tanchoi-silk",
-    title: "Purple Saree with Paisley Motifs",
+    title: "Purple Banarasi Munga Saree with Antique Zari",
     reference: "WCS-001",
-    weave: null,
-    material: null,
+    weave: "Banarasi Munga",
+    material: "Munga crepe silk",
     origin: null,
     colour: "Violet-purple with antique gold",
     colourFamily: "Purple",
-    price: null,
-    availability: "on-request",
+    price: 4990,
+    availability: "available",
     description:
-      "A deep violet-purple saree patterned edge to edge with a dense, self-toned paisley design in antique gold and silver. The pallu carries broad ornamental bands, and the fabric shifts between plum and gold as it catches the light. Photographed on the stand with a temple necklace.",
+      "A very exquisite Banarasi Munga crepe saree, woven edge to edge with antique zari motifs in a dense, self-toned paisley design. The pallu carries broad ornamental bands, and the fabric shifts between plum and gold as it catches the light — a grand, rich-looking drape at a pocket-friendly price. Be the vibe this festive season.",
     details: [
-      "All-over paisley motifs in gold and silver",
-      "Contrast fuchsia-pink inner border",
-      "Ornamental banded pallu",
-      "Soft, fluid drape",
+      "Banarasi Munga crepe silk with a soft, fluid fall",
+      "All-over antique-zari paisley motifs in gold and silver",
+      "Contrast fuchsia-pink inner border and ornamental banded pallu",
+      "Matching purple checked blouse piece included",
     ],
+    tags: ["Banarasi Munga", "Antique zari", "Festive"],
     includes: "Matching purple checked blouse piece shown",
     images: [
       img("purple-tanchoi-silk", "01-full.jpg", "full", "Purple saree with a gold paisley pattern, draped on a stand", "50% 20%"),
@@ -186,23 +190,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-002",
     slug: "coral-tissue-paithani-pallu",
-    title: "Coral & Rose-Gold Saree with Figured Pallu",
+    title: "Coral Kota Tissue Saree with Paithani Pallu",
     reference: "WCS-002",
-    weave: null,
-    material: null,
+    weave: "Kota tissue",
+    material: "Manipuri tissue",
     origin: null,
     colour: "Rose-gold / coral with pink",
     colourFamily: "Pink",
-    price: null,
-    availability: "on-request",
+    price: 5500,
+    availability: "available",
     description:
-      "A luminous rose-gold saree scattered with tiny two-tone buds. A bright pink contrast border and pallu are filled with colourful figured motifs — parrots, peacocks, flowering vines and bow-and-arrow roundels in green, blue, violet and red. The body has a gentle sheen and a light, easy fall.",
+      "A premium, super-soft Kota tissue saree with a striking Paithani-inspired border and a rich Paithani pallu — the lightness of Manipuri tissue brought together with traditional Maharashtrian artistry. A luminous rose-gold body is scattered with tiny two-tone buds; the bright pink border and pallu are filled with figured motifs of parrots, peacocks, flowering vines and roundels.",
     details: [
-      "Rose-gold body with small scattered buds",
-      "Bright pink contrast border and pallu",
+      "Super-soft Kota / Manipuri tissue with a light, glossy fall",
+      "Paithani-inspired contrast border and rich Paithani pallu",
       "Figured motifs — parrots, peacocks, florals, roundels",
-      "Light, glossy drape",
+      "Rose-gold body with small scattered buds",
     ],
+    tags: ["Kota tissue", "Paithani pallu", "Lightweight"],
     includes: null,
     images: [
       img("coral-tissue-paithani-pallu", "01-full.jpg", "full", "Coral saree with a pink figured pallu, draped on a stand"),
@@ -221,23 +226,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-003",
     slug: "antique-gold-patola-tissue",
-    title: "Antique-Gold Saree with Contrast Border",
+    title: "Antique-Gold Banarasi Tissue Saree with Patola Border",
     reference: "WCS-003",
-    weave: null,
-    material: null,
+    weave: "Banarasi tissue brocade",
+    material: "Tissue brocade",
     origin: null,
     colour: "Antique gold / copper with violet-blue",
     colourFamily: "Gold",
-    price: null,
-    availability: "on-request",
+    price: 6750,
+    availability: "available",
     description:
-      "A two-tone antique-gold saree with a fine metallic check across the body. A deep violet-blue contrast border and skirt panel run with geometric florets in pink, orange and green, and the pallu is worked in dense ornamental gold. A statement piece with a rich, weighty fall.",
+      "An exclusive Banarasi tissue-brocade saree with a highlighted Patola border. A two-tone antique-gold body carries a fine metallic check; the deep violet-blue border and skirt panel run with Patola-style geometric florets in pink, orange and green, and the pallu is worked in dense ornamental gold. A statement piece with a rich, weighty fall.",
     details: [
-      "Two-tone gold-copper ground with a fine metallic check",
-      "Violet-blue geometric contrast border and skirt panel",
-      "Ornate gold pallu",
+      "Banarasi tissue brocade, two-tone gold-copper ground with a metallic check",
+      "Highlighted Patola-style geometric contrast border and skirt panel",
+      "Ornate gold brocade pallu",
       "Structured, weighty drape",
     ],
+    tags: ["Banarasi tissue", "Patola border", "Statement"],
     includes: null,
     images: [
       img("antique-gold-patola-tissue", "01-full.jpg", "full", "Antique-gold saree with a violet contrast border, on a stand"),
@@ -258,23 +264,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-004",
     slug: "bandhani-patola-indigo",
-    title: "Indigo Saree with Figured Border",
+    title: "Royal-Blue Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-004",
-    weave: null,
+    weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
     colour: "Royal blue with a red-orange border",
     colourFamily: "Blue",
-    price: null,
-    availability: "on-request",
+    price: 8500,
+    availability: "available",
     description:
-      "A royal-blue saree covered in a fine all-over dotted pattern, finished with a contrasting border in warm red and orange carrying rows of figures, elephants and dancers. One of four colourways photographed from the same design.",
+      "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola brought together in one saree. A fine all-over Bandhej dot pattern on a royal-blue ground, finished with a contrasting warm red-and-orange Patola-style border of elephants, dancers and figures with a gold-tone edge. One of four colourways from the same design.",
     details: [
-      "Fine all-over dotted pattern",
-      "Contrasting patterned border with figurative motifs",
-      "Gold-tone edge",
-      "Fluid, lightweight drape",
+      "Banarasi–Bandhej–Patola fusion",
+      "Fine all-over Bandhej dot pattern",
+      "Contrasting Patola-style border with figurative motifs",
+      "Fluid, lightweight drape with a gold-tone edge",
     ],
+    tags: ["Fusion", "Bandhej", "Patola border"],
     includes: null,
     images: [
       img("bandhani-patola-indigo", "01-full.jpg", "full", "Indigo saree with a red-orange figured border, on a stand"),
@@ -292,23 +299,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-005",
     slug: "bandhani-patola-vermilion",
-    title: "Vermilion Saree with Figured Border",
+    title: "Vermilion Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-005",
-    weave: null,
+    weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
     colour: "Vermilion red with a pink border",
     colourFamily: "Red",
-    price: null,
-    availability: "on-request",
+    price: 8500,
+    availability: "available",
     description:
-      "A vermilion-red saree in a fine all-over dotted pattern with a contrasting pink border of elephants, parrots and figures. From the same series as the indigo and green colourways.",
+      "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a vermilion-red ground, finished with a contrasting pink Patola-style border of elephants, parrots and figures with a gold-tone edge. One of four colourways from the same design.",
     details: [
-      "Fine all-over dotted pattern",
-      "Contrasting pink border with figurative motifs",
-      "Gold-tone edge",
-      "Fluid, lightweight drape",
+      "Banarasi–Bandhej–Patola fusion",
+      "Fine all-over Bandhej dot pattern",
+      "Contrasting pink Patola-style border with figurative motifs",
+      "Fluid, lightweight drape with a gold-tone edge",
     ],
+    tags: ["Fusion", "Bandhej", "Patola border"],
     includes: null,
     images: [
       img("bandhani-patola-vermilion", "01-full.jpg", "full", "Vermilion saree with a pink figured border, on a stand"),
@@ -325,23 +333,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-006",
     slug: "bandhani-patola-emerald",
-    title: "Emerald Saree with Figured Border",
+    title: "Bottle-Green Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-006",
-    weave: null,
+    weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
     colour: "Bottle green with a contrast border",
     colourFamily: "Green",
-    price: null,
-    availability: "on-request",
+    price: 8500,
+    availability: "available",
     description:
-      "A bottle-green saree in a fine all-over dotted pattern with a contrasting figurative border and gold-tone edge. From the same series.",
+      "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bottle-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
     details: [
-      "Fine all-over dotted pattern",
-      "Contrasting figurative border",
-      "Gold-tone edge",
-      "Fluid, lightweight drape",
+      "Banarasi–Bandhej–Patola fusion",
+      "Fine all-over Bandhej dot pattern",
+      "Contrasting Patola-style figurative border",
+      "Fluid, lightweight drape with a gold-tone edge",
     ],
+    tags: ["Fusion", "Bandhej", "Patola border"],
     includes: null,
     images: [
       img("bandhani-patola-emerald", "01-full.jpg", "full", "Emerald saree with a figured border, on a stand"),
@@ -358,23 +367,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-007",
     slug: "bandhani-patola-parrot",
-    title: "Parrot-Green Saree with Figured Border",
+    title: "Parrot-Green Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-007",
-    weave: null,
+    weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
     colour: "Parrot green with a contrast border",
     colourFamily: "Green",
-    price: null,
-    availability: "on-request",
+    price: 8500,
+    availability: "available",
     description:
-      "A bright parrot-green saree in a fine all-over dotted pattern with a contrasting figurative border and gold-tone edge — the most photographed colourway in the series, with detail and flat-lay views.",
+      "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bright parrot-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
     details: [
-      "Fine all-over dotted pattern",
-      "Contrasting figurative border",
-      "Gold-tone edge",
-      "Fluid, lightweight drape",
+      "Banarasi–Bandhej–Patola fusion",
+      "Fine all-over Bandhej dot pattern",
+      "Contrasting Patola-style figurative border",
+      "Fluid, lightweight drape with a gold-tone edge",
     ],
+    tags: ["Fusion", "Bandhej", "Patola border"],
     includes: null,
     images: [
       img("bandhani-patola-parrot", "01-full.jpg", "full", "Parrot-green saree with a figured border, on a stand"),
@@ -394,23 +404,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-008",
     slug: "red-hansa-jamdani-silk",
-    title: "Red Saree with Bird Motifs",
+    title: "Red Banarasi Silk Saree with Gandaberunda Motifs",
     reference: "WCS-008",
-    weave: null,
-    material: null,
+    weave: "Banarasi",
+    material: "Silk",
     origin: null,
     colour: "Bright red with gold and silver",
     colourFamily: "Red",
-    price: null,
-    availability: "on-request",
+    price: 4990,
+    availability: "available",
     description:
-      "A bright red saree patterned all over with flying-bird motifs in gold and silver, framed by a fine vine border. Photographed as a flat-lay with its matching patterned blouse piece. A classic festive red with a light, supple hand.",
+      "A saree that epitomises Indian royalty. A regal Banarasi silk drape, richly woven with gold and silver Gandaberunda (double-headed bird) motifs and framed by an ornate traditional border — a timeless masterpiece of heritage and grandeur, of the kind famously draped by Nita Ambani. Photographed as a flat-lay with its matching patterned blouse piece.",
     details: [
-      "All-over flying-bird motifs in gold and silver",
-      "Fine vine border",
-      "Even, festive red",
-      "Light, supple hand",
+      "Banarasi silk with a light, supple hand",
+      "All-over Gandaberunda bird motifs in gold and silver",
+      "Ornate traditional contrast border",
+      "Matching red patterned blouse piece included",
     ],
+    tags: ["Banarasi Silk", "Bridal", "Celebrity-favourite design"],
     includes: "Matching red patterned blouse piece shown",
     images: [
       img("red-hansa-jamdani-silk", "01-full.jpg", "full", "Red saree with bird motifs, laid out full length"),
@@ -431,23 +442,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-009",
     slug: "indigo-blockprint-modal-silk",
-    title: "Indigo Saree with Mirror & Thread Work",
+    title: "Indigo Georgette Saree with Buti Print & Mirror Work",
     reference: "WCS-009",
     weave: null,
-    material: null,
+    material: "Georgette",
     origin: null,
     colour: "Indigo / navy blue",
     colourFamily: "Blue",
-    price: null,
-    availability: "on-request",
+    price: 4190,
+    availability: "available",
     description:
-      "An indigo saree in a small, closely-spaced printed motif, with a soft, sheer fall. The pallu and border are worked with floral thread embroidery and tiny mirrors, and the palm-motif borders are picked out in fine gold-tone thread. Understated by day, quietly ornamental for the evening.",
+      "A gorgeous georgette saree with a small, closely-spaced buti print and a soft, sheer fall — inspired by the look famously worn by Kareena Kapoor. The pallu and border are worked with floral thread embroidery and tiny mirrors, and the palm-motif borders are picked out in fine gold-tone thread. Understated by day, quietly ornamental for the evening.",
     details: [
-      "Small closely-spaced printed motif across the body",
+      "Soft, sheer georgette with an easy drape",
+      "Small closely-spaced buti print across the body",
       "Floral thread embroidery and mirror work on pallu and border",
       "Gold-outlined palm-motif borders",
-      "Soft, sheer, easy drape",
     ],
+    tags: ["Georgette", "Mirror work", "Celebrity-favourite design"],
     includes: null,
     images: [
       img("indigo-blockprint-modal-silk", "01-full.jpg", "full", "Indigo saree with an embroidered pallu, on a stand"),
@@ -478,6 +490,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Multicolour",
     price: null,
     availability: "on-request",
+    tags: ["Mirror work", "Patchwork", "Festive"],
     description:
       "A vivid patchwork-print saree in magenta, purple, teal and red — dotted, paisley and floral blocks set side by side — edged with a heavy scalloped border of round mirrors and gold beadwork. Shown with a matching red mirror-work dupatta. A festive, celebratory piece.",
     details: [

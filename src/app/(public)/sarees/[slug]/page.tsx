@@ -67,6 +67,8 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     description: product.description,
     image: product.images.map((i) => `${SITE.url}${i.src}`),
     color: product.colour,
+    ...(product.material ? { material: product.material } : {}),
+    ...(product.weave ? { pattern: product.weave } : {}),
     brand: { "@type": "Brand", name: SITE.name },
     offers: {
       "@type": "Offer",
@@ -113,6 +115,19 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             <p className="mt-2 text-[0.72rem] uppercase tracking-[0.2em] text-muted-foreground">
               Ref. {product.reference}
             </p>
+
+            {product.tags.length > 0 && (
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {product.tags.map((t) => (
+                  <li
+                    key={t}
+                    className="border border-line px-2.5 py-1 text-[0.66rem] uppercase tracking-[0.16em] text-deep-brown/75"
+                  >
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <dl className="mt-6 space-y-1.5 text-sm">
               <Row label="Colour" value={product.colour} />
