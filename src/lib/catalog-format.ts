@@ -16,6 +16,8 @@ export function availabilityLabel(a: Availability): string {
       return "Available now";
     case "limited":
       return "Limited availability";
+    case "pre-order":
+      return "Open for pre-booking";
     case "sold":
       return "Currently unavailable";
     case "on-request":
@@ -25,7 +27,7 @@ export function availabilityLabel(a: Availability): string {
 }
 
 export function availabilityTone(a: Availability): "gold" | "muted" | "sold" {
-  if (a === "available") return "gold";
+  if (a === "available" || a === "pre-order") return "gold";
   if (a === "sold") return "sold";
   return "muted";
 }

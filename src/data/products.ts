@@ -20,7 +20,6 @@
  *    • The catalogue is browsed by COLOUR — a neutral grouping. `category`
  *      mirrors `colourFamily`. A verified weave axis can be added later
  *      without touching any page component.
- *    • WCS-010 still has no price / weave / description from the business.
  *
  *  To add a product: drop its media in public/media/<slug>/, re-run
  *  `node scripts/prepare-media.mjs "<source folder>"`, add an entry here.
@@ -76,7 +75,12 @@ export interface ProductVideo {
   h: number;
 }
 
-export type Availability = "available" | "limited" | "on-request" | "sold";
+export type Availability =
+  | "available"
+  | "limited"
+  | "on-request"
+  | "pre-order"
+  | "sold";
 
 export interface Product {
   id: string;
@@ -95,6 +99,8 @@ export interface Product {
   /** INR. null → "Price on Enquiry" */
   price: number | null;
   availability: Availability;
+  /** e.g. "Dispatched in 15–20 days" — shown under the availability label */
+  availabilityNote: string | null;
   description: string;
   details: string[];
   /** e.g. "Blouse piece shown" — only when visibly present */
@@ -164,6 +170,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Purple",
     price: 4990,
     availability: "available",
+    availabilityNote: null,
     description:
       "A very exquisite Banarasi Munga crepe saree, woven edge to edge with antique zari motifs in a dense, self-toned paisley design. The pallu carries broad ornamental bands, and the fabric shifts between plum and gold as it catches the light — a grand, rich-looking drape at a pocket-friendly price. Be the vibe this festive season.",
     details: [
@@ -172,7 +179,7 @@ const SEEDS: ProductSeed[] = [
       "Contrast fuchsia-pink inner border and ornamental banded pallu",
       "Matching purple checked blouse piece included",
     ],
-    tags: ["Banarasi Munga", "Antique zari", "Festive"],
+    tags: ["Banarasi Munga", "Dyeable", "Festive"],
     includes: "Matching purple checked blouse piece shown",
     images: [
       img("purple-tanchoi-silk", "01-full.jpg", "full", "Purple saree with a gold paisley pattern, draped on a stand", "50% 20%"),
@@ -184,7 +191,8 @@ const SEEDS: ProductSeed[] = [
     ],
     videos: [video("purple-tanchoi-silk", "video-1.mp4", "The purple paisley saree shown in motion")],
     featured: true,
-    colourRangeNote: "This design is available in a wide colour range — ask us what is in stock.",
+    colourRangeNote:
+      "Dyeable — this design is made to order in a wide range of colours (a selection shown). Tell us the shade you have in mind.",
     createdAt: "2026-09-03",
   },
   {
@@ -199,6 +207,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Pink",
     price: 5500,
     availability: "available",
+    availabilityNote: null,
     description:
       "A premium, super-soft Kota tissue saree with a striking Paithani-inspired border and a rich Paithani pallu — the lightness of Manipuri tissue brought together with traditional Maharashtrian artistry. A luminous rose-gold body is scattered with tiny two-tone buds; the bright pink border and pallu are filled with figured motifs of parrots, peacocks, flowering vines and roundels.",
     details: [
@@ -235,6 +244,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Gold",
     price: 6750,
     availability: "available",
+    availabilityNote: null,
     description:
       "An exclusive Banarasi tissue-brocade saree with a highlighted Patola border. A two-tone antique-gold body carries a fine metallic check; the deep violet-blue border and skirt panel run with Patola-style geometric florets in pink, orange and green, and the pallu is worked in dense ornamental gold. A statement piece with a rich, weighty fall.",
     details: [
@@ -273,6 +283,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Blue",
     price: 8500,
     availability: "available",
+    availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola brought together in one saree. A fine all-over Bandhej dot pattern on a royal-blue ground, finished with a contrasting warm red-and-orange Patola-style border of elephants, dancers and figures with a gold-tone edge. One of four colourways from the same design.",
     details: [
@@ -308,6 +319,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Red",
     price: 8500,
     availability: "available",
+    availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a vermilion-red ground, finished with a contrasting pink Patola-style border of elephants, parrots and figures with a gold-tone edge. One of four colourways from the same design.",
     details: [
@@ -342,6 +354,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Green",
     price: 8500,
     availability: "available",
+    availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bottle-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
     details: [
@@ -376,6 +389,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Green",
     price: 8500,
     availability: "available",
+    availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bright parrot-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
     details: [
@@ -413,6 +427,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Red",
     price: 4990,
     availability: "available",
+    availabilityNote: null,
     description:
       "A saree that epitomises Indian royalty. A regal Banarasi silk drape, richly woven with gold and silver Gandaberunda (double-headed bird) motifs and framed by an ornate traditional border — a timeless masterpiece of heritage and grandeur, of the kind famously draped by Nita Ambani. Photographed as a flat-lay with its matching patterned blouse piece.",
     details: [
@@ -451,6 +466,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Blue",
     price: 4190,
     availability: "available",
+    availabilityNote: null,
     description:
       "A gorgeous georgette saree with a small, closely-spaced buti print and a soft, sheer fall — inspired by the look famously worn by Kareena Kapoor. The pallu and border are worked with floral thread embroidery and tiny mirrors, and the palm-motif borders are picked out in fine gold-tone thread. Understated by day, quietly ornamental for the evening.",
     details: [
@@ -481,23 +497,24 @@ const SEEDS: ProductSeed[] = [
   {
     id: "wcs-010",
     slug: "rajwadi-patchwork-mirror-saree",
-    title: "Multicolour Patchwork Saree with Mirror Work",
+    title: "Multicolour Designer-Inspired Patchwork Georgette Saree",
     reference: "WCS-010",
     weave: null,
-    material: null,
+    material: "Pure georgette",
     origin: null,
     colour: "Multicolour — magenta, purple, teal, red",
     colourFamily: "Multicolour",
-    price: null,
-    availability: "on-request",
-    tags: ["Mirror work", "Patchwork", "Festive"],
+    price: 8490,
+    availability: "pre-order",
+    availabilityNote: "Open for pre-booking — dispatched in 15–20 days",
+    tags: ["Pure georgette", "Real mirror work", "Pre-book"],
     description:
-      "A vivid patchwork-print saree in magenta, purple, teal and red — dotted, paisley and floral blocks set side by side — edged with a heavy scalloped border of round mirrors and gold beadwork. Shown with a matching red mirror-work dupatta. A festive, celebratory piece.",
+      "A Sabyasachi-inspired, vibrant pure-georgette patchwork saree — an exquisite mix of colourful prints (dotted, paisley and floral blocks) brought together into a rich, artistic pattern, and finished along the borders with delicate real mirror and embellishment work. A blend of traditional craftsmanship and bold contemporary charm, and a stunning statement piece for festive and special occasions. Shown with a matching red mirror-work dupatta.",
     details: [
-      "Patchwork-style print — dotted, paisley and floral blocks",
-      "Heavy scalloped mirror-and-bead border",
-      "Lightweight, flowing fabric",
-      "Comes with a red mirror-work dupatta",
+      "Pure georgette with a light, flowing fall",
+      "Patchwork print — dotted, paisley and floral blocks",
+      "Real mirror and embellishment work along the borders",
+      "Comes with a matching red mirror-work dupatta",
     ],
     includes: "Red mirror-work dupatta shown",
     images: [

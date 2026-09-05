@@ -80,7 +80,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           ? "https://schema.org/InStock"
           : product.availability === "sold"
             ? "https://schema.org/OutOfStock"
-            : "https://schema.org/LimitedAvailability",
+            : product.availability === "pre-order"
+              ? "https://schema.org/PreOrder"
+              : "https://schema.org/LimitedAvailability",
     },
   };
 
@@ -143,6 +145,11 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               <p className="mt-1 text-[0.72rem] uppercase tracking-[0.2em] text-antique-gold">
                 {availabilityLabel(product.availability)}
               </p>
+              {product.availabilityNote && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {product.availabilityNote}
+                </p>
+              )}
             </div>
 
             <div className="mt-6">

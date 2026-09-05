@@ -105,10 +105,11 @@ export function PortraitImage(props: ImageProps) {
 }
 
 /**
- * Portrait video that autoplays muted/looped only while on screen.
+ * Portrait video that autoplays muted/looped whenever it's on screen and
+ * pauses (keeping its frame) once scrolled away — no play button, ever.
  * - the container reserves the video's exact aspect ratio → zero CLS
- * - respects prefers-reduced-motion and Save-Data (poster only, tap to play)
- * - pauses when scrolled well out of view; never more than one plays per card
+ * - a real poster frame shows until playback starts (and if autoplay is
+ *   blocked, e.g. iOS Low Power Mode, the still simply stays — no control)
  */
 export function PortraitVideo(props: VideoProps) {
   const {
@@ -121,7 +122,7 @@ export function PortraitVideo(props: VideoProps) {
     position,
     className,
     rounded,
-    preload = "none",
+    preload = "metadata",
     maxClassName,
     posterPriority,
     posterSizes = "(min-width:1024px) 44vw, 90vw",
@@ -129,35 +130,17 @@ export function PortraitVideo(props: VideoProps) {
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [manual, setManual] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
-    const reduced = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const conn = (
-      navigator as Navigator & {
-        connection?: { saveData?: boolean; effectiveType?: string };
-      }
-    ).connection;
-    const slow =
-      conn?.saveData === true ||
-      conn?.effectiveType === "slow-2g" ||
-      conn?.effectiveType === "2g";
-    if (reduced || slow) {
-      setManual(true);
-      return;
-    }
-
     const el = videoRef.current;
     const wrap = wrapRef.current;
     if (!el || !wrap) return;
 
     // Hysteresis: start once a third of the clip is on screen, pause only
-    // once it's almost gone — so scrolling past pauses it "right there" and
-    // scrolling back resumes from the same frame, with no flicker at the edge.
+    // once it's almost gone — scrolling past pauses it on the frame, scrolling
+    // back resumes from the same frame, with no flicker at the edge.
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.intersectionRatio >= 0.3) {
@@ -172,17 +155,6 @@ export function PortraitVideo(props: VideoProps) {
     io.observe(wrap);
     return () => io.disconnect();
   }, []);
-
-  function tapPlay() {
-    const el = videoRef.current;
-    if (!el) return;
-    if (el.paused) {
-      el.play().then(() => setPlaying(true)).catch(() => {});
-    } else {
-      el.pause();
-      setPlaying(false);
-    }
-  }
 
   return (
     <div
@@ -217,31 +189,14 @@ export function PortraitVideo(props: VideoProps) {
         poster={poster}
         aria-label={alt}
         onPlaying={() => setVideoReady(true)}
-        onClick={manual ? tapPlay : undefined}
         className={cn(
           "absolute inset-0 h-full w-full",
           fit === "contain" ? "object-contain" : "object-cover",
-          manual && "cursor-pointer",
         )}
         style={position ? { objectPosition: position } : undefined}
       >
         <source src={src} type="video/mp4" />
       </video>
-
-      {manual && !playing && (
-        <button
-          type="button"
-          onClick={tapPlay}
-          aria-label="Play video"
-          className="absolute inset-0 flex items-center justify-center bg-black/15"
-        >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-oxblood/95 text-primary-foreground shadow-sm">
-            <svg viewBox="0 0 24 24" className="ml-0.5 h-6 w-6 fill-current">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-        </button>
-      )}
     </div>
   );
 }

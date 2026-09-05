@@ -145,9 +145,12 @@ node scripts/score-media.mjs          # writes media-quality.json
 
 The gallery (`ProductGallery.tsx`) also de-dupes: no image is shown twice, all
 photos render (not just the first "full" shot), close-ups pair into a 2-col
-grid, and each non-hero shot gets a small role caption. The clip autoplays
-muted/looped only while ≥30% on screen and pauses (keeping its frame) once it's
-almost gone — `prefers-reduced-motion` / Save-Data fall back to tap-to-play.
+grid, and each non-hero shot gets a small role caption. Video (`PortraitVideo`)
+autoplays muted/looped whenever it's ≥30% on screen and pauses on its current
+frame once it's almost gone — **no play button, ever** (a client decision that
+overrides the usual `prefers-reduced-motion` courtesy for this muted b-roll).
+If autoplay is blocked (e.g. iOS Low Power Mode) the real poster frame just
+stays — still no control.
 
 Poster/OG images (`hero-poster.jpg`, `og.jpg`) were generated ad-hoc with sharp;
 regenerate them by hand if the hero or the featured share image changes.
