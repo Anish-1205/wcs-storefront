@@ -61,73 +61,77 @@ export function FilterPanel({ categories, hideCategory }: Props) {
   }
 
   const hasFilters = Array.from(params.keys()).length > 0;
+  const fieldClass =
+    "h-9 rounded-none border-0 border-b border-border bg-transparent px-0 text-sm focus-visible:border-burgundy focus-visible:ring-0 focus-visible:ring-offset-0";
+  const labelClass = "block text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
 
   return (
-    <div className="space-y-5 rounded-sm border border-border bg-white p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-lg text-burgundy">Filter</h2>
-        {hasFilters && (
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-xs"
-            onClick={() => router.push(pathname, { scroll: false })}
-          >
-            Clear all
-          </Button>
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-5">
+      <div className="flex flex-wrap gap-x-8 gap-y-4">
+        {!hideCategory && (
+          <div className="w-40 space-y-1.5">
+            <label htmlFor="catalog-category" className={labelClass}>
+              Category
+            </label>
+            <Select
+              id="catalog-category"
+              className={fieldClass}
+              value={params.get("category") ?? ""}
+              onChange={(e) => setParam("category", e.target.value)}
+            >
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         )}
-      </div>
 
-      {!hideCategory && (
-        <div className="space-y-1.5">
-          <label htmlFor="catalog-category" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Category
+        <div className="w-36 space-y-1.5">
+          <label htmlFor="catalog-fabric" className={labelClass}>
+            Fabric
           </label>
           <Select
-            id="catalog-category"
-            value={params.get("category") ?? ""}
-            onChange={(e) => setParam("category", e.target.value)}
+            id="catalog-fabric"
+            className={fieldClass}
+            value={params.get("fabric") ?? ""}
+            onChange={(e) => setParam("fabric", e.target.value)}
           >
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
+            <option value="">All</option>
+            {FABRICS.map((f) => (
+              <option key={f} value={f}>
+                {f}
               </option>
             ))}
           </Select>
         </div>
-      )}
 
-      <div className="space-y-1.5">
-        <label htmlFor="catalog-fabric" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Fabric
-        </label>
-        <Select
-          id="catalog-fabric"
-          value={params.get("fabric") ?? ""}
-          onChange={(e) => setParam("fabric", e.target.value)}
+        <div className="w-44 space-y-1.5">
+          <label htmlFor="catalog-price" className={labelClass}>
+            Price
+          </label>
+          <Select id="catalog-price" className={fieldClass} value={priceValue} onChange={(e) => setPriceBand(e.target.value)}>
+            {PRICE_BANDS.map((b) => (
+              <option key={b.label} value={`${b.min}-${b.max}`}>
+                {b.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      {hasFilters && (
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs uppercase tracking-widest text-muted-foreground hover:text-burgundy"
+          onClick={() => router.push(pathname, { scroll: false })}
         >
-          <option value="">All fabrics</option>
-          {FABRICS.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="space-y-1.5">
-        <label htmlFor="catalog-price" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Price
-        </label>
-        <Select id="catalog-price" value={priceValue} onChange={(e) => setPriceBand(e.target.value)}>
-          {PRICE_BANDS.map((b) => (
-            <option key={b.label} value={`${b.min}-${b.max}`}>
-              {b.label}
-            </option>
-          ))}
-        </Select>
-      </div>
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }

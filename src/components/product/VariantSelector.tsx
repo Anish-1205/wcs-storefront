@@ -123,8 +123,8 @@ export function VariantSelector({
         {product.highlights && product.highlights.length > 0 && (
           <ul className="space-y-1.5 text-sm text-foreground/80">
             {product.highlights.map((h, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-gold">✦</span>
+              <li key={i} className="flex gap-2.5">
+                <span className="mt-2 h-px w-3 shrink-0 bg-gold" aria-hidden />
                 {h}
               </li>
             ))}
@@ -157,7 +157,9 @@ export function VariantSelector({
         {/* Description */}
         {product.description && (
           <div className="border-t border-border pt-6">
-            <h2 className="font-serif text-lg text-burgundy">Details</h2>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Description
+            </p>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/80">
               {product.description}
             </p>

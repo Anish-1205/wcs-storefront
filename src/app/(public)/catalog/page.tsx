@@ -41,10 +41,8 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <FilterPanel categories={categories} />
-        </aside>
+      <div className="space-y-8">
+        <FilterPanel categories={categories} />
         <ProductGrid products={products} />
       </div>
     </div>

@@ -27,6 +27,11 @@ Aim for 2–4 sentences. Cover:
 The first ~160 characters also become the Google/social preview text, so put
 the most important words first.
 
+The product page shows this under a plain "Description" label, so it reads
+best as specifics (fabric, weave, origin, occasion) rather than general
+praise — avoid filler like "elevate your wardrobe" or "must-have style,"
+which says nothing a shopper can act on.
+
 ## Highlights
 
 Short, scannable selling points — **one per line** in the admin. 3–5 is ideal.
