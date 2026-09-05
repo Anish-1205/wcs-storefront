@@ -8,9 +8,13 @@ import { Reveal } from "@/components/media/Reveal";
 /**
  * Editorial product gallery. Full media, no art-directed cropping — every
  * image renders at its own aspect ratio (object-fit: contain territory)
- * so borders, pallus and drape stay intact. Close-up "detail" shots are
- * paired into a two-column grid; everything else runs full width.
+ * so borders, pallus and drape stay intact. Media is capped so a full
+ * portrait saree fits the viewport without scrolling. Close-up "detail"
+ * shots are paired into a two-column grid.
  */
+
+/** Keeps a single portrait image within one screen height. */
+const MEDIA_MAX = "mx-auto w-full max-w-[27rem]";
 export function ProductGallery({ product }: { product: Product }) {
   const hero = product.images.filter((i) => i.role === "full").slice(0, 1);
   const details = product.images.filter((i) => i.role === "detail");
@@ -35,8 +39,8 @@ export function ProductGallery({ product }: { product: Product }) {
             width={product.videos[0].w}
             height={product.videos[0].h}
             fit="cover"
-            posterSizes="(min-width:1024px) 60vw, 100vw"
-            className="mx-auto max-w-[34rem]"
+            posterSizes="(min-width:1024px) 27rem, 100vw"
+            className={MEDIA_MAX}
           />
         </Reveal>
       )}
@@ -63,8 +67,8 @@ export function ProductGallery({ product }: { product: Product }) {
             width={product.videos[1].w}
             height={product.videos[1].h}
             fit="cover"
-            posterSizes="(min-width:1024px) 60vw, 100vw"
-            className="mx-auto max-w-[34rem]"
+            posterSizes="(min-width:1024px) 27rem, 100vw"
+            className={MEDIA_MAX}
           />
         </Reveal>
       )}
@@ -86,7 +90,7 @@ export function ProductGallery({ product }: { product: Product }) {
 function GalleryImage({
   image,
   priority,
-  sizes = "(min-width:1024px) 60vw, 100vw",
+  sizes = "(min-width:480px) 27rem, 100vw",
 }: {
   image: ProductImage;
   priority?: boolean;
@@ -94,7 +98,7 @@ function GalleryImage({
 }) {
   return (
     <Reveal>
-      <figure className="bg-warm-cream">
+      <figure className={`${MEDIA_MAX} bg-warm-cream`}>
         <Image
           src={image.src}
           width={image.w}
@@ -102,7 +106,7 @@ function GalleryImage({
           alt={image.alt}
           sizes={sizes}
           priority={priority}
-          className="mx-auto h-auto w-full"
+          className="h-auto w-full"
         />
       </figure>
     </Reveal>

@@ -145,14 +145,14 @@ export function ContactTable({ contacts, query }: Props) {
         <Button type="button" variant="gold" size="sm" onClick={onExport} disabled={filtered.length === 0}>
           Export CSV
         </Button>
-        <label className="inline-flex h-9 cursor-pointer items-center rounded-sm border border-gold px-4 text-xs font-medium text-burgundy hover:bg-gold hover:text-white">
+        <label className="inline-flex h-9 cursor-pointer items-center rounded-sm border border-gold px-4 text-xs font-medium text-primary hover:bg-gold hover:text-white">
           <input type="file" accept=",text/csv,.csv" className="hidden" onChange={(e) => void onImport(e.target.files?.[0] ?? null)} />
           Import CSV
         </label>
         {importSummary && <span className="text-sm text-muted-foreground">{importSummary}</span>}
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border bg-white">
+      <div className="overflow-x-auto rounded-sm border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -179,7 +179,7 @@ export function ContactTable({ contacts, query }: Props) {
                 <td className="px-4 py-3 text-muted-foreground">{contact.next_follow_up_on ?? "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{contact.source}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/contacts/${contact.id}`} className="text-xs font-medium text-burgundy hover:underline">Edit</Link>
+                  <Link href={`/admin/contacts/${contact.id}`} className="text-xs font-medium text-primary hover:underline">Edit</Link>
                   <button onClick={() => onDelete(contact.id, contact.name)} className="ml-3 text-xs font-medium text-destructive hover:underline">Delete</button>
                 </td>
               </tr>

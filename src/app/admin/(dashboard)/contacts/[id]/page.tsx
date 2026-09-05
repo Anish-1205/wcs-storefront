@@ -16,7 +16,7 @@ export default async function EditContactPage({ params }: { params: { id: string
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Edit Contact</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Edit Contact</h1>
       <ContactForm initial={initial} />
     </div>
   );

@@ -92,7 +92,7 @@ export function EnquirySent() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleOpenWhatsApp}
-            className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+            className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Open WhatsApp Again
             <span className="arrow-shift">→</span>
@@ -102,14 +102,14 @@ export function EnquirySent() {
           (EMAIL_CONFIGURED ? (
             <a
               href={EMAIL_HREF}
-              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
             >
               Email us your selection
             </a>
           ) : (
             <Link
               href="/contact"
-              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
             >
               Contact us
             </Link>

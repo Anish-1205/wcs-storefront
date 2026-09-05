@@ -10,14 +10,25 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
    - `supabase/migrations/001_schema.sql`
    - `supabase/migrations/002_seed_categories.sql`
    - **Skip** `003_seed_sample_data.sql` in production (it's demo data).
-   - Run `004` through `010` in filename order (this includes the product
-     media import pipeline — `009_import_pipeline.sql` and
-     `010_fix_import_classification_and_rls.sql`). Applying a new migration
-     to an already-deployed project is exactly this step, repeated: paste
-     the new file into the SQL Editor and run it, in order, after every
-     `git pull` that adds one.
+   - Run `004` through `011` in filename order (this includes the product
+     media import pipeline — `009_import_pipeline.sql`,
+     `010_fix_import_classification_and_rls.sql` — and the customer enquiry
+     carts, `011_customer_carts.sql`). Applying a new migration to an
+     already-deployed project is exactly this step, repeated: paste the new
+     file into the SQL Editor and run it, in order, after every `git pull`
+     that adds one.
 3. Create the admin user: Authentication → Users → Add user (email + password).
-   Keep **Email signups disabled** under Authentication → Providers.
+4. Customer accounts (storefront sign in / sign up, so carts follow a customer
+   across devices — see [storefront-catalogue.md](storefront-catalogue.md#5b-customer-accounts--server-carts)):
+   - Authentication → Providers → **Email**: enable **Sign Ups**. Decide whether
+     to require **Confirm email** (the app handles both). Customers are ordinary
+     auth users and get no admin access — that stays gated by `ADMIN_EMAILS`.
+   - Authentication → Providers → **Google**: enable and paste a Google Cloud
+     OAuth client's ID/secret. In Google Cloud the authorised redirect URI is
+     `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - Authentication → URL Configuration: **Site URL** = the production URL;
+     **Redirect URLs** = `https://<domain>/auth/callback` plus
+     `http://localhost:3000/**` for local dev.
 4. (Recommended) Settings → Database → enable **Point-in-Time Recovery** and use
    the **pooled** connection string (pgBouncer) for serverless.
 5. Copy from Settings → API:

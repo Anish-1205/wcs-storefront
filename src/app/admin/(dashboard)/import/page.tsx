@@ -35,20 +35,20 @@ export default async function AdminImportPage() {
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-serif text-3xl text-burgundy">Import</h1>
+        <h1 className="font-serif text-3xl text-primary">Import</h1>
         <Link
           href="/admin/import/new"
-          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-burgundy-light"
+          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light"
         >
           + New import
         </Link>
       </div>
 
-      <div className="mb-8 flex items-center gap-4 rounded-sm border border-border bg-white p-4">
+      <div className="mb-8 flex items-center gap-4 rounded-sm border border-border bg-card p-4">
         {/* eslint-disable-next-line @next/next/no-img-element -- small server-generated data URL, not a Cloudinary asset */}
         <img src={qrDataUrl} alt="QR code linking to the new-import screen" width={80} height={80} />
         <div className="text-sm">
-          <p className="font-medium text-burgundy">Start an import from your phone</p>
+          <p className="font-medium text-primary">Start an import from your phone</p>
           <p className="text-muted-foreground">
             Scan this with your phone&apos;s camera to open the same new-import screen — you&apos;ll need to sign in there too.
           </p>
@@ -58,7 +58,7 @@ export default async function AdminImportPage() {
       {batches.length === 0 ? (
         <p className="text-sm text-muted-foreground">No imports yet. Start one from here or scan the QR code above.</p>
       ) : (
-        <div className="overflow-x-auto rounded-sm border border-border bg-white">
+        <div className="overflow-x-auto rounded-sm border border-border bg-card">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -73,7 +73,7 @@ export default async function AdminImportPage() {
               {batches.map((batch) => (
                 <tr key={batch.id} className="hover:bg-secondary/20">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/import/${batch.id}`} className="text-burgundy underline">
+                    <Link href={`/admin/import/${batch.id}`} className="text-primary underline">
                       {new Date(batch.created_at).toLocaleString()}
                     </Link>
                   </td>

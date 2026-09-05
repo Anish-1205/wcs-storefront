@@ -40,7 +40,7 @@ export function AddToCartButton({
       onClick={handleAdd}
       disabled={sold}
       className={cn(
-        "inline-flex h-12 w-full items-center justify-center gap-2 bg-oxblood px-6 text-[0.8rem] font-medium uppercase tracking-[0.22em] text-ivory transition-colors hover:bg-oxblood-soft disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-12 w-full items-center justify-center gap-2 bg-oxblood px-6 text-[0.8rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
     >

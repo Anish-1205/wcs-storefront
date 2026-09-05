@@ -59,7 +59,7 @@ export default async function ImportBatchPage({ params }: { params: { batchId: s
 
   return (
     <div className="max-w-5xl">
-      <h1 className="mb-2 font-serif text-3xl text-burgundy">Import batch</h1>
+      <h1 className="mb-2 font-serif text-3xl text-primary">Import batch</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Started {new Date(batch.created_at).toLocaleString()} · status: {batch.status}
       </p>

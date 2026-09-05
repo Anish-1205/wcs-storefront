@@ -111,8 +111,8 @@ export function ProductForm({ categories, collections, initial }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Core fields */}
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">Product details</h2>
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Product details</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="name">Name *</Label>
@@ -208,16 +208,16 @@ export function ProductForm({ categories, collections, initial }: Props) {
       </section>
 
       {/* Variants */}
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">
           Color variants & images
         </h2>
         <VariantManager variants={variants} onChange={setVariants} />
       </section>
 
       {/* Collections */}
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">Collections</h2>
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Collections</h2>
         <CollectionCheckboxes
           collections={collections}
           selected={collectionIds}

@@ -70,7 +70,7 @@ export function VariantManager({ variants, onChange }: Props) {
       {variants.map((v, i) => (
         <div key={i} className="rounded-sm border border-border bg-secondary/20 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium text-burgundy">
+            <span className="text-sm font-medium text-primary">
               Variant {i + 1}
             </span>
             <div className="flex items-center gap-2 text-xs">

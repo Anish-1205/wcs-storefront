@@ -8,7 +8,7 @@ export default async function NewContactPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Add Contact</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Add Contact</h1>
       <ContactForm initial={{ role: "customer", status_tag: "regular", source: "manual", whatsapp_opt_in: false }} />
     </div>
   );

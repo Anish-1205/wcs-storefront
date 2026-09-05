@@ -198,6 +198,65 @@ sounds like a stock system is down.
 
 ---
 
+## 5a. Theme (light / dark)
+
+Fully token-driven — every colour is `hsl(var(--token))`, so the dark theme in
+`globals.css` only re-declares the token values; no component markup changes.
+
+- **Resolution order:** stored choice (`localStorage['wcs.theme']` = `"dark"` |
+  `"light"`) → else the device `prefers-color-scheme`. A blocking inline script
+  in `src/app/layout.tsx` sets `data-theme` on `<html>` before first paint, so
+  there's no flash.
+- **CSS:** `:root[data-theme="dark"]` (explicit) and
+  `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) }`
+  (device default). Palette: `#100D0E` ground, `#F1E8DD` text, `#8E3D4B` wine,
+  `#C6A36A` gold (converted to HSL triplets).
+- **Toggle:** `src/components/layout/ThemeToggle.tsx` — in the storefront navbar
+  (top-right) and the admin sidebar/topbar. Writes the choice and keeps
+  following the device setting live until the visitor picks one.
+- Storefront CTAs use `text-primary-foreground` (not `text-ivory`) so button
+  text stays legible in both themes. Admin `bg-white` → `bg-card`,
+  `text-burgundy` → `text-primary` for the same reason. The legacy hardcoded
+  `burgundy`/`gold` hex tokens in `tailwind.config.ts` do **not** theme —
+  a few admin accents stay fixed; acceptable, not yet swept.
+
+## 5b. Customer accounts + server carts
+
+Optional accounts (Supabase Auth). Guests use the whole site; signing in makes
+the cart follow you across devices.
+
+- **Auth state:** `src/lib/auth/AuthContext.tsx` (`AuthProvider` / `useAuth`) —
+  client-side, browser Supabase client, `onAuthStateChange`. Wraps the
+  storefront in `(public)/layout.tsx`, outside `CartProvider`.
+- **Pages:** `/signin`, `/signup` (`AuthForm` — email+password and Google),
+  `/forgot-password`, `/reset-password`, `/account`. All `noindex`.
+  `/auth/callback` (route handler) exchanges the OAuth / email-link `code` for a
+  session; `next` is validated to a same-origin path.
+- **Cart sync (`CartContext.tsx`):** logged out → `localStorage` as before.
+  On sign-in: read the `carts` row, merge the guest cart into it (quantities
+  add, capped), then push. While signed in: debounced upsert on every change,
+  plus a `pagehide` / `visibilitychange` flush. `localStorage` is always
+  written too (offline backup). Sign-out keeps the cart locally, stops syncing.
+- **DB:** `supabase/migrations/011_customer_carts.sql` — `public.carts`
+  (`user_id` PK → `auth.users`, `items jsonb`, `updated_at`), RLS: a user can
+  only touch their own row. `items` is the exact `localStorage` shape; the
+  server never interprets it.
+- **Customers are not admins.** Admin access stays gated by `ADMIN_EMAILS` +
+  the `/admin` middleware guard. A customer account grants access to nothing
+  but its own `carts` row.
+
+### Supabase dashboard settings this needs (one-time)
+
+1. Run migration `011_customer_carts.sql` (SQL Editor, after `010`).
+2. **Authentication → Providers → Email:** enable **Sign Ups** (currently off).
+   Choose whether to require **Confirm email** (the flow handles both).
+3. **Authentication → Providers → Google:** enable, paste the Client ID/Secret
+   from a Google Cloud OAuth client whose authorised redirect URI is
+   `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. **Authentication → URL Configuration:** Site URL = the production URL;
+   Redirect URLs = `https://<domain>/auth/callback` (and
+   `http://localhost:3000/**` for local dev).
+
 ## 6. Environment variables
 
 `NEXT_PUBLIC_WHATSAPP_NUMBER`, `NEXT_PUBLIC_BUSINESS_NAME` and
@@ -220,8 +279,11 @@ sounds like a stock system is down.
 Public storefront: `/`, `/catalog`, `/catalog/[category]` (colour),
 `/collections`, `/collections/[slug]`, `/sarees/[slug]`, `/cart`, `/enquiry`,
 `/enquiry/sent`, `/search`, `/contact`, `/wholesale`, `/about`, legal pages.
+Auth: `/signin`, `/signup`, `/account`, `/forgot-password`, `/reset-password`,
+`/auth/callback` (handler).
 
-`/cart`, `/enquiry`, `/enquiry/sent` are `robots: { index: false }`. Product
+`/cart`, `/enquiry`, `/enquiry/sent` and every auth page are
+`robots: { index: false }`. Product
 pages are statically generated (`generateStaticParams` from `getAllSlugs()`) with
 per-page `canonical`, `Product` JSON-LD (`sku` + `mpn` = the WCS reference), and
 a real product image for OG.

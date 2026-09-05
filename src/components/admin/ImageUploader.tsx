@@ -118,7 +118,7 @@ export function ImageUploader({ images, onChange }: Props) {
 
       <div>
         <label
-          className={`inline-flex h-9 cursor-pointer items-center rounded-sm border border-gold px-4 text-xs font-medium text-burgundy hover:bg-gold hover:text-white ${
+          className={`inline-flex h-9 cursor-pointer items-center rounded-sm border border-gold px-4 text-xs font-medium text-primary hover:bg-gold hover:text-white ${
             uploading ? "pointer-events-none opacity-50" : ""
           }`}
         >

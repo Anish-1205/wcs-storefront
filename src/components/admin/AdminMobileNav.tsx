@@ -19,14 +19,14 @@ export function AdminMobileNav({
         aria-expanded={open}
         aria-controls="admin-mobile-menu"
         aria-label={open ? "Close admin menu" : "Open admin menu"}
-        className="rounded-sm p-2 text-burgundy"
+        className="rounded-sm p-2 text-primary"
       >
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
       {open && (
         <nav
           id="admin-mobile-menu"
-          className="absolute inset-x-0 top-full z-50 grid grid-cols-2 gap-1 border-b border-border bg-white p-3 shadow-lg"
+          className="absolute inset-x-0 top-full z-50 grid grid-cols-2 gap-1 border-b border-border bg-card p-3 shadow-lg"
         >
           {links.map((link) => (
             <Link

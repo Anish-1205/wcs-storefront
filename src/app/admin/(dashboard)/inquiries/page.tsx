@@ -14,7 +14,7 @@ export default async function AdminInquiriesPage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Inquiries</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Inquiries</h1>
       <InquiryTable inquiries={(data ?? []) as Inquiry[]} />
     </div>
   );

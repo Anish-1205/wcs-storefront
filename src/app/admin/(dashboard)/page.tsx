@@ -38,10 +38,10 @@ export default async function AdminDashboard() {
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-serif text-3xl text-burgundy">Dashboard</h1>
+        <h1 className="font-serif text-3xl text-primary">Dashboard</h1>
         <Link
           href="/admin/products/new"
-          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-burgundy-light"
+          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light"
         >
           + Add Product
         </Link>
@@ -52,29 +52,29 @@ export default async function AdminDashboard() {
           <Link
             key={c.label}
             href={c.href}
-            className="rounded-sm border border-border bg-white p-5 transition-shadow hover:shadow-sm"
+            className="rounded-sm border border-border bg-card p-5 transition-shadow hover:shadow-sm"
           >
-            <p className="text-3xl font-semibold text-burgundy">{c.value}</p>
+            <p className="text-3xl font-semibold text-primary">{c.value}</p>
             <p className="mt-1 text-sm text-muted-foreground">{c.label}</p>
           </Link>
         ))}
       </div>
 
-      <div className="mt-10 rounded-sm border border-border bg-white p-6">
-        <h2 className="font-serif text-lg text-burgundy">Quick links</h2>
+      <div className="mt-10 rounded-sm border border-border bg-card p-6">
+        <h2 className="font-serif text-lg text-primary">Quick links</h2>
         <ul className="mt-3 space-y-2 text-sm">
           <li>
-            <Link href="/admin/products/new" className="text-burgundy hover:underline">
+            <Link href="/admin/products/new" className="text-primary hover:underline">
               Add a new product →
             </Link>
           </li>
           <li>
-            <Link href="/admin/inquiries" className="text-burgundy hover:underline">
+            <Link href="/admin/inquiries" className="text-primary hover:underline">
               Review recent inquiries →
             </Link>
           </li>
           <li>
-            <Link href="/admin/subscribers" className="text-burgundy hover:underline">
+            <Link href="/admin/subscribers" className="text-primary hover:underline">
               Export WhatsApp subscribers →
             </Link>
           </li>

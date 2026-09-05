@@ -27,7 +27,7 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Edit Category</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Edit Category</h1>
       <CategoryForm initial={initial} />
     </div>
   );

@@ -89,8 +89,8 @@ export function ContactForm({ initial }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">Contact details</h2>
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Contact details</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="name">Name *</Label>

@@ -17,7 +17,7 @@ export default async function NewImportPage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">New import</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">New import</h1>
       <NewImportForm collections={(collections ?? []) as Array<{ id: string; name: string }>} />
     </div>
   );

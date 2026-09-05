@@ -30,7 +30,7 @@ export function NewImportForm({ collections }: Props) {
   }
 
   return (
-    <div className="max-w-md space-y-4 rounded-sm border border-border bg-white p-6">
+    <div className="max-w-md space-y-4 rounded-sm border border-border bg-card p-6">
       <div className="space-y-1.5">
         <Label htmlFor="batch-collection">If every item in this batch belongs to one collection, pick it now</Label>
         <Select id="batch-collection" value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>

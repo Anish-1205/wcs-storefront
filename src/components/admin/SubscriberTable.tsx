@@ -74,7 +74,7 @@ export function SubscriberTable({
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border bg-white">
+      <div className="overflow-x-auto rounded-sm border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -96,7 +96,7 @@ export function SubscriberTable({
                     href={buildWhatsAppContactURL(s.phone, s.name)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-burgundy hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {s.phone}
                   </a>

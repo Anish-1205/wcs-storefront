@@ -77,7 +77,7 @@ export default async function EditProductPage({
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Edit Product</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Edit Product</h1>
       <ProductForm
         categories={(categories ?? []) as Category[]}
         collections={(collections ?? []) as Pick<Collection, "id" | "name">[]}

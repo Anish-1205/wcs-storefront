@@ -243,7 +243,7 @@ export function EnquiryForm() {
         <button
           type="submit"
           disabled={submittingState}
-          className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft disabled:opacity-60"
+          className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft disabled:opacity-60"
         >
           {submittingState
             ? "Continuing…"

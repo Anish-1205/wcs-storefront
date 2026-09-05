@@ -35,6 +35,75 @@
     --input: var(--line);
     --ring: var(--antique-gold);
     --radius: 0.125rem;
+
+    color-scheme: light;
+  }
+
+  /* ── Dark theme ──────────────────────────────────────────────
+     Warm near-black showroom. Same token names, swapped values,
+     so every component follows without change. The explicit
+     [data-theme="dark"] selector wins for the manual toggle; the
+     media query covers "match my device" before any choice. */
+  :root[data-theme="dark"],
+  .dark {
+    --ivory: 340 10% 6%;           /* #100D0E page ground */
+    --warm-cream: 340 15% 9%;      /* #171113 raised panels */
+    --sand: 340 16% 12%;           /* #21181B hairline fills / surface */
+    --oxblood: 350 44% 55%;        /* #B85A6B lifted wine — headings + buttons */
+    --oxblood-soft: 350 48% 64%;   /* #CE7C8C hover (lighter on dark) */
+    --deep-brown: 33 42% 91%;      /* #F1E8DD primary text */
+    --antique-gold: 37 48% 62%;    /* #C9A66E metallic accent */
+    --line: 15 8% 20%;             /* warm low-contrast border */
+
+    --background: var(--ivory);
+    --foreground: var(--deep-brown);
+    --card: 340 16% 12%;
+    --card-foreground: var(--deep-brown);
+    --primary: var(--oxblood);
+    --primary-foreground: 33 42% 92%;
+    --secondary: var(--warm-cream);
+    --secondary-foreground: var(--deep-brown);
+    --muted: var(--warm-cream);
+    --muted-foreground: 23 13% 66%;
+    --accent: var(--antique-gold);
+    --accent-foreground: 340 10% 6%;
+    --destructive: 0 60% 58%;
+    --destructive-foreground: 33 42% 92%;
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--antique-gold);
+
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ivory: 340 10% 6%;
+      --warm-cream: 340 15% 9%;
+      --sand: 340 16% 12%;
+      --oxblood: 350 44% 55%;
+      --oxblood-soft: 350 48% 64%;
+      --deep-brown: 33 42% 91%;
+      --antique-gold: 37 48% 62%;
+      --line: 15 8% 20%;
+
+      --background: var(--ivory);
+      --foreground: var(--deep-brown);
+      --card: 340 16% 12%;
+      --card-foreground: var(--deep-brown);
+      --primary: var(--oxblood);
+      --primary-foreground: 33 42% 92%;
+      --secondary: var(--warm-cream);
+      --secondary-foreground: var(--deep-brown);
+      --muted: var(--warm-cream);
+      --muted-foreground: 23 13% 66%;
+      --accent: var(--antique-gold);
+      --accent-foreground: 340 10% 6%;
+      --destructive: 0 60% 58%;
+      --destructive-foreground: 33 42% 92%;
+
+      color-scheme: dark;
+    }
   }
 }
 

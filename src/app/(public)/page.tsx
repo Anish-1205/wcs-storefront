@@ -183,7 +183,7 @@ export default function HomePage() {
             href={buildWhatsAppURL()}
             target="_blank"
             rel="noopener noreferrer"
-            className="arrow-shift-host mt-8 inline-flex items-center gap-2 bg-oxblood px-7 py-3.5 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+            className="arrow-shift-host mt-8 inline-flex items-center gap-2 bg-oxblood px-7 py-3.5 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Enquire on WhatsApp
             <span className="arrow-shift">→</span>

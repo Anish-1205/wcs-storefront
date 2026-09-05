@@ -145,7 +145,7 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border bg-white">
+      <div className="overflow-x-auto rounded-sm border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -172,7 +172,7 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/admin/products/${r.id}`} className="hover:text-burgundy">
+                  <Link href={`/admin/products/${r.id}`} className="hover:text-primary">
                     {r.name}
                   </Link>
                 </td>
@@ -211,19 +211,19 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
                 <td className="px-4 py-3 text-right">
                   <Link
                     href={`/admin/products/${r.id}`}
-                    className="text-xs font-medium text-burgundy hover:underline"
+                    className="text-xs font-medium text-primary hover:underline"
                   >
                     Edit
                   </Link>
                   <button
                     onClick={() => onStatusChange(r.id, r.status === "published" ? "draft" : "published")}
-                    className="ml-3 text-xs font-medium text-burgundy hover:underline"
+                    className="ml-3 text-xs font-medium text-primary hover:underline"
                   >
                     {r.status === "published" ? "Hide" : "Unhide"}
                   </button>
                   <button
                     onClick={() => onDuplicate(r.id, r.name)}
-                    className="ml-3 text-xs font-medium text-burgundy hover:underline"
+                    className="ml-3 text-xs font-medium text-primary hover:underline"
                   >
                     Duplicate
                   </button>

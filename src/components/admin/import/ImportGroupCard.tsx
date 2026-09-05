@@ -86,10 +86,10 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
   }
 
   return (
-    <div className="rounded-sm border border-border bg-white p-4">
+    <div className="rounded-sm border border-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium text-burgundy" title={groupDisplayName(group, assets)}>
+          <span className="truncate text-sm font-medium text-primary" title={groupDisplayName(group, assets)}>
             {groupDisplayName(group, assets)}
           </span>
           {group.status === "flagged_for_review" && <Badge variant="red">Needs review</Badge>}
@@ -177,7 +177,7 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
               {!asset.is_primary && asset.kind === "image" && (
                 <button
                   type="button"
-                  className="text-burgundy underline"
+                  className="text-primary underline"
                   onClick={() => run(() => setImportGroupPrimaryAsset({ group_id: group.id, asset_id: asset.id }))}
                 >
                   Set primary
@@ -237,7 +237,7 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
 
       <div className="mb-3 rounded-sm bg-secondary/20 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-burgundy">AI draft (unverified — review before trusting)</span>
+          <span className="text-xs font-medium text-primary">AI draft (unverified — review before trusting)</span>
           <Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => run(() => requestGroupAiSuggestions(group.id))}>
             {group.ai_generated_at ? "Regenerate" : "Get AI suggestions"}
           </Button>
@@ -269,7 +269,7 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
 
       <div className="mb-3 rounded-sm border border-border p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-burgundy">Collection</span>
+          <span className="text-xs font-medium text-primary">Collection</span>
           {stateBadge && <Badge variant={stateBadge.variant}>{stateBadge.label}</Badge>}
         </div>
         {!classification && (
@@ -362,7 +362,7 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
           </Button>
         ) : (
           <>
-            <Link href={`/admin/products/${group.product_id}`} className="text-sm text-burgundy underline">
+            <Link href={`/admin/products/${group.product_id}`} className="text-sm text-primary underline">
               Edit product
             </Link>
             {productReviewStatus === "pending_review" && (

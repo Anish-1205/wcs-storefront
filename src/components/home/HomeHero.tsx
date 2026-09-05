@@ -5,9 +5,9 @@ import { PortraitVideo } from "@/components/media/PortraitMedia";
 
 export function HomeHero() {
   return (
-    <section className="container-px mx-auto max-w-[78rem] pb-16 pt-10 sm:pt-14 lg:pb-24">
-      <div className="grid items-center gap-10 lg:grid-cols-[1fr_26rem] lg:gap-14 xl:grid-cols-[1fr_28rem] xl:gap-20">
-        <div className="max-w-xl">
+    <section className="container-px mx-auto max-w-6xl pb-16 pt-10 sm:pt-14 lg:pb-24">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14 xl:gap-20">
+        <div className="max-w-xl lg:justify-self-end">
           <p className="eyebrow">A private saree showroom</p>
           <h1 className="display mt-5 text-oxblood">
             India,
@@ -38,7 +38,7 @@ export function HomeHero() {
           </div>
         </div>
 
-        <div>
+        <div className="w-full lg:justify-self-start">
           <Link href={HERO.href} className="group block">
             <PortraitVideo
               kind="video"
@@ -49,8 +49,8 @@ export function HomeHero() {
               height={HERO.height}
               preload="metadata"
               posterPriority
-              posterSizes="(min-width:1024px) 27rem, 90vw"
-              className="mx-auto max-w-[21rem] sm:max-w-[24rem] lg:mx-0 lg:max-w-none"
+              posterSizes="(min-width:1024px) 24rem, 88vw"
+              className="mx-auto max-w-[20rem] sm:max-w-[23rem] lg:mx-0 lg:max-w-[24rem]"
             />
             <p className="mt-3 text-right text-[0.72rem] uppercase tracking-[0.18em] text-antique-gold">
               In the showroom

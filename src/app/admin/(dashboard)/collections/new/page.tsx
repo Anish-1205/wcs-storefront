@@ -14,7 +14,7 @@ export default async function NewCollectionPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">Add Collection</h1>
+      <h1 className="mb-6 font-serif text-3xl text-primary">Add Collection</h1>
       <CollectionForm products={(products ?? []) as Pick<Product, "id" | "name" | "slug">[]} initial={{ product_ids: [] }} />
     </div>
   );

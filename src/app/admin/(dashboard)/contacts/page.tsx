@@ -31,9 +31,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Rec
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-serif text-3xl text-burgundy">Contacts CRM</h1>
+        <h1 className="font-serif text-3xl text-primary">Contacts CRM</h1>
         <div className="flex gap-3">
-          <a href="/admin/contacts/new" className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-burgundy-light">+ Add Contact</a>
+          <a href="/admin/contacts/new" className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light">+ Add Contact</a>
         </div>
       </div>
       <ContactTable contacts={(data ?? []) as Contact[]} query={query} />

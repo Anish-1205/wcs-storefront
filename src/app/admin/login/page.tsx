@@ -40,12 +40,12 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-ivory px-5">
-      <div className="w-full max-w-sm rounded-sm border border-border bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-sm border border-border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <p className="font-serif text-xl font-semibold text-burgundy">
+          <p className="font-serif text-xl font-semibold text-primary">
             {SITE.name}
           </p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-gold-dark">
+          <p className="mt-1 text-xs uppercase tracking-widest text-antique-gold">
             Admin
           </p>
         </div>

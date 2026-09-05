@@ -38,7 +38,7 @@ export function CartDrawer() {
       <button
         aria-label="Close cart"
         onClick={closeCart}
-        className="absolute inset-0 animate-overlay-in bg-deep-brown/40"
+        className="absolute inset-0 animate-overlay-in bg-black/50"
       />
       <div
         ref={panelRef}
@@ -157,7 +157,7 @@ export function CartDrawer() {
               <Link
                 href="/enquiry"
                 onClick={closeCart}
-                className="arrow-shift-host mt-4 flex h-12 items-center justify-center gap-2 bg-oxblood text-[0.8rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+                className="arrow-shift-host mt-4 flex h-12 items-center justify-center gap-2 bg-oxblood text-[0.8rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
               >
                 Confirm Availability
                 <span className="arrow-shift">→</span>

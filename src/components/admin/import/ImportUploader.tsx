@@ -296,7 +296,7 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
       </div>
 
       {queue.length > 0 && (
-        <ul className="divide-y divide-border rounded-sm border border-border bg-white text-sm">
+        <ul className="divide-y divide-border rounded-sm border border-border bg-card text-sm">
           {queue.map((item) => (
             <li key={item.id} className="flex items-center gap-3 px-3 py-2">
               {item.previewUrl && item.kind === "video" ? (
@@ -338,7 +338,7 @@ export function ImportUploader({ batchId, onUploaded }: Props) {
                 </button>
               )}
               {item.status === "error" && (
-                <button type="button" className="shrink-0 text-xs text-burgundy underline" onClick={() => retry(item)}>
+                <button type="button" className="shrink-0 text-xs text-primary underline" onClick={() => retry(item)}>
                   Retry
                 </button>
               )}

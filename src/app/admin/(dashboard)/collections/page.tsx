@@ -17,16 +17,16 @@ export default async function AdminCollectionsPage() {
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-serif text-3xl text-burgundy">Collections</h1>
+        <h1 className="font-serif text-3xl text-primary">Collections</h1>
         <Link
           href="/admin/collections/new"
-          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-burgundy-light"
+          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light"
         >
           + Add Collection
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border bg-white">
+      <div className="overflow-x-auto rounded-sm border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -47,7 +47,7 @@ export default async function AdminCollectionsPage() {
                 <td className="px-4 py-3 text-muted-foreground">{collection.is_active ? "Active" : "Hidden"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{collection.display_order}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/collections/${collection.id}`} className="text-xs font-medium text-burgundy hover:underline">
+                  <Link href={`/admin/collections/${collection.id}`} className="text-xs font-medium text-primary hover:underline">
                     Edit
                   </Link>
                 </td>

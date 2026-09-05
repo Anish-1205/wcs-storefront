@@ -87,8 +87,8 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
   return (
     <div className="space-y-6">
       {batchStatus === "open" && (
-        <section className="rounded-sm border border-border bg-white p-4">
-          <h2 className="mb-3 font-serif text-lg text-burgundy">Add photos & videos</h2>
+        <section className="rounded-sm border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-lg text-primary">Add photos & videos</h2>
           <ImportUploader batchId={batchId} onUploaded={refresh} />
         </section>
       )}
@@ -96,7 +96,7 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
       {ungroupedAssets.length > 0 && (
         <section className="rounded-sm border border-dashed border-border bg-secondary/20 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-serif text-lg text-burgundy">Ungrouped ({ungroupedAssets.length})</h2>
+            <h2 className="font-serif text-lg text-primary">Ungrouped ({ungroupedAssets.length})</h2>
             <Button type="button" size="sm" disabled={isPending} onClick={groupAssets}>
               Group these into products
             </Button>
@@ -110,7 +110,7 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
                   ) : asset.kind === "video" && asset.cloudinary_secure_url ? (
                     <Image src={cldVideoThumbnail(asset.cloudinary_secure_url)} alt="" fill sizes="80px" className="object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-white text-[10px] text-muted-foreground">
+                    <div className="flex h-full w-full items-center justify-center bg-card text-[10px] text-muted-foreground">
                       {asset.kind}
                     </div>
                   )}
@@ -144,7 +144,7 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
       {groups.length > 0 && (
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-serif text-lg text-burgundy">Proposed products ({groups.length})</h2>
+            <h2 className="font-serif text-lg text-primary">Proposed products ({groups.length})</h2>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={classifyAll}>
                 Classify all with AI

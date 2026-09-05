@@ -99,7 +99,7 @@ export function CartView() {
         </p>
         <Link
           href="/enquiry"
-          className="arrow-shift-host mt-5 flex h-12 items-center justify-center gap-2 bg-oxblood text-[0.78rem] font-medium uppercase tracking-[0.22em] text-ivory hover:bg-oxblood-soft"
+          className="arrow-shift-host mt-5 flex h-12 items-center justify-center gap-2 bg-oxblood text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
         >
           Confirm Availability
           <span className="arrow-shift">→</span>

@@ -229,9 +229,9 @@ export function PortraitVideo(props: VideoProps) {
           type="button"
           onClick={tapPlay}
           aria-label="Play video"
-          className="absolute inset-0 flex items-center justify-center bg-deep-brown/10"
+          className="absolute inset-0 flex items-center justify-center bg-black/15"
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ivory/90 text-oxblood shadow-sm">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-oxblood/95 text-primary-foreground shadow-sm">
             <svg viewBox="0 0 24 24" className="ml-0.5 h-6 w-6 fill-current">
               <path d="M8 5v14l11-7z" />
             </svg>

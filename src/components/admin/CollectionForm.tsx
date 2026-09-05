@@ -85,8 +85,8 @@ export function CollectionForm({ products, initial }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">Collection details</h2>
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Collection details</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="name">Name *</Label>
@@ -125,8 +125,8 @@ export function CollectionForm({ products, initial }: Props) {
         </div>
       </section>
 
-      <section className="rounded-sm border border-border bg-white p-6">
-        <h2 className="mb-4 font-serif text-lg text-burgundy">Collection membership</h2>
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Collection membership</h2>
         {productIds.length > 0 && (
           <div className="mb-4 space-y-2 rounded-sm border border-border bg-secondary/20 p-3">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Current order</p>
@@ -134,7 +134,7 @@ export function CollectionForm({ products, initial }: Props) {
               {productIds.map((productId, index) => {
                 const product = products.find((item) => item.id === productId);
                 return (
-                  <div key={productId} className="flex items-center justify-between gap-3 rounded-sm bg-white px-3 py-2 text-sm">
+                  <div key={productId} className="flex items-center justify-between gap-3 rounded-sm bg-card px-3 py-2 text-sm">
                     <div>
                       <span className="font-medium text-foreground">{product?.name ?? productId}</span>
                       {product?.slug && <span className="ml-2 text-muted-foreground">({product.slug})</span>}

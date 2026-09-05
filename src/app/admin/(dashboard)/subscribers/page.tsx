@@ -14,7 +14,7 @@ export default async function AdminSubscribersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 font-serif text-3xl text-burgundy">
+      <h1 className="mb-6 font-serif text-3xl text-primary">
         WhatsApp Subscribers
       </h1>
       <SubscriberTable subscribers={(data ?? []) as WhatsAppSubscriber[]} />
