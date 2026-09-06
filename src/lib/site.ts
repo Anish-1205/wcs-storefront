@@ -37,14 +37,15 @@ export const SITE = {
 };
 
 /**
- * Real, confirmed social profiles — used for Organization JSON-LD `sameAs`
- * (helps Google's entity/knowledge-panel recognition). Instagram is
- * confirmed (@weaversclub); Facebook goes in via env once the exact page
- * URL is confirmed — never invented.
+ * Real, confirmed social profiles — both shown as visible footer links and
+ * used for Organization/LocalBusiness JSON-LD `sameAs` (helps Google's
+ * entity/knowledge-panel recognition). Both confirmed directly with the
+ * business (Instagram @weaversclub; Facebook page verified as "Weavers'
+ * Club Sarees | Navi Mumbai" at the Sarisstop URL) — never invented.
  */
 export const SOCIAL_LINKS = [
-  "https://www.instagram.com/weaversclub/",
-  ...(process.env.NEXT_PUBLIC_FACEBOOK_URL ? [process.env.NEXT_PUBLIC_FACEBOOK_URL] : []),
+  { label: "Instagram", url: "https://www.instagram.com/weaversclub/" },
+  { label: "Facebook", url: "https://www.facebook.com/Sarisstop/" },
 ];
 
 export const NAV_LINKS = [

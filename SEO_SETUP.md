@@ -87,13 +87,9 @@ Candidate topics, prioritized by which real products/collections they'd link to:
 
 Every non-thumbnail product image (hero + full-width narrative shots, not the small paired detail/colourway grids) now has a small "Save" chip (top-right corner) that opens Pinterest's own `pin/create/button` flow with the image, product page URL, and product name/reference pre-filled — no Pinterest SDK/script needed. Fires the existing `pinterest_share` GA4 event (`src/lib/analytics.ts`) on click. Component: `src/components/product/PinterestSaveButton.tsx`.
 
-## Social profiles (`sameAs`)
+## Social profiles
 
-Organization + LocalBusiness JSON-LD include `sameAs` — Instagram (`https://www.instagram.com/weaversclub/`) is confirmed and hardcoded (`src/lib/site.ts`). Facebook (`https://www.facebook.com/Sarisstop/` — confirmed as the "Weavers' Club Sarees | Navi Mumbai" page, verified by fetching it) is wired up in code but read from an env var, which I can't set myself — `.env` files are off-limits to me. Add it yourself:
-```
-NEXT_PUBLIC_FACEBOOK_URL=https://www.facebook.com/Sarisstop/
-```
-in `.env.local` for local dev, and in Vercel → Project → Settings → Environment Variables for production. No code change needed once it's set — `src/lib/site.ts`'s `SOCIAL_LINKS` already reads it.
+Both confirmed and hardcoded in `SITE_LINKS`/`SOCIAL_LINKS` (`src/lib/site.ts`): Instagram (`https://www.instagram.com/weaversclub/`) and Facebook (`https://www.facebook.com/Sarisstop/`, verified as the "Weavers' Club Sarees | Navi Mumbai" page). Shown as icon links in the site footer (`src/components/layout/Footer.tsx`) and included in Organization + LocalBusiness JSON-LD `sameAs`. Add another platform by appending a `{ label, url }` entry to `SOCIAL_LINKS` — the footer and both JSON-LD blocks pick it up automatically.
 
 ## Nav width budget
 

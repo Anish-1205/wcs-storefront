@@ -82,7 +82,9 @@ export default function RootLayout({
               url: SITE.url,
               logo: new URL(SITE.logo, SITE.url).toString(),
               ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
-              ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS } : {}),
+              ...(SOCIAL_LINKS.length > 0
+                ? { sameAs: SOCIAL_LINKS.map((s) => s.url) }
+                : {}),
             }),
           }}
         />

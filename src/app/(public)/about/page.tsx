@@ -23,7 +23,7 @@ const schema = {
   logo: logoUrl,
   image: logoUrl,
   ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
-  ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS } : {}),
+  ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS.map((s) => s.url) } : {}),
 };
 
 export default function AboutPage() {
