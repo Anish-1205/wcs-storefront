@@ -33,6 +33,7 @@ supabase gen types typescript --local > src/lib/supabase/types.ts   # Regenerate
 ```bash
 node scripts/prepare-media.mjs "<source folder>"   # (re)build public/media from the raw photo/video library
 node scripts/optimize-video.mjs                      # re-encode public/media/**/*.mp4 (H.264 CRF 28, audio stripped)
+node scripts/prepare-logo.mjs "<logo file>"          # (re)build public/brand/** + src/app icons from the brand artwork
 ```
 
 See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-driven storefront (products, media, cart, WhatsApp), [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.
@@ -41,7 +42,7 @@ See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-dr
 
 **Route groups**: `src/app/(public)/` is the storefront (catalog, product pages, collections, cart, `/enquiry`, static pages) — file-driven, see [docs/storefront-catalogue.md](docs/storefront-catalogue.md); `src/app/admin/` is the admin panel, split into `admin/login` (unauthenticated) and `admin/(dashboard)/` (authenticated CRUD for products, variants, categories, collections, inquiries, contacts, subscribers).
 
-**Auth**: Two separate audiences on one Supabase Auth project. **Admin** — a single email/password account, no role system, gated by `ADMIN_EMAILS` + the `/admin` middleware guard (below). **Customers** — optional storefront accounts (email/password + Google), client-side session via `src/lib/auth/AuthContext.tsx`, used only for the server-synced cart (`public.carts`, migration 011) and `/account`. A customer account grants access to nothing but its own cart row. Sign-up pages: `/signin`, `/signup`, `/forgot-password`, `/reset-password`; `/auth/callback` exchanges the OAuth/email code for a session. Admin defense-in-depth:
+**Auth**: Two separate audiences on one Supabase Auth project. **Admin** — a single email/password account, no role system, gated by `ADMIN_EMAILS` + the `/admin` middleware guard (below). **Customers** — optional storefront accounts (email/password + Google), client-side session via `src/lib/auth/AuthContext.tsx`, used only for the server-synced cart (`public.carts`, migration 011), saved enquiry contact details (`public.profiles`, migration 012, via `src/lib/profile/useProfile.ts`) and `/account`. A customer account grants access to nothing but its own cart/profile row. Sign-up pages: `/signin`, `/signup`, `/forgot-password`, `/reset-password`; `/auth/callback` exchanges the OAuth/email code for a session. **The Supabase project's Authentication → URL Configuration → Redirect URLs must allowlist `https://<domain>/**` — otherwise Google sign-in and email links fall back to the bare Site URL and the session is never established (see docs/deployment.md).** Admin defense-in-depth:
 - `src/middleware.ts` — edge guard on `/admin/:path*`, refreshes the session cookie and redirects unauthenticated requests to `/admin/login`.
 - `src/lib/admin-auth.ts` — `requireAdmin()` (Server Components/Actions, redirects on failure) and `assertAdmin()` (throws instead, for use inside actions) additionally check the user's email against the `ADMIN_EMAILS` allowlist and return the service-role admin client.
 
@@ -55,7 +56,7 @@ See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-dr
 
 **Images**: Cloudinary (`src/lib/cloudinary.ts`, `ImageUploader`) handles all admin product/variant image uploads and delivery. The file-driven storefront uses local `public/media/**` instead.
 
-**Theming**: All colours are `hsl(var(--token))` (`globals.css`). Light is the base `:root`; dark re-declares the tokens under `:root[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`. A pre-paint inline script in `src/app/layout.tsx` sets `data-theme` from `localStorage['wcs.theme']` or the device preference; `ThemeToggle` (storefront navbar + admin) flips it. Don't hardcode hex or `bg-white`/`text-ivory` in components — use tokens (`bg-card`, `text-primary-foreground`, …).
+**Theming**: All colours are `hsl(var(--token))` (`globals.css`). Light is the base `:root`; dark re-declares the tokens under `:root[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`. A pre-paint inline script in `src/app/layout.tsx` sets `data-theme` from `localStorage['wcs.theme']` or the device preference; `ThemeToggle` (storefront navbar + admin) flips it. Don't hardcode hex or `bg-white`/`text-ivory` in components — use tokens (`bg-card`, `text-primary-foreground`, …). The brand logo ships as light/dark PNG pairs (`public/brand/`, built by `scripts/prepare-logo.mjs`) rendered by `<BrandMark>` and toggled by `.brand-light`/`.brand-dark` in `globals.css` — same three-selector pattern as the tokens.
 
 **Validation**: Zod schemas in `src/lib/validation.ts` are the source of truth for input shapes on both API routes and admin forms/actions — validate at the API boundary, not just in the UI.
 

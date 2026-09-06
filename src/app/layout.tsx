@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import { SITE } from "@/lib/site";
+import { jsonLdScript } from "@/lib/json-ld";
 import { Analytics } from "@/components/layout/Analytics";
 import "./globals.css";
 
@@ -22,7 +23,7 @@ export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(SITE.url),
     title: {
-      default: `${SITE.name} – ${SITE.tagline}`,
+      default: SITE.seoTitle,
       template: `%s | ${SITE.name}`,
     },
     description: SITE.description,
@@ -30,10 +31,10 @@ export function generateMetadata(): Metadata {
     openGraph: {
       type: "website",
       siteName: SITE.name,
-      title: `${SITE.name} – ${SITE.tagline}`,
+      title: SITE.seoTitle,
       description: SITE.description,
       images: [
-        { url: "/media/og.jpg", width: 1200, height: 630, alt: SITE.name },
+        { url: "/brand/og.jpg", width: 1200, height: 630, alt: SITE.name },
       ],
     },
     twitter: { card: "summary_large_image" },
@@ -63,6 +64,19 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdScript({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: SITE.name,
+              url: SITE.url,
+              logo: new URL(SITE.logo, SITE.url).toString(),
+              ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
+            }),
+          }}
+        />
         {children}
         <Analytics />
       </body>

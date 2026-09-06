@@ -1,13 +1,39 @@
 // Site-wide constants and navigation.
 
+/** The canonical production origin. Every SEO/public URL (metadataBase,
+ *  sitemap, robots, canonical, Open Graph, JSON-LD) is built from this. */
+const CANONICAL_URL = "https://weaversclubsarees.com";
+
+/**
+ * `NEXT_PUBLIC_SITE_URL` may override the origin for local dev and preview
+ * builds — but it is *ignored* when it points at a `*.vercel.app` deploy URL,
+ * so a stray preview/production value can never leak the Vercel domain into
+ * the sitemap, canonical tags, OG URLs or structured data.
+ */
+function resolveSiteUrl(): string {
+  const env = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (!env) return CANONICAL_URL;
+  try {
+    if (new URL(env).hostname.endsWith(".vercel.app")) return CANONICAL_URL;
+  } catch {
+    return CANONICAL_URL;
+  }
+  return env;
+}
+
 export const SITE = {
   name: process.env.NEXT_PUBLIC_BUSINESS_NAME || "Weavers Club Sarees",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  url: resolveSiteUrl(),
   tagline: "A private digital saree showroom",
+  // Browser-tab + social-share title for the homepage (sub-pages use
+  // "<page> | <name>" via the metadata template in app/layout.tsx).
+  seoTitle: "Premium Indian Sarees at Weavers Club – Exclusive Showroom",
   description:
     "Premium Indian sarees, sourced through trusted weaving partners. Selected in limited quantities, with availability personally confirmed before purchase.",
   // GSTIN from the business's own materials — shown in the footer.
   gstin: process.env.NEXT_PUBLIC_GSTIN || "",
+  // Brand mark for JSON-LD (root-relative; resolved against `url`).
+  logo: "/brand/icon-512.png",
 };
 
 export const NAV_LINKS = [

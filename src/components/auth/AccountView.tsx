@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useCart } from "@/lib/cart/CartContext";
+import { ProfileDetailsForm } from "@/components/auth/ProfileDetailsForm";
 
 export function AccountView() {
   const { user, loading, signOut } = useAuth();
@@ -48,7 +49,7 @@ export function AccountView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="mx-auto w-full max-w-xl">
       <p className="eyebrow">Account</p>
       <h1 className="display-sm mt-3 text-oxblood">Your account.</h1>
 
@@ -76,7 +77,9 @@ export function AccountView() {
         sign in on.
       </p>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <ProfileDetailsForm />
+
+      <div className="mt-12 flex flex-wrap gap-3 border-t border-line pt-8">
         <Link
           href="/catalog"
           className="flex h-12 items-center justify-center gap-2 border border-line px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-deep-brown hover:bg-warm-cream"

@@ -156,8 +156,41 @@ overrides the usual `prefers-reduced-motion` courtesy for this muted b-roll).
 If autoplay is blocked (e.g. iOS Low Power Mode) the real poster frame just
 stays — still no control.
 
-Poster/OG images (`hero-poster.jpg`, `og.jpg`) were generated ad-hoc with sharp;
-regenerate them by hand if the hero or the featured share image changes.
+The hero poster (`hero-poster.jpg`) was generated ad-hoc with sharp; regenerate
+it by hand if the hero changes. The OG share image is now `public/brand/og.jpg`,
+produced by the brand-assets script below.
+
+### Brand assets
+
+`scripts/prepare-logo.mjs` (sharp, manual — **not** in `npm run build`) turns
+one logo artwork file into every brand asset the site uses:
+
+```
+node scripts/prepare-logo.mjs "<path to logo file>"
+```
+
+Outputs: `public/brand/{monogram,lockup}-{light,dark}.png` (the navbar mark and
+footer lockup — wine ink for light, cream ink for dark), `public/brand/icon-{192,512}.png`
+(manifest / JSON-LD), `public/brand/og.jpg` (1200×630), `public/brand/dimensions.json`
+(intrinsic sizes for `<BrandMark>`), and `src/app/{icon,apple-icon}.png` (favicon
++ apple-touch-icon, auto-discovered by Next).
+
+The source art (`logo1.webp`) is a raster with a **baked cream background** and
+no transparency, so the script keys the cream to alpha (colour-distance
+threshold + feathered edge + fringe spill suppression toward the ink) and then
+flattens the opaque pixels to a single cream (`#F1E8DD`) for the dark variant —
+the wine ink is invisible on the dark theme ground. If a transparent PNG/SVG is
+ever supplied, drop it in as the input: the script detects the alpha channel and
+skips keying, nothing else changes.
+
+`<BrandMark>` (`src/components/layout/BrandMark.tsx`) renders both the light and
+dark PNG for a variant and lets CSS pick: `.brand-light` / `.brand-dark` in
+`globals.css` mirror the token theme's three selectors (explicit dark, explicit
+light-not, and `prefers-color-scheme` for "follow device"), so the swap is
+pure CSS with no flash. It reads `width`/`height` from `dimensions.json`, never
+a hard-coded ratio. The navbar uses `variant="monogram"`, the footer
+`variant="lockup"`. The navbar's old lucide "Home" icon was removed — the
+monogram is the labelled home link.
 
 ---
 
@@ -266,25 +299,43 @@ the cart follow you across devices.
   add, capped), then push. While signed in: debounced upsert on every change,
   plus a `pagehide` / `visibilitychange` flush. `localStorage` is always
   written too (offline backup). Sign-out keeps the cart locally, stops syncing.
+- **Saved details ("profile"):** `src/lib/profile/useProfile.ts` (`useProfile`
+  hook — not a provider, only `/account` and `/enquiry` use it). A signed-in
+  customer can save the same fields the enquiry form asks for (name, phone,
+  WhatsApp, email, city, state, country, "shopping for"). `AccountView` has the
+  editable form (`ProfileDetailsForm`); `EnquiryForm` pre-fills its (still
+  editable) fields from it and, on submit, writes any edits back. Guests and
+  the enquiry flow are unchanged — if the table is missing the hook degrades to
+  "no prefill". `/api/inquiries` and the WhatsApp hand-off are untouched.
 - **DB:** `supabase/migrations/011_customer_carts.sql` — `public.carts`
-  (`user_id` PK → `auth.users`, `items jsonb`, `updated_at`), RLS: a user can
-  only touch their own row. `items` is the exact `localStorage` shape; the
-  server never interprets it.
+  (`user_id` PK → `auth.users`, `items jsonb`, `updated_at`).
+  `supabase/migrations/012_customer_profiles.sql` — `public.profiles`
+  (`user_id` PK → `auth.users`, one text column per enquiry field,
+  `updated_at`). Both: RLS so a user can only touch their own row; `carts.items`
+  is the exact `localStorage` shape and the server never interprets it.
 - **Customers are not admins.** Admin access stays gated by `ADMIN_EMAILS` +
   the `/admin` middleware guard. A customer account grants access to nothing
-  but its own `carts` row.
+  but its own `carts` / `profiles` row.
+- **The account icon (navbar + mobile menu) always links to `/account`** — which
+  renders the account details when signed in or a guest view with sign-in CTAs
+  when not, so it never dumps the visitor on a bare login form unexpectedly.
 
 ### Supabase dashboard settings this needs (one-time)
 
-1. Run migration `011_customer_carts.sql` (SQL Editor, after `010`).
+1. Run migrations `011_customer_carts.sql` and `012_customer_profiles.sql`
+   (SQL Editor, after `010`).
 2. **Authentication → Providers → Email:** enable **Sign Ups** (currently off).
    Choose whether to require **Confirm email** (the flow handles both).
 3. **Authentication → Providers → Google:** enable, paste the Client ID/Secret
    from a Google Cloud OAuth client whose authorised redirect URI is
    `https://<project-ref>.supabase.co/auth/v1/callback`.
-4. **Authentication → URL Configuration:** Site URL = the production URL;
-   Redirect URLs = `https://<domain>/auth/callback` (and
-   `http://localhost:3000/**` for local dev).
+4. **Authentication → URL Configuration** — without this, Google sign-in and
+   every email link land back on the site *still signed out* (Supabase falls
+   back to the bare Site URL when the redirect target isn't allowlisted):
+   - Site URL = the production URL (e.g. `https://weaversclubsarees.com`)
+   - Redirect URLs: add `https://<domain>/auth/callback`, `https://<domain>/**`,
+     and `http://localhost:3000/**`.
+   See [deployment.md](deployment.md) for a one-liner that checks what's allowed.
 
 ## 6. Environment variables
 

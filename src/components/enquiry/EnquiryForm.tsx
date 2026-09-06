@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/lib/cart/CartContext";
+import {
+  EMPTY_PROFILE,
+  hasAnyValue,
+  useProfile,
+  type Profile,
+} from "@/lib/profile/useProfile";
 import { getSource } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
 import {
@@ -31,10 +37,27 @@ function countDigits(s: string) {
 export function EnquiryForm() {
   const router = useRouter();
   const { items, knownSubtotal, hasUnpriced, hydrated } = useCart();
+  const { profile, loading: profileLoading, signedIn, save: saveProfile } =
+    useProfile();
   const [errors, setErrors] = useState<Errors>({});
   const submitting = useRef(false);
   const [submittingState, setSubmittingState] = useState(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // Wait for both the cart and (if signed in) the saved profile before
+  // rendering — the fields are uncontrolled, so their defaults must be
+  // known at first mount.
+  const ready = hydrated && (!signedIn || !profileLoading);
+  const prefill: Profile = profile ?? EMPTY_PROFILE;
+  const prefilled = signedIn && hasAnyValue(profile);
+
+  if (!ready) {
+    return (
+      <div className="py-20 text-center text-sm text-muted-foreground">
+        Loading your selection…
+      </div>
+    );
+  }
 
   if (hydrated && items.length === 0) {
     return (
@@ -178,6 +201,21 @@ export function EnquiryForm() {
 
     analytics.inquirySubmit({ inquiry_type: inquiryType, source });
 
+    // Remember these details for next time — signed-in customers only.
+    // Fire-and-forget; a failure here never blocks the WhatsApp hand-off.
+    if (signedIn) {
+      void saveProfile({
+        full_name: values.name,
+        phone: values.phone,
+        whatsapp: values.whatsapp,
+        email: values.email,
+        city: values.city,
+        state: values.state,
+        country: values.country,
+        shopping_for: values.shoppingFor,
+      });
+    }
+
     // Cart is intentionally NOT cleared here — it's cleared on the
     // confirmation page only once the customer confirms they've sent it.
     router.push("/enquiry/sent");
@@ -188,12 +226,23 @@ export function EnquiryForm() {
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
+        {prefilled && (
+          <p className="text-xs text-muted-foreground">
+            Filled in from your{" "}
+            <Link href="/account" className="underline hover:text-oxblood">
+              account details
+            </Link>
+            . Edit anything before sending.
+          </p>
+        )}
+
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             id="name"
             label="Full Name"
             required
             error={errors.name}
+            defaultValue={prefill.full_name}
             inputRef={(el) => (fieldRefs.current.name = el)}
             autoComplete="name"
           />
@@ -204,24 +253,34 @@ export function EnquiryForm() {
             required
             error={errors.phone}
             placeholder="+91 …"
+            defaultValue={prefill.phone}
             inputRef={(el) => (fieldRefs.current.phone = el)}
             autoComplete="tel"
           />
-          <Field id="whatsapp" label="WhatsApp Number" type="tel" placeholder="If different from above" autoComplete="tel" />
-          <Field id="email" label="Email" type="email" autoComplete="email" />
+          <Field id="whatsapp" label="WhatsApp Number" type="tel" placeholder="If different from above" defaultValue={prefill.whatsapp} autoComplete="tel" />
+          <Field id="email" label="Email" type="email" defaultValue={prefill.email} autoComplete="email" />
           <Field
             id="city"
             label="City"
             required
             error={errors.city}
+            defaultValue={prefill.city}
             inputRef={(el) => (fieldRefs.current.city = el)}
             autoComplete="address-level2"
           />
-          <Field id="state" label="State" autoComplete="address-level1" />
-          <Field id="country" label="Country" autoComplete="country-name" />
+          <Field id="state" label="State" defaultValue={prefill.state} autoComplete="address-level1" />
+          <Field id="country" label="Country" defaultValue={prefill.country} autoComplete="country-name" />
           <div className="space-y-1.5">
             <Label htmlFor="shopping_for">I am shopping for</Label>
-            <Select id="shopping_for" name="shopping_for" defaultValue="Individual">
+            <Select
+              id="shopping_for"
+              name="shopping_for"
+              defaultValue={
+                (SHOPPING_FOR as readonly string[]).includes(prefill.shopping_for)
+                  ? prefill.shopping_for
+                  : "Individual"
+              }
+            >
               {SHOPPING_FOR.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -299,6 +358,7 @@ function Field({
   required,
   placeholder,
   error,
+  defaultValue,
   inputRef,
   autoComplete,
 }: {
@@ -308,6 +368,7 @@ function Field({
   required?: boolean;
   placeholder?: string;
   error?: string;
+  defaultValue?: string;
   inputRef?: (el: HTMLInputElement | null) => void;
   autoComplete?: string;
 }) {
@@ -326,6 +387,7 @@ function Field({
         name={id}
         type={type}
         ref={inputRef}
+        defaultValue={defaultValue}
         placeholder={placeholder}
         autoComplete={autoComplete}
         aria-required={required || undefined}

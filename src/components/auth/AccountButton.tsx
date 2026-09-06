@@ -6,16 +6,17 @@ import { useAuth } from "@/lib/auth/AuthContext";
 
 /**
  * Nav account control. Renders the same neutral icon whether signed in or
- * out (so there's no hydration flit), linking to /account — which itself
- * shows the right state.
+ * out (so there's no hydration flit) and always links to /account, which
+ * shows either the account details or a guest view with sign-in — so the
+ * icon never lands the visitor somewhere unexpected.
  */
 export function AccountButton() {
   const { user, loading } = useAuth();
-  const label = !loading && user ? "Your account" : "Sign in";
+  const label = !loading && user ? "Your account" : "Account";
 
   return (
     <Link
-      href={user ? "/account" : "/signin"}
+      href="/account"
       aria-label={label}
       title={label}
       className="nav-icon relative"

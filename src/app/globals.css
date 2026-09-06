@@ -186,6 +186,30 @@
   .arrow-shift-host:hover .arrow-shift {
     transform: translateX(4px);
   }
+
+  /* Brand logo (<BrandMark>): wine-ink master on light, cream-ink master on
+     dark. Mirrors the token theme's three selectors in this file — the media
+     block covers "follow device" before the visitor picks a theme. The
+     pre-paint script sets data-theme before first paint, so only one is drawn. */
+  .brand-dark {
+    display: none;
+  }
+  :root[data-theme="dark"] .brand-light,
+  .dark .brand-light {
+    display: none;
+  }
+  :root[data-theme="dark"] .brand-dark,
+  .dark .brand-dark {
+    display: inline-block;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .brand-light {
+      display: none;
+    }
+    :root:not([data-theme="light"]) .brand-dark {
+      display: inline-block;
+    }
+  }
 }
 
 @layer utilities {

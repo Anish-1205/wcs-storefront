@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/lib/site";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { getCategories } from "@/data/products";
 import { COLLECTIONS } from "@/data/collections";
 import { buildWhatsAppURL } from "@/lib/whatsapp";
@@ -13,10 +14,8 @@ export function Footer() {
       <div className="container-px mx-auto max-w-[90rem] py-16">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <p className="font-serif text-2xl tracking-[0.06em] text-oxblood">
-              {SITE.name.toUpperCase()}
-            </p>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            <BrandMark variant="lockup" className="h-11 sm:h-12" />
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
               A private digital saree showroom. Pieces sourced through trusted
               weaving partners, with availability personally confirmed before
               purchase.

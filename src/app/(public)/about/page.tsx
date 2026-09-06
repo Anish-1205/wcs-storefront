@@ -9,7 +9,10 @@ import { Reveal } from "@/components/media/Reveal";
 export const metadata: Metadata = {
   title: "Our Story",
   description: `${SITE.name} — a private saree showroom. Pieces sourced through weaving partners, with availability personally confirmed before purchase.`,
+  alternates: { canonical: "/about" },
 };
+
+const logoUrl = new URL(SITE.logo, SITE.url).toString();
 
 const schema = {
   "@context": "https://schema.org",
@@ -17,6 +20,8 @@ const schema = {
   name: SITE.name,
   description: SITE.description,
   url: SITE.url,
+  logo: logoUrl,
+  image: logoUrl,
   ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
 };
 

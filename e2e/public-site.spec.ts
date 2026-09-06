@@ -1,4 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { SITE } from "../src/lib/site";
+
+test("navbar brand mark links home and is the only banner home link", async ({ page }) => {
+  await page.goto("/");
+  const home = page.getByRole("banner").getByRole("link", { name: SITE.name });
+  await expect(home).toBeVisible();
+  await expect(home).toHaveAttribute("href", "/");
+  await expect(home.locator("img").first()).toBeVisible();
+  // The redundant lucide "Home" icon link was removed — the mark is the only one.
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: new RegExp(`^(home|${SITE.name})$`, "i") }),
+  ).toHaveCount(1);
+});
 
 test("public conversion routes render", async ({ page }) => {
   for (const path of ["/", "/catalog", "/about", "/wholesale", "/contact", "/privacy", "/terms", "/shipping-returns"]) {

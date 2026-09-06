@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X, Search, Home } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { NAV_LINKS, SITE } from "@/lib/site";
 import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { CartButton } from "@/components/cart/CartButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AccountButton } from "@/components/auth/AccountButton";
@@ -43,16 +44,6 @@ export function Navbar() {
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        {/* Home (top-left) */}
-        <Link
-          href="/"
-          onClick={() => setOpen(false)}
-          aria-label="Home"
-          className="nav-icon hidden shrink-0 sm:inline-flex md:-ml-1"
-        >
-          <Home className="h-[1.05rem] w-[1.05rem]" />
-        </Link>
-
         {/* Desktop links (left) */}
         <div className="hidden flex-1 items-center gap-6 md:flex lg:gap-7">
           {NAV_LINKS.map((l) => (
@@ -70,15 +61,14 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Wordmark */}
+        {/* Brand mark (home) */}
         <Link
           href="/"
           onClick={() => setOpen(false)}
-          className="min-w-0 shrink text-center md:shrink-0"
+          aria-label={SITE.name}
+          className="flex min-w-0 shrink items-center justify-center md:shrink-0"
         >
-          <span className="block truncate font-serif text-[0.88rem] leading-none tracking-[0.06em] text-oxblood sm:text-[1.15rem] sm:tracking-[0.12em] lg:text-[1.3rem]">
-            {SITE.name.toUpperCase()}
-          </span>
+          <BrandMark variant="monogram" priority className="h-11 sm:h-12" />
         </Link>
 
         {/* Actions (right) */}
