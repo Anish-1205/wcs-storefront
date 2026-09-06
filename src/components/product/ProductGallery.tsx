@@ -3,8 +3,10 @@
 import Image from "next/image";
 import type { Product, ProductImage, MediaRole } from "@/data/products";
 import { primaryImage, galleryOrder } from "@/data/products";
+import { SITE } from "@/lib/site";
 import { PortraitVideo } from "@/components/media/PortraitMedia";
 import { Reveal } from "@/components/media/Reveal";
+import { PinterestSaveButton } from "@/components/product/PinterestSaveButton";
 
 /**
  * Editorial product gallery. Full media, no art-directed cropping — every
@@ -61,7 +63,7 @@ export function ProductGallery({ product }: { product: Product }) {
 
   return (
     <div className="space-y-5">
-      {hero && <GalleryImage image={hero} priority />}
+      {hero && <GalleryImage image={hero} product={product} priority />}
 
       {product.videos[0] && (
         <Reveal>
@@ -97,7 +99,7 @@ export function ProductGallery({ product }: { product: Product }) {
             ))}
           </div>
         ) : (
-          <GalleryImage key={block.image.src} image={block.image} />
+          <GalleryImage key={block.image.src} image={block.image} product={product} />
         ),
       )}
 
@@ -130,11 +132,14 @@ export function ProductGallery({ product }: { product: Product }) {
 
 function GalleryImage({
   image,
+  product,
   priority,
   bare,
   sizes = "(min-width:480px) 27rem, 100vw",
 }: {
   image: ProductImage;
+  /** Omitted for bare (grid-cell) images, which skip the save button too. */
+  product?: Product;
   priority?: boolean;
   /** skip the outer wrapper (used inside a grid cell) */
   bare?: boolean;
@@ -143,7 +148,7 @@ function GalleryImage({
   const caption = ROLE_CAPTION[image.role];
 
   const img = (
-    <figure className={bare ? "bg-warm-cream" : `${MEDIA_MAX} bg-warm-cream`}>
+    <figure className={bare ? "bg-warm-cream" : `${MEDIA_MAX} relative bg-warm-cream`}>
       <Image
         src={image.src}
         width={image.w}
@@ -153,6 +158,15 @@ function GalleryImage({
         priority={priority}
         className="h-auto w-full"
       />
+      {!bare && product && (
+        <PinterestSaveButton
+          productId={product.slug}
+          imageUrl={`${SITE.url}${image.src}`}
+          pageUrl={`${SITE.url}/sarees/${product.slug}`}
+          description={`${product.title} · ${product.reference}`}
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ivory/85 text-oxblood shadow-sm backdrop-blur transition-colors hover:bg-ivory"
+        />
+      )}
       {!bare && caption && (
         <figcaption className="mt-2 text-[0.68rem] uppercase tracking-[0.2em] text-antique-gold">
           {caption}

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { jsonLdScript } from "@/lib/json-ld";
-import { SITE } from "@/lib/site";
-import { buildWhatsAppURL } from "@/lib/whatsapp";
+import { SITE, SOCIAL_LINKS } from "@/lib/site";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { PortraitImage } from "@/components/media/PortraitMedia";
 import { Reveal } from "@/components/media/Reveal";
 
@@ -23,6 +23,7 @@ const schema = {
   logo: logoUrl,
   image: logoUrl,
   ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
+  ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS } : {}),
 };
 
 export default function AboutPage() {
@@ -95,14 +96,12 @@ export default function AboutPage() {
               Explore the catalog
               <span className="arrow-shift">→</span>
             </Link>
-            <a
-              href={buildWhatsAppURL()}
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsAppLink
+              sourcePage="about"
               className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70"
             >
               Speak to Us ↗
-            </a>
+            </WhatsAppLink>
           </div>
         </Reveal>
       </div>

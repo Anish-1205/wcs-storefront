@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Terms of Use", description: `Terms for using the ${SITE.name} website and enquiry service.` };
+export const metadata: Metadata = {
+  title: "Terms of Use",
+  description: `Terms for using the ${SITE.name} website and enquiry service.`,
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
   return (

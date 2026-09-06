@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Privacy Policy", description: `How ${SITE.name} collects and uses customer information.` };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: `How ${SITE.name} collects and uses customer information.`,
+  alternates: { canonical: "/privacy" },
+};
 
 export default function PrivacyPage() {
   return (

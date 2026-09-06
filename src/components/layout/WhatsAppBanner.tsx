@@ -1,4 +1,4 @@
-import { buildWhatsAppURL } from "@/lib/whatsapp";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { Button } from "@/components/ui/button";
 
 /** Reusable "talk to us on WhatsApp" CTA band for content pages. */
@@ -14,11 +14,11 @@ export function WhatsAppBanner({
       <h2 className="font-serif text-2xl text-ivory sm:text-3xl">{title}</h2>
       <p className="mx-auto mt-3 max-w-xl text-sm text-ivory/80">{subtitle}</p>
       <div className="mt-6 flex justify-center">
-        <a href={buildWhatsAppURL()} target="_blank" rel="noopener noreferrer">
+        <WhatsAppLink sourcePage="banner">
           <Button variant="whatsapp" size="lg">
             Chat on WhatsApp
           </Button>
-        </a>
+        </WhatsAppLink>
       </div>
     </section>
   );

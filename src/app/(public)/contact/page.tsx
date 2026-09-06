@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { InquiryForm } from "@/components/lead/InquiryForm";
-import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { EMAIL, EMAIL_CONFIGURED } from "@/lib/contact";
 import { SITE } from "@/lib/site";
 import { CONCIERGE_PARAGRAPH } from "@/lib/copy";
@@ -35,14 +36,12 @@ export default function ContactPage() {
               (e.g. WCS-004) and we&apos;ll take it from there.
             </p>
             {WHATSAPP_CONFIGURED ? (
-              <a
-                href={buildWhatsAppURL()}
-                target="_blank"
-                rel="noopener noreferrer"
+              <WhatsAppLink
+                sourcePage="contact"
                 className="link-underline mt-3 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
               >
                 Open WhatsApp ↗
-              </a>
+              </WhatsAppLink>
             ) : (
               <p className="mt-3 text-sm text-deep-brown">
                 WhatsApp details coming soon — use the form for now.

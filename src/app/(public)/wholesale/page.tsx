@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { InquiryForm } from "@/components/lead/InquiryForm";
-import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -75,14 +76,12 @@ export default function WholesalePage() {
             Send your city, the categories you carry and a rough monthly volume.
           </p>
           {WHATSAPP_CONFIGURED ? (
-            <a
-              href={buildWhatsAppURL()}
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsAppLink
+              sourcePage="wholesale"
               className="link-underline mt-3 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
             >
               Open WhatsApp ↗
-            </a>
+            </WhatsAppLink>
           ) : (
             <p className="mt-3 text-sm text-deep-brown">
               Use the enquiry form and we&apos;ll be in touch.

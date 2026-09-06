@@ -1,5 +1,4 @@
-// Single source of truth for price display logic.
-// ProductCard, VariantSelector, and ProductSchema all import from here.
+// Single source of truth for price display logic (admin panel).
 
 export type PriceRange = { min: number; max: number } | null;
 

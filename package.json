@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "audit:lighthouse": "lighthouse http://localhost:3000 --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=reports/lighthouse.json --quiet",
-    "check:env": "node scripts/check-env.mjs --production"
+    "check:env": "node scripts/check-env.mjs --production",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

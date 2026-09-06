@@ -8,11 +8,14 @@ import {
   primaryImage,
 } from "@/data/products";
 import { SITE } from "@/lib/site";
-import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
+import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
 import { CONCIERGE_NOTE } from "@/lib/copy";
+import { jsonLdScript } from "@/lib/json-ld";
+import { breadcrumbList } from "@/lib/breadcrumbs";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { Reveal } from "@/components/media/Reveal";
 
@@ -86,11 +89,21 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     },
   };
 
+  const breadcrumbs = breadcrumbList([
+    { name: "Catalog", path: "/catalog" },
+    { name: product.category, path: `/catalog/${product.categorySlug}` },
+    { name: product.reference, path: `/sarees/${product.slug}` },
+  ]);
+
   return (
     <div className="container-px mx-auto max-w-[90rem] py-8 lg:py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
       />
 
       <nav className="mb-8 text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -154,18 +167,16 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
             <div className="mt-6">
               <AddToCartButton product={product} />
-              <a
-                href={buildWhatsAppURL({
-                  productName: product.title,
-                  productCode: product.reference,
-                  variantColor: product.colour,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
+              <WhatsAppLink
+                sourcePage="product"
+                productId={product.slug}
+                productName={product.title}
+                productCode={product.reference}
+                variantColor={product.colour}
                 className="mt-3 flex h-11 items-center justify-center gap-2 border border-line text-[0.75rem] font-medium uppercase tracking-[0.2em] text-deep-brown hover:bg-warm-cream"
               >
                 {WHATSAPP_CONFIGURED ? "Ask About This Piece ↗" : "Ask About This Piece"}
-              </a>
+              </WhatsAppLink>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                 Add to your cart as usual. {CONCIERGE_NOTE}
               </p>

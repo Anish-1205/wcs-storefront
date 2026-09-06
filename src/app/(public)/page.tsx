@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getFeaturedProducts, getAllProducts, getCategories } from "@/data/products";
 import { COLLECTIONS } from "@/data/collections";
 import { COLOUR_STORY, DETAIL_STORY, HERO } from "@/lib/site";
-import { buildWhatsAppURL } from "@/lib/whatsapp";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { Reveal } from "@/components/media/Reveal";
@@ -195,15 +195,13 @@ export default function HomePage() {
             Tell us the weave, colour, occasion or budget you have in mind and we
             will help source options through our network of weaving partners.
           </p>
-          <a
-            href={buildWhatsAppURL()}
-            target="_blank"
-            rel="noopener noreferrer"
+          <WhatsAppLink
+            sourcePage="home"
             className="arrow-shift-host mt-8 inline-flex items-center gap-2 bg-oxblood px-7 py-3.5 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Enquire on WhatsApp
             <span className="arrow-shift">→</span>
-          </a>
+          </WhatsAppLink>
         </Reveal>
       </section>
 

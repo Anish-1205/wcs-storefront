@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
-import { SITE } from "@/lib/site";
+import { SITE, SOCIAL_LINKS } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { Analytics } from "@/components/layout/Analytics";
 import "./globals.css";
@@ -39,6 +39,14 @@ export function generateMetadata(): Metadata {
     },
     twitter: { card: "summary_large_image" },
     robots: { index: true, follow: true },
+    verification: {
+      ...(process.env.GOOGLE_SITE_VERIFICATION
+        ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+        : {}),
+      ...(process.env.BING_SITE_VERIFICATION
+        ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } }
+        : {}),
+    },
     other: {
       ...Sentry.getTraceData(),
     },
@@ -74,6 +82,23 @@ export default function RootLayout({
               url: SITE.url,
               logo: new URL(SITE.logo, SITE.url).toString(),
               ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
+              ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS } : {}),
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdScript({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: SITE.name,
+              url: SITE.url,
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${SITE.url}/search?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
             }),
           }}
         />

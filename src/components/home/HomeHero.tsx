@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HERO } from "@/lib/site";
-import { buildWhatsAppURL } from "@/lib/whatsapp";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { PortraitVideo } from "@/components/media/PortraitMedia";
 
 export function HomeHero() {
@@ -27,14 +27,12 @@ export function HomeHero() {
               Explore the Collection
               <span className="arrow-shift">→</span>
             </Link>
-            <a
-              href={buildWhatsAppURL()}
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsAppLink
+              sourcePage="home"
               className="link-underline text-[0.82rem] uppercase tracking-[0.16em] text-deep-brown/70"
             >
               Speak to Us ↗
-            </a>
+            </WhatsAppLink>
           </div>
         </div>
 

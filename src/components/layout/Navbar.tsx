@@ -54,6 +54,7 @@ export function Navbar() {
               className={cn(
                 "link-underline whitespace-nowrap text-[0.78rem] uppercase tracking-[0.12em] transition-colors hover:text-oxblood lg:text-[0.82rem] lg:tracking-[0.14em]",
                 isActive(l.href) ? "text-oxblood" : "text-deep-brown/80",
+                l.xlOnly && "hidden xl:inline",
               )}
             >
               {l.label}

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildWhatsAppURL } from "@/lib/whatsapp";
-import { analytics } from "@/lib/analytics";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 
 /**
  * Integrated WhatsApp affordance — a small oxblood control, not a neon
@@ -12,11 +11,8 @@ export function WhatsAppFloat() {
   const [hover, setHover] = useState(false);
 
   return (
-    <a
-      href={buildWhatsAppURL()}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => analytics.whatsappClick({ source_page: "float" })}
+    <WhatsAppLink
+      sourcePage="float"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       aria-label="Speak to us on WhatsApp"
@@ -32,6 +28,6 @@ export function WhatsAppFloat() {
       >
         Speak to us
       </span>
-    </a>
+    </WhatsAppLink>
   );
 }

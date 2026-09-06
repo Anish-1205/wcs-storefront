@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
 import { SITE } from "@/lib/site";
+import { jsonLdScript } from "@/lib/json-ld";
+import { breadcrumbList } from "@/lib/breadcrumbs";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { CatalogFilterBar } from "@/components/catalog/CatalogFilterBar";
 import { Reveal } from "@/components/media/Reveal";
@@ -61,8 +63,17 @@ export default function CategoryPage({ params, searchParams }: PageProps) {
     },
   ];
 
+  const breadcrumbs = breadcrumbList([
+    { name: "Catalog", path: "/catalog" },
+    { name: category.name, path: `/catalog/${category.slug}` },
+  ]);
+
   return (
     <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
+      />
       <nav className="mb-6 text-xs uppercase tracking-[0.14em] text-muted-foreground">
         <Link href="/catalog" className="hover:text-oxblood">
           Catalog

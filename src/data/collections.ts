@@ -47,6 +47,39 @@ export const COLLECTIONS: Collection[] = [
     cover: "/media/indigo-blockprint-modal-silk/04-pallu.jpg",
     productSlugs: ["indigo-blockprint-modal-silk", "rajwadi-patchwork-mirror-saree"],
   },
+  {
+    slug: "banarasi-sarees",
+    title: "Banarasi Sarees",
+    tagline: "Zari-worked Banarasi weaves",
+    description:
+      "Banarasi weaves from across the room — dense zari motifs, brocade and bandhej borders, on silk, georgette and tissue grounds.",
+    cover: "/media/red-hansa-jamdani-silk/01-full.jpg",
+    productSlugs: [
+      "purple-tanchoi-silk",
+      "antique-gold-patola-tissue",
+      "bandhani-patola-indigo",
+      "bandhani-patola-vermilion",
+      "bandhani-patola-emerald",
+      "bandhani-patola-parrot",
+      "red-hansa-jamdani-silk",
+      "magenta-bandhej-khaddi-georgette",
+    ],
+  },
+  {
+    slug: "bandhej-sarees",
+    title: "Bandhej Sarees",
+    tagline: "Tie-dyed grounds, contrast borders",
+    description:
+      "Bandhej (tie-dye) sarees from the room — resist-dyed grounds finished with contrast borders and hand-work.",
+    cover: "/media/magenta-bandhej-khaddi-georgette/04-pallu.jpg",
+    productSlugs: [
+      "bandhani-patola-indigo",
+      "bandhani-patola-vermilion",
+      "bandhani-patola-emerald",
+      "bandhani-patola-parrot",
+      "magenta-bandhej-khaddi-georgette",
+    ],
+  },
 ];
 
 export function getCollection(slug: string): Collection | undefined {

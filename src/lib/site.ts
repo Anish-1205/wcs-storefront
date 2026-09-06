@@ -36,9 +36,27 @@ export const SITE = {
   logo: "/brand/icon-512.png",
 };
 
+/**
+ * Real, confirmed social profiles — used for Organization JSON-LD `sameAs`
+ * (helps Google's entity/knowledge-panel recognition). Instagram is
+ * confirmed (@weaversclub); Facebook goes in via env once the exact page
+ * URL is confirmed — never invented.
+ */
+export const SOCIAL_LINKS = [
+  "https://www.instagram.com/weaversclub/",
+  ...(process.env.NEXT_PUBLIC_FACEBOOK_URL ? [process.env.NEXT_PUBLIC_FACEBOOK_URL] : []),
+];
+
 export const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/collections", label: "Collections" },
+  // The desktop bar is already tight at md (768px) and even lg (1024px, a
+  // real iPad-landscape width) — both already slightly clip "Speak to Us"
+  // before this link existed. A 6th link there makes that meaningfully
+  // worse, so show it in the desktop bar only from xl (1280px) up, where
+  // there's real room; the mobile drawer always lists every entry regardless
+  // of this flag.
+  { href: "/guides", label: "Guides", xlOnly: true },
   { href: "/about", label: "Our Story" },
   { href: "/wholesale", label: "Wholesale" },
   { href: "/contact", label: "Contact" },
