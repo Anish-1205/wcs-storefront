@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getAllProducts } from "@/data/products";
+import { getAllProducts, type Product } from "@/data/products";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { buildWhatsAppURL, WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 
-export function SearchView() {
-  const all = useMemo(() => getAllProducts(), []);
+export function SearchView({ products }: { products?: Product[] }) {
+  const all = useMemo(() => products ?? getAllProducts(), [products]);
   const [q, setQ] = useState("");
 
   // Seed from ?q= and keep the URL in sync (shareable searches).
@@ -28,7 +28,6 @@ export function SearchView() {
     return all.filter((p) => {
       const haystack = [
         p.title,
-        p.reference,
         p.category,
         p.colour,
         p.colourFamily,
@@ -40,11 +39,7 @@ export function SearchView() {
       ]
         .join(" ")
         .toLowerCase();
-      // also match "wcs004" / "004" style
-      return (
-        haystack.includes(term) ||
-        p.reference.toLowerCase().replace(/-/g, "").includes(term.replace(/-/g, ""))
-      );
+      return haystack.includes(term);
     });
   }, [term, all]);
 

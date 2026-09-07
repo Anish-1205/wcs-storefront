@@ -134,6 +134,42 @@ list produces a confident split, a timestamp-proximity group larger than 8
 assets is flagged `flagged_for_review` instead of being treated as one
 product, per the "never silently merge ambiguous assets" requirement.
 
+## Colour-variant detection (`src/lib/import/color-variants.ts`)
+
+A group's photos often show the same saree in several body colours. Rather
+than dumping every photo onto one flat "Default" variant (the original
+behaviour, still what happens when nothing below is used), an admin can ask
+AI to cluster a group's photos by colourway and pick the best-looking one as
+the default:
+
+1. **"Detect color variants"** (`requestGroupColorVariantSuggestions`) sends
+   the group's photos to `AiProvider.suggestColorVariants` (vision call, same
+   plumbing as `suggestProductMetadata`/`classifyCollection`) and stores the
+   raw result as a **draft** in `import_product_groups.ai_color_variants` —
+   nothing about real assets or products changes yet, same fail-closed
+   pattern as `ai_metadata`.
+2. **"Apply suggested variants"** (`applyGroupColorVariants`) is the explicit
+   admin confirmation step. It re-resolves the stored suggestion against the
+   group's *current* assets (`resolveColorVariantAssignment` — a suggestion
+   can be stale if an asset moved/was deleted since it was generated; ids the
+   suggestion no longer covers are just left unassigned, never guessed), then
+   writes `import_assets.variant_group` and `import_product_groups
+   .best_variant_group` (the colourway to show first). Applying is a no-op
+   unless at least two distinct colour groups survive re-resolution.
+3. `createProductFromGroup` checks whether any of the group's images have a
+   `variant_group` set. If none do, it creates the single "Default" variant
+   exactly as before. If some do, it creates one `product_variants` row per
+   distinct `variant_group`, `best_variant_group` first, and any image the
+   suggestion didn't cover joins whichever variant ends up first rather than
+   being silently dropped from the product.
+4. **"Undo"** (`clearGroupColorVariants`) resets every asset's
+   `variant_group` back to null, reverting to the single-variant behaviour.
+
+Same guardrails as collection classification: the AI response is defensively
+re-filtered against the asset ids actually offered (`anthropic-provider.ts`),
+and at most one colourway can ever be marked the best/default pick — a model
+that (against its instructions) marks several is trimmed to the first.
+
 ## Less-manual review workflow
 
 `autoGroupBatchAssets` best-effort fires `requestGroupAiSuggestions` +
@@ -199,6 +235,10 @@ transforms, etc.) and was out of scope here.
 
 - `import-grouping.test.ts` — heuristic priority order, ambiguous-group
   flagging, the filename-identifier "don't fabricate structure" guard.
+- `import-color-variants.test.ts` — `resolveColorVariantAssignment`'s
+  stale-suggestion handling (dropped/moved assets), the "never split one
+  asset across two colour groups" guard, and the "only the first
+  is_best_display wins" guard.
 - `collection-classification.test.ts` — every deterministic source, the
   confidence+margin bar, AI failure/empty/out-of-list handling.
 - `collection-classification-eval.test.ts` +

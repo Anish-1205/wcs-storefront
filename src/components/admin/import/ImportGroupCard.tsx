@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import type { ImportAsset, ImportCollectionClassification, ImportProductGroup } from "@/lib/supabase/types";
 import {
+  applyGroupColorVariants,
+  clearGroupColorVariants,
   confirmGroupCollection,
   createProductFromGroup,
   deleteImportAsset,
@@ -19,6 +21,7 @@ import {
   moveImportAsset,
   requestGroupAiSuggestions,
   requestGroupCollectionClassification,
+  requestGroupColorVariantSuggestions,
   setImportGroupPrimaryAsset,
   splitImportGroup,
   updateImportGroupDescription,
@@ -65,6 +68,8 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
 
   const sortedAssets = [...assets].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order);
   const stateBadge = classification ? STATE_BADGE[classification.state] : null;
+  const imageAssetCount = assets.filter((a) => a.kind === "image").length;
+  const appliedVariantGroups = Array.from(new Set(assets.map((a) => a.variant_group).filter((g): g is string => !!g)));
   const candidates = (classification?.candidate_alternatives as Array<{ collection_id: string; collection_name: string; confidence: number; evidence: string }> | null) ?? [];
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
@@ -154,6 +159,15 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
               )}
               {asset.duplicate_of_asset_id && (
                 <span className="absolute inset-x-0 bottom-0 bg-amber-500/90 px-1 text-center text-[9px] text-white">dup?</span>
+              )}
+              {asset.variant_group && (
+                <span
+                  className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-1 text-center text-[9px] text-white"
+                  title={asset.variant_group}
+                >
+                  {asset.variant_group}
+                  {group.best_variant_group === asset.variant_group ? " ★" : ""}
+                </span>
               )}
               <button
                 type="button"
@@ -266,6 +280,55 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
           </dl>
         )}
       </div>
+
+      {imageAssetCount >= 2 && !group.product_id && (
+        <div className="mb-3 rounded-sm border border-border p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-primary">Colour variants</span>
+            {appliedVariantGroups.length === 0 && (
+              <Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => run(() => requestGroupColorVariantSuggestions(group.id))}>
+                {group.ai_color_variants_generated_at ? "Re-detect" : "Detect color variants"}
+              </Button>
+            )}
+          </div>
+          {appliedVariantGroups.length > 0 ? (
+            <div className="space-y-2 text-xs">
+              <p className="text-muted-foreground">
+                Applied — {appliedVariantGroups.length} colourways: {appliedVariantGroups.join(", ")}.
+                {group.best_variant_group && ` "${group.best_variant_group}" (★) shows first.`}
+              </p>
+              <Button type="button" size="sm" variant="ghost" disabled={isPending} onClick={() => run(() => clearGroupColorVariants(group.id))}>
+                Undo — merge back into one variant
+              </Button>
+            </div>
+          ) : group.ai_color_variants && group.ai_color_variants.length > 0 ? (
+            <div className="space-y-2">
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {group.ai_color_variants.map((v) => (
+                  <li key={v.color} className="flex items-center gap-2">
+                    {v.color_hex && (
+                      <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-border" style={{ backgroundColor: v.color_hex }} />
+                    )}
+                    <span>
+                      {v.color} — {v.asset_client_upload_ids.length} photo{v.asset_client_upload_ids.length === 1 ? "" : "s"} — {Math.round(v.confidence * 100)}%
+                      {v.is_best_display ? " — suggested default ★" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button type="button" size="sm" disabled={isPending} onClick={() => run(() => applyGroupColorVariants(group.id))}>
+                Apply suggested variants
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {group.ai_color_variants_generated_at
+                ? "No distinct colour variants detected in this group's photos."
+                : "Detects if these photos show the same saree in different colours, and splits them into variants automatically."}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mb-3 rounded-sm border border-border p-3">
         <div className="mb-2 flex items-center justify-between">

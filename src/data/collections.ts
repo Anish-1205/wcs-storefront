@@ -86,11 +86,11 @@ export function getCollection(slug: string): Collection | undefined {
   return COLLECTIONS.find((c) => c.slug === slug);
 }
 
-export function getCollectionProducts(slug: string): Product[] {
+export function getCollectionProducts(slug: string, products: Product[] = PRODUCTS): Product[] {
   const c = getCollection(slug);
   if (!c) return [];
   return c.productSlugs
-    .map((s) => PRODUCTS.find((p) => p.slug === s))
+    .map((s) => products.find((p) => p.slug === s))
     .filter((p): p is Product => Boolean(p));
 }
 

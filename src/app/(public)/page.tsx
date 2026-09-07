@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getFeaturedProducts, getAllProducts, getCategories } from "@/data/products";
+import { getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { COLLECTIONS } from "@/data/collections";
 import { COLOUR_STORY, DETAIL_STORY, HERO } from "@/lib/site";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
@@ -20,17 +21,16 @@ const STEPS = [
   ["04", "Continue", "We complete the conversation with you on WhatsApp."],
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const all = await getProductsWithOverrides(getAllProducts());
   // The hero already showcases one piece; the two product sections below are
   // deliberately disjoint from it and from each other, so nothing repeats.
   const heroSlug = HERO.href.split("/").pop();
-  const selection = getFeaturedProducts(5)
+  const selection = getFeaturedProducts(5, all)
     .filter((p) => p.slug !== heroSlug)
     .slice(0, 4);
   const shown = new Set([heroSlug, ...selection.map((p) => p.slug)]);
-  const more = getAllProducts()
-    .filter((p) => !shown.has(p.slug))
-    .slice(0, 6);
+  const more = all.filter((p) => !shown.has(p.slug)).slice(0, 6);
   const categories = getCategories();
 
   return (

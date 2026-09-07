@@ -337,6 +337,63 @@ the cart follow you across devices.
      and `http://localhost:3000/**`.
    See [deployment.md](deployment.md) for a one-liner that checks what's allowed.
 
+## 5c. Admin ↔ storefront bridge
+
+The storefront stays file-driven; two admin-side helpers sit alongside it
+without changing that.
+
+### Sync storefront products into admin (read-only mirror)
+
+`syncFileProducts` (`src/app/admin/sync-actions.ts`, **"Sync storefront
+products"** button on `/admin/products`) copies `src/data/products.ts` /
+`src/data/collections.ts` into `products` / `product_variants` /
+`variant_images` / `categories` / `collections` so every piece that is
+actually live on the site is visible and searchable in the admin panel.
+
+- Mirrored rows are tagged `products.source = 'file_sync'` (migration `013`);
+  admin-authored rows are `source = 'admin'`.
+- A slug already owned by an `admin` row is **skipped, never overwritten**
+  (the action returns the skipped titles).
+- Editing a mirrored row in admin does **not** change the live site — the
+  storefront never reads this table. To change a live product, edit the
+  source file and re-sync.
+- Each sync replaces the `file_sync` product's variants/images wholesale and
+  re-links only its own collection memberships; admin-curated data is left
+  alone.
+
+### Live availability overrides (no redeploy)
+
+`storefront_availability_overrides` (migration `015`) lets an admin flip a
+live product's availability signal — `sold`, `limited`, `on request`,
+`pre-order — 10/15 days` — without a code change and redeploy.
+
+- **Read side:** `src/lib/storefront-overrides.ts` —
+  `getProductsWithOverrides()` merges any override rows over the file's
+  static `availability` / `availabilityNote` at request time. Cached 60s
+  (`unstable_cache`, tag `storefront-availability`); an absent row means
+  "use the file value". Never throws — if Supabase is unreachable the
+  storefront falls back to pure file data. All list/detail storefront pages
+  (`/`, `/catalog`, `/catalog/[category]`, `/collections/[slug]`, `/search`,
+  `/sarees/[slug]`) now go through it.
+- **Write side:** `/admin/storefront-availability` (`setStorefrontAvailability`
+  / `clearStorefrontAvailability` in
+  `src/app/admin/storefront-availability-actions.ts`), service-role +
+  `assertAdmin`. Every write revalidates the tag plus every page that could
+  show the product, so the change is live immediately.
+- Preset signals live in `src/lib/availability-presets.ts` (client-safe, no
+  server imports) — add a new one there to make it selectable.
+- Keyed by storefront **slug**, unrelated to the `products` table or the
+  file-sync mirror.
+
+### Migrations this section needs
+
+Run `013_product_source.sql`, `014_import_color_variants.sql` and
+`015_storefront_availability_overrides.sql` (SQL Editor, after `012`).
+`014` is the import pipeline's colour-variant detection — see
+[import-pipeline.md](import-pipeline.md).
+
+---
+
 ## 6. Environment variables
 
 `NEXT_PUBLIC_WHATSAPP_NUMBER`, `NEXT_PUBLIC_BUSINESS_NAME` and

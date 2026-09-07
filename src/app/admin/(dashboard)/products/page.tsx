@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ProductTable, type AdminProductRow } from "@/components/admin/ProductTable";
+import { SyncProductsButton } from "@/components/admin/SyncProductsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function AdminProductsPage() {
   const { data } = await admin
     .from("products")
     .select(
-      "id, name, slug, status, is_featured, product_code, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
+      "id, name, slug, status, is_featured, product_code, source, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
     )
     .order("created_at", { ascending: false });
 
@@ -21,6 +22,7 @@ export default async function AdminProductsPage() {
     status: p.status as AdminProductRow["status"],
     is_featured: p.is_featured as boolean,
     product_code: (p.product_code as string) ?? null,
+    source: (p.source as AdminProductRow["source"]) ?? "admin",
     category_name:
       (p.category as { name?: string } | null)?.name ?? null,
     variant_count: ((p.product_variants as unknown[]) ?? []).length,
@@ -34,14 +36,17 @@ export default async function AdminProductsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-start justify-between gap-4">
         <h1 className="font-serif text-3xl text-primary">Products</h1>
-        <Link
-          href="/admin/products/new"
-          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light"
-        >
-          + Add Product
-        </Link>
+        <div className="flex items-center gap-3">
+          <SyncProductsButton />
+          <Link
+            href="/admin/products/new"
+            className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light"
+          >
+            + Add Product
+          </Link>
+        </div>
       </div>
 
       <ProductTable rows={rows} />

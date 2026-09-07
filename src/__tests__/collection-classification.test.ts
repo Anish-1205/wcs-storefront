@@ -17,6 +17,7 @@ function stubProvider(candidates: Array<{ collection_id: string; collection_name
     isConfigured: () => true,
     suggestProductMetadata: vi.fn().mockResolvedValue(null),
     classifyCollection: vi.fn().mockResolvedValue(candidates),
+    suggestColorVariants: vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -104,6 +105,7 @@ describe("classifyGroupCollection — AI can only ever SUGGEST or leave UNRESOLV
       isConfigured: () => true,
       suggestProductMetadata: vi.fn(),
       classifyCollection: vi.fn().mockRejectedValue(new Error("network timeout")),
+      suggestColorVariants: vi.fn(),
     };
     const result = await classifyGroupCollection(baseInput({ aiProvider: provider }));
     expect(result.state).toBe("unresolved");

@@ -125,8 +125,7 @@ export function SareeCard({
           </span>
         </div>
       </div>
-      <div className="mt-1 flex items-center justify-between gap-3 text-[0.8rem] text-muted-foreground">
-        <span className="tracking-wide">Ref. {product.reference}</span>
+      <div className="mt-1 flex items-center justify-end gap-3 text-[0.8rem] text-muted-foreground">
         <span>{priceLabel(product.price)}</span>
       </div>
       <p className="mt-0.5 text-[0.72rem] uppercase tracking-[0.18em] text-antique-gold">

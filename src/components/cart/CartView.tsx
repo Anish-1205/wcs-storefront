@@ -50,9 +50,7 @@ export function CartView() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Ref. {item.reference} · {item.colour}
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.colour}</p>
               <p className="mt-0.5 text-[0.7rem] uppercase tracking-[0.16em] text-antique-gold">
                 {item.availabilityLabel}
               </p>

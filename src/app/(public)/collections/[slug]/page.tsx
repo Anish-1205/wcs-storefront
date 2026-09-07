@@ -7,6 +7,8 @@ import {
   getAllCollectionSlugs,
   COLLECTIONS,
 } from "@/data/collections";
+import { getAllProducts } from "@/data/products";
+import { getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
@@ -40,10 +42,11 @@ export function generateMetadata({
   };
 }
 
-export default function CollectionPage({ params }: { params: { slug: string } }) {
+export default async function CollectionPage({ params }: { params: { slug: string } }) {
   const collection = getCollection(params.slug);
   if (!collection) notFound();
-  const products = getCollectionProducts(params.slug);
+  const all = await getProductsWithOverrides(getAllProducts());
+  const products = getCollectionProducts(params.slug, all);
   const others = COLLECTIONS.filter((c) => c.slug !== params.slug);
   const breadcrumbs = breadcrumbList([
     { name: "Collections", path: "/collections" },

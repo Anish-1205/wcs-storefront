@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  getAllProducts,
   getProductBySlug,
   getAllSlugs,
   getRelatedProducts,
   primaryImage,
 } from "@/data/products";
+import { getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
@@ -32,7 +34,7 @@ export function generateMetadata({
 }): Metadata {
   const product = getProductBySlug(params.slug);
   if (!product) return { title: "Saree" };
-  const title = `${product.title} · ${product.reference}`;
+  const title = product.title;
   const description = `${product.description.slice(0, 155)} Availability personally confirmed before purchase.`;
   return {
     title,
@@ -54,11 +56,12 @@ export function generateMetadata({
   };
 }
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
-  const product = getProductBySlug(params.slug);
+export default async function ProductPage({ params }: { params: { slug: string } }) {
+  const allProducts = await getProductsWithOverrides(getAllProducts());
+  const product = getProductBySlug(params.slug, allProducts);
   if (!product) notFound();
 
-  const related = getRelatedProducts(product.slug, 3);
+  const related = getRelatedProducts(product.slug, 3, allProducts);
   const pageUrl = `${SITE.url}/sarees/${product.slug}`;
 
   const jsonLd = {
@@ -86,13 +89,28 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             : product.availability === "pre-order"
               ? "https://schema.org/PreOrder"
               : "https://schema.org/LimitedAvailability",
+      // Return/shipping terms are confirmed per order on WhatsApp, not a fixed
+      // window or rate (see /shipping-returns) — declared as "Unspecified"
+      // rather than inventing a day-count or shipping fee that isn't real.
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        returnPolicyCategory: "https://schema.org/MerchantReturnUnspecified",
+        merchantReturnLink: `${SITE.url}/shipping-returns`,
+      },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "IN",
+        },
+      },
     },
   };
 
   const breadcrumbs = breadcrumbList([
     { name: "Catalog", path: "/catalog" },
     { name: product.category, path: `/catalog/${product.categorySlug}` },
-    { name: product.reference, path: `/sarees/${product.slug}` },
+    { name: product.title, path: `/sarees/${product.slug}` },
   ]);
 
   return (
@@ -115,7 +133,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           {product.category}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-deep-brown">{product.reference}</span>
+        <span className="text-deep-brown">{product.title}</span>
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,62%)_minmax(0,38%)] lg:gap-14">
@@ -127,9 +145,6 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           <div className="lg:sticky lg:top-28">
             <p className="eyebrow">{product.category}</p>
             <h1 className="display-sm mt-3 text-oxblood">{product.title}</h1>
-            <p className="mt-2 text-[0.72rem] uppercase tracking-[0.2em] text-muted-foreground">
-              Ref. {product.reference}
-            </p>
 
             {product.tags.length > 0 && (
               <ul className="mt-4 flex flex-wrap gap-2">
@@ -171,7 +186,6 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                 sourcePage="product"
                 productId={product.slug}
                 productName={product.title}
-                productCode={product.reference}
                 variantColor={product.colour}
                 className="mt-3 flex h-11 items-center justify-center gap-2 border border-line text-[0.75rem] font-medium uppercase tracking-[0.2em] text-deep-brown hover:bg-warm-cream"
               >

@@ -25,6 +25,7 @@ export interface AdminProductRow {
   status: ProductStatus;
   is_featured: boolean;
   product_code: string | null;
+  source: "admin" | "file_sync";
   category_name: string | null;
   variant_count: number;
   thumbnail_url: string | null;
@@ -175,6 +176,14 @@ export function ProductTable({ rows }: { rows: AdminProductRow[] }) {
                   <Link href={`/admin/products/${r.id}`} className="hover:text-primary">
                     {r.name}
                   </Link>
+                  {r.source === "file_sync" && (
+                    <span
+                      className="ml-2 rounded-sm border border-[#B8860B]/40 bg-[#B8860B]/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#B8860B]"
+                      title="Synced from the storefront files — edits here don't affect the live site"
+                    >
+                      Storefront
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {r.product_code ?? "—"}

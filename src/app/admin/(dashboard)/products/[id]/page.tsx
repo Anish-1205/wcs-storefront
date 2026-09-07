@@ -73,6 +73,7 @@ export default async function EditProductPage({
     collection_ids: (joins ?? []).map(
       (j) => (j as { collection_id: string }).collection_id,
     ),
+    source: p.source,
   };
 
   return (

@@ -18,4 +18,7 @@ export const nullAiProvider: AiProvider = {
   async classifyCollection() {
     return [];
   },
+  async suggestColorVariants() {
+    return null;
+  },
 };

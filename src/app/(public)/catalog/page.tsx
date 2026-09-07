@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
+import { getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { CatalogFilterBar } from "@/components/catalog/CatalogFilterBar";
@@ -24,9 +25,9 @@ const AVAIL_LABELS: Record<string, string> = {
   sold: "Unavailable",
 };
 
-export default function CatalogPage({ searchParams }: PageProps) {
-  const all = getAllProducts();
-  const products = filterProducts(searchParams);
+export default async function CatalogPage({ searchParams }: PageProps) {
+  const all = await getProductsWithOverrides(getAllProducts());
+  const products = filterProducts(searchParams, all);
   const availabilities = Array.from(new Set(all.map((p) => p.availability)));
 
   const facets = [

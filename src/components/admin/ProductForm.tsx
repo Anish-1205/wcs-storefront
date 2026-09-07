@@ -17,6 +17,9 @@ import type { ProductInputShape, VariantInputShape } from "@/lib/validation";
 export type ProductFormInitial = Partial<ProductInputShape> & {
   variants: VariantInputShape[];
   collection_ids: string[];
+  /** Display-only: not part of the save payload. Set when this product was
+   * created by the storefront file sync rather than authored in admin. */
+  source?: "admin" | "file_sync";
 };
 
 interface Props {
@@ -57,6 +60,9 @@ export function ProductForm({ categories, collections, initial }: Props) {
   const [collectionIds, setCollectionIds] = useState<string[]>(
     initial?.collection_ids ?? [],
   );
+  const isFileSynced = initial?.source === "file_sync";
+
+  const anyVariantPriced = variants.some((v) => v.price_min != null);
 
   function onNameChange(value: string) {
     setName(value);
@@ -110,6 +116,16 @@ export function ProductForm({ categories, collections, initial }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {isFileSynced && (
+        <div className="rounded-sm border border-[#B8860B]/40 bg-[#B8860B]/10 p-4 text-sm text-primary">
+          This product is synced from the live storefront (
+          <code className="text-xs">src/data/products.ts</code>). Edits made
+          here are for internal reference only — they won&apos;t change the
+          live site. Update the source file and re-run &ldquo;Sync storefront
+          products&rdquo; instead.
+        </div>
+      )}
+
       {/* Core fields */}
       <section className="rounded-sm border border-border bg-card p-6">
         <h2 className="mb-4 font-serif text-lg text-primary">Product details</h2>
@@ -140,28 +156,29 @@ export function ProductForm({ categories, collections, initial }: Props) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="category">Category</Label>
-            <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">— Select —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
             <Label htmlFor="fabric">Fabric type</Label>
             <Input id="fabric" value={fabric} onChange={(e) => setFabric(e.target.value)} placeholder="e.g. Pure Silk" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pmin">Base price min (₹)</Label>
-            <Input id="pmin" type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pmax">Base price max (₹)</Label>
-            <Input id="pmax" type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
-          </div>
+          {anyVariantPriced ? (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Base price (₹)</Label>
+              <p className="text-sm text-muted-foreground">
+                Hidden — every color variant below has its own price. Clear all
+                variant prices to set a base price again.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="pmin">Base price min (₹)</Label>
+                <Input id="pmin" type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pmax">Base price max (₹)</Label>
+                <Input id="pmax" type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+              </div>
+            </>
+          )}
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -207,22 +224,38 @@ export function ProductForm({ categories, collections, initial }: Props) {
         </div>
       </section>
 
+      {/* Category & Collections */}
+      <section className="rounded-sm border border-border bg-card p-6">
+        <h2 className="mb-4 font-serif text-lg text-primary">Categorize</h2>
+        <div className="space-y-4">
+          <div className="space-y-1.5 sm:max-w-xs">
+            <Label htmlFor="category">Category (primary)</Label>
+            <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">— Select —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Collections (tags)</Label>
+            <CollectionCheckboxes
+              collections={collections}
+              selected={collectionIds}
+              onChange={setCollectionIds}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Variants */}
       <section className="rounded-sm border border-border bg-card p-6">
         <h2 className="mb-4 font-serif text-lg text-primary">
           Color variants & images
         </h2>
         <VariantManager variants={variants} onChange={setVariants} />
-      </section>
-
-      {/* Collections */}
-      <section className="rounded-sm border border-border bg-card p-6">
-        <h2 className="mb-4 font-serif text-lg text-primary">Collections</h2>
-        <CollectionCheckboxes
-          collections={collections}
-          selected={collectionIds}
-          onChange={setCollectionIds}
-        />
       </section>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -1,15 +1,20 @@
 import { z } from "zod";
 import type {
   AiCollectionClassificationInput,
+  AiColorVariantInput,
   AiMetadataInput,
   AiProvider,
   CollectionCandidate,
+  ColorVariantSuggestion,
   ProductMetadataSuggestions,
 } from "./types";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_IMAGES_PER_CALL = 4;
+// Colour-variant clustering needs to see most/all of a group's photos to
+// tell colourways apart — a higher cap than the 4-image metadata call above.
+const MAX_COLOR_VARIANT_IMAGES = 20;
 const REQUEST_TIMEOUT_MS = 20_000;
 
 function getModel() {
@@ -42,6 +47,21 @@ export const metadataResponseSchema = z.object({
   primary_asset_client_upload_id: suggestionSchema(z.string().max(100)),
 });
 
+export const colorVariantResponseSchema = z.object({
+  variant_groups: z
+    .array(
+      z.object({
+        color: z.string().max(60),
+        color_hex: z.string().max(32).optional(),
+        asset_client_upload_ids: z.array(z.string().max(100)).min(1).max(50),
+        confidence: z.number().min(0).max(1),
+        is_best_display: z.boolean().optional(),
+        evidence: z.string().max(300).optional(),
+      }),
+    )
+    .max(20),
+});
+
 export const classificationResponseSchema = z.object({
   candidates: z
     .array(
@@ -71,6 +91,17 @@ Rules:
 - confidence is your calibrated probability (0..1) that the specific collection_id is correct, not just how visually appealing the item is.
 - evidence must cite what you actually observed (image content or description text), not a generic assumption.
 - Respond with ONLY a JSON object: {"candidates":[{"collection_id":string,"confidence":0..1,"evidence":string}, ...]}. No prose, no markdown fences.`;
+
+const COLOR_VARIANT_SYSTEM_PROMPT = `You group photos of ONE saree product upload into its distinct colour variants (colourways), from a numbered list of photos, each tagged with an id.
+
+Hard rules:
+- Only split into multiple groups when photos clearly show the SAME weave/pattern/design in DIFFERENT body colours. If every photo shows the same single colourway, return exactly one group covering all of them (or an empty array if you cannot tell colourways apart at all).
+- asset_client_upload_ids in your response MUST be drawn only from the ids listed below — never invent, reorder-guess, or split an id across groups.
+- Every asset id you were given should end up in exactly one group.
+- Use a plain, ordinary colour name (e.g. "magenta", "bottle green") — never invent fabric, weave, region, or authenticity claims.
+- Mark at most one group's "is_best_display" true — your pick for the sharpest, best-lit, most visually appealing colourway to show as the product's default image. Omit is_best_display on every group if you cannot confidently judge one; never mark more than one group true.
+- confidence is your calibrated probability that this grouping is correct, not a preference score.
+- Respond with ONLY a JSON object matching this shape: {"variant_groups":[{"color":string,"color_hex":string,"asset_client_upload_ids":string[],"confidence":0..1,"is_best_display":boolean,"evidence":string}, ...]}. No prose, no markdown fences.`;
 
 type ImageBlock = { type: "image"; source: { type: "url"; url: string } };
 type TextBlock = { type: "text"; text: string };
@@ -200,5 +231,56 @@ export const anthropicAiProvider: AiProvider = {
         confidence: candidate.confidence,
         evidence: candidate.evidence,
       }));
+  },
+
+  async suggestColorVariants(input: AiColorVariantInput): Promise<ColorVariantSuggestion[] | null> {
+    if (!this.isConfigured()) return null;
+    if (input.images.length === 0) return null;
+
+    const images = input.images.slice(0, MAX_COLOR_VARIANT_IMAGES);
+    const idList = images
+      .map((img, i) => `${i + 1}. id=${img.client_upload_id}`)
+      .join("\n");
+
+    const textParts = [
+      `Photo ids, in the same order as the images above:\n${idList}`,
+      input.adminDescription ? `Admin description: ${input.adminDescription}` : "No admin description provided.",
+    ];
+
+    const raw = await callAnthropic(COLOR_VARIANT_SYSTEM_PROMPT, [
+      ...images.map((img) => ({ type: "image" as const, source: { type: "url" as const, url: img.url } })),
+      { type: "text", text: textParts.join("\n\n") },
+    ]);
+    if (raw == null) return null;
+
+    const parsed = colorVariantResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.warn("anthropic provider: color variant response failed validation");
+      return null;
+    }
+
+    // Defensive: drop any asset id we didn't actually offer, even though the
+    // prompt forbids inventing one — never trust the model to have obeyed.
+    const validIds = new Set(images.map((img) => img.client_upload_id));
+    let bestSeen = false;
+    return parsed.data.variant_groups
+      .map((group) => ({
+        ...group,
+        asset_client_upload_ids: group.asset_client_upload_ids.filter((id) => validIds.has(id)),
+      }))
+      .filter((group) => group.asset_client_upload_ids.length > 0)
+      .map((group) => {
+        // Keep only the first is_best_display:true — never trust more than one.
+        const isBest = !!group.is_best_display && !bestSeen;
+        if (isBest) bestSeen = true;
+        return {
+          color: group.color,
+          color_hex: group.color_hex ?? null,
+          asset_client_upload_ids: group.asset_client_upload_ids,
+          confidence: group.confidence,
+          is_best_display: isBest,
+          evidence: group.evidence,
+        };
+      });
   },
 };

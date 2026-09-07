@@ -44,7 +44,7 @@ export type CollectionClassificationMethod =
   | "existing_mapping"
   | "ai_suggested"
   | "none";
-export type ImportJobType = "ai_group_metadata" | "ai_collection_classification";
+export type ImportJobType = "ai_group_metadata" | "ai_collection_classification" | "ai_color_variants";
 export type ImportJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface Category {
@@ -72,6 +72,9 @@ export interface Product {
   stock_type: StockType;
   import_group_id: string | null;
   review_status: ReviewStatus;
+  /** 'file_sync' = mirrored in from src/data/products.ts by syncFileProducts();
+   * the storefront keeps reading the file, so edits to this row don't go live. */
+  source: "admin" | "file_sync";
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +115,16 @@ export interface CollectionProduct {
   collection_id: string;
   product_id: string;
   display_order: number;
+}
+
+/** A live admin-set availability signal for a file-driven storefront product,
+ * keyed by slug — merged over the static file value at request time. See
+ * src/lib/storefront-overrides.ts and src/app/admin/storefront-availability-actions.ts. */
+export interface StorefrontAvailabilityOverride {
+  slug: string;
+  availability: "available" | "limited" | "on-request" | "pre-order" | "sold";
+  availability_note: string | null;
+  updated_at: string;
 }
 
 export interface Inquiry {
@@ -178,6 +191,15 @@ export interface ImportAiMetadata {
   primary_asset_client_upload_id?: { value: string; confidence: number; evidence?: string };
 }
 
+export interface ImportColorVariantSuggestion {
+  color: string;
+  color_hex: string | null;
+  asset_client_upload_ids: string[];
+  confidence: number;
+  is_best_display: boolean;
+  evidence?: string;
+}
+
 export interface ImportProductGroup {
   id: string;
   batch_id: string;
@@ -188,6 +210,12 @@ export interface ImportProductGroup {
   ai_metadata: ImportAiMetadata | null;
   ai_generated_at: string | null;
   ai_warning: string | null;
+  ai_color_variants: ImportColorVariantSuggestion[] | null;
+  ai_color_variants_generated_at: string | null;
+  /** Set by applyGroupColorVariants from the applied suggestion's
+   * is_best_display cluster — which variant_group shows first on the
+   * created product. Null when no color-variant split has been applied. */
+  best_variant_group: string | null;
   product_id: string | null;
   display_order: number;
   created_at: string;
@@ -214,6 +242,9 @@ export interface ImportAsset {
   duplicate_of_asset_id: string | null;
   is_primary: boolean;
   display_order: number;
+  /** Admin-confirmed color-variant label (from applyGroupColorVariants).
+   * Null until color variants are detected and applied for this asset's group. */
+  variant_group: string | null;
   created_at: string;
   updated_at: string;
 }

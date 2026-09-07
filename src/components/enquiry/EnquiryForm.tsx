@@ -323,9 +323,7 @@ export function EnquiryForm() {
               </div>
               <div className="min-w-0 flex-1 text-sm">
                 <p className="font-serif leading-snug text-deep-brown">{i.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Ref. {i.reference} · Qty {i.qty}
-                </p>
+                <p className="text-xs text-muted-foreground">Qty {i.qty}</p>
                 <p className="text-xs text-deep-brown/80">
                   {i.price == null ? "Price on Enquiry" : formatINR(i.price * i.qty)}
                 </p>

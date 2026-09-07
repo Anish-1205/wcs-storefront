@@ -23,13 +23,12 @@ export function WhatsAppLink({
   sourcePage,
   productId,
   productName,
-  productCode,
   variantColor,
   disabled,
   children,
   ...anchorProps
 }: WhatsAppLinkProps) {
-  const href = buildWhatsAppURL({ productName, productCode, variantColor });
+  const href = buildWhatsAppURL({ productName, variantColor });
 
   return (
     <a

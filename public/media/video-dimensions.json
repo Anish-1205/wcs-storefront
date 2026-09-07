@@ -48,11 +48,39 @@
       "bytes": 4646709
     }
   },
+  "kanjivaram-peacock-pallu": {
+    "video-1.mp4": {
+      "w": 402,
+      "h": 850,
+      "bytes": 7398287
+    }
+  },
   "purple-tanchoi-silk": {
     "video-1.mp4": {
       "w": 478,
       "h": 850,
       "bytes": 4527136
+    }
+  },
+  "semi-benarasi-patola-aubergine": {
+    "video-1.mp4": {
+      "w": 402,
+      "h": 848,
+      "bytes": 5831770
+    }
+  },
+  "semi-benarasi-patola-blue": {
+    "video-1.mp4": {
+      "w": 456,
+      "h": 848,
+      "bytes": 4804168
+    }
+  },
+  "semi-benarasi-patola-ivory": {
+    "video-1.mp4": {
+      "w": 428,
+      "h": 850,
+      "bytes": 6181255
     }
   }
 }

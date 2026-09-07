@@ -73,9 +73,7 @@ export function EnquirySent() {
           {snap.items.map((i) => (
             <li key={i.reference} className="flex justify-between gap-4">
               <span className="text-deep-brown">{i.title}</span>
-              <span className="shrink-0 text-muted-foreground">
-                Ref. {i.reference} · ×{i.qty}
-              </span>
+              <span className="shrink-0 text-muted-foreground">×{i.qty}</span>
             </li>
           ))}
           <li className="pt-1 text-xs text-muted-foreground">

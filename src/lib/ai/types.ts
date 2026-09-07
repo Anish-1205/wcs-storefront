@@ -53,6 +53,28 @@ export interface AiCollectionClassificationInput {
   existingCollections: Array<{ id: string; name: string; description: string | null }>;
 }
 
+export interface ColorVariantSuggestion {
+  color: string;
+  color_hex: string | null;
+  /** client_upload_ids of the group's assets belonging to this colourway —
+   * must only ever reference ids the caller actually offered (see
+   * AiColorVariantInput.images); callers must defensively re-filter, same as
+   * classifyCollection's existingCollections guard. */
+  asset_client_upload_ids: string[];
+  confidence: number;
+  /** At most one suggestion may have this true — the provider's pick for
+   * which colourway to show first. Never trust more than one from a raw
+   * response; callers must keep only the highest-confidence one. */
+  is_best_display: boolean;
+  evidence?: string;
+}
+
+export interface AiColorVariantInput {
+  adminDescription: string | null;
+  /** The group's image assets, in current order. */
+  images: Array<{ client_upload_id: string; url: string }>;
+}
+
 export interface AiProvider {
   name: string;
   /** True when the provider has everything it needs (e.g. an API key) to run. */
@@ -64,4 +86,9 @@ export interface AiProvider {
    * metadata suggestion (never conflated) and only ever proposes candidates
    * drawn from `existingCollections` — a provider must not invent one. */
   classifyCollection(input: AiCollectionClassificationInput): Promise<CollectionCandidate[]>;
+  /** Clusters a group's photos into colour variants of the same design.
+   * Draft-only, same as suggestProductMetadata — a caller must never write
+   * these straight to import_assets.variant_group without an explicit admin
+   * "Apply suggested variants" action (see applyGroupColorVariants). */
+  suggestColorVariants(input: AiColorVariantInput): Promise<ColorVariantSuggestion[] | null>;
 }

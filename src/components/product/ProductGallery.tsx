@@ -163,7 +163,7 @@ function GalleryImage({
           productId={product.slug}
           imageUrl={`${SITE.url}${image.src}`}
           pageUrl={`${SITE.url}/sarees/${product.slug}`}
-          description={`${product.title} · ${product.reference}`}
+          description={product.title}
           className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ivory/85 text-oxblood shadow-sm backdrop-blur transition-colors hover:bg-ivory"
         />
       )}

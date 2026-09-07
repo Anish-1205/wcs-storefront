@@ -101,9 +101,7 @@ export function CartDrawer() {
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Ref. {item.reference} · {item.colour}
-                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{item.colour}</p>
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center border border-line">
                         <button

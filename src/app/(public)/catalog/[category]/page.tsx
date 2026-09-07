@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
+import { getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
@@ -41,14 +42,13 @@ interface PageProps {
   searchParams: { availability?: string };
 }
 
-export default function CategoryPage({ params, searchParams }: PageProps) {
+export default async function CategoryPage({ params, searchParams }: PageProps) {
   const category = getCategories().find((c) => c.slug === params.category);
   if (!category) notFound();
 
-  const products = filterProducts({ ...searchParams, category: params.category });
-  const inGroup = getAllProducts().filter(
-    (p) => p.categorySlug === params.category,
-  );
+  const all = await getProductsWithOverrides(getAllProducts());
+  const products = filterProducts({ ...searchParams, category: params.category }, all);
+  const inGroup = all.filter((p) => p.categorySlug === params.category);
   const availabilities = Array.from(new Set(inGroup.map((p) => p.availability)));
 
   const facets = [

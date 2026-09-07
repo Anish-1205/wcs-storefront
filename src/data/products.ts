@@ -265,6 +265,7 @@ const SEEDS: ProductSeed[] = [
       img("antique-gold-patola-tissue", "07-border-detail.jpg", "detail", "Close-up of the geometric contrast border"),
       img("antique-gold-patola-tissue", "08-patola-macro.jpg", "detail", "Macro of the geometric floret border"),
       img("antique-gold-patola-tissue", "09-colour-range.jpg", "colour-range", "The same saree folded in many body colours"),
+      img("antique-gold-patola-tissue", "10-colour-range-2.jpg", "colour-range", "More body colours the same design is available in — around a dozen shades folded together"),
     ],
     videos: [video("antique-gold-patola-tissue", "video-1.mp4", "The antique-gold saree shown in motion")],
     featured: false,
@@ -353,7 +354,7 @@ const SEEDS: ProductSeed[] = [
     colour: "Bottle green with a contrast border",
     colourFamily: "Green",
     price: 8500,
-    availability: "available",
+    availability: "sold",
     availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bottle-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
@@ -388,7 +389,7 @@ const SEEDS: ProductSeed[] = [
     colour: "Parrot green with a contrast border",
     colourFamily: "Green",
     price: 8500,
-    availability: "available",
+    availability: "sold",
     availabilityNote: null,
     description:
       "Our most-loved fusion concept, back in stock and more regal than ever — the timeless beauty of Banarasi, the charm of Bandhej and the grandeur of Patola in one saree. A fine all-over Bandhej dot pattern on a bright parrot-green ground, finished with a contrasting Patola-style figurative border and gold-tone edge. One of four colourways from the same design.",
@@ -506,7 +507,7 @@ const SEEDS: ProductSeed[] = [
     colourFamily: "Multicolour",
     price: 8490,
     availability: "pre-order",
-    availabilityNote: "Open for pre-booking — dispatched in 15–20 days",
+    availabilityNote: "Open for pre-booking — dispatched in 15 days",
     tags: ["Pure georgette", "Real mirror work", "Pre-book"],
     description:
       "A Sabyasachi-inspired, vibrant pure-georgette patchwork saree — an exquisite mix of colourful prints (dotted, paisley and floral blocks) brought together into a rich, artistic pattern, and finished along the borders with delicate real mirror and embellishment work. A blend of traditional craftsmanship and bold contemporary charm, and a stunning statement piece for festive and special occasions. Shown with a matching red mirror-work dupatta.",
@@ -542,8 +543,8 @@ const SEEDS: ProductSeed[] = [
     colour: "Magenta / rani pink ombré with gold zari",
     colourFamily: "Pink",
     price: 6290,
-    availability: "available",
-    availabilityNote: "Available in multiple pieces — book soon",
+    availability: "pre-order",
+    availabilityNote: "Open for pre-booking — dispatched in 15 days",
     tags: ["Banarasi Khaddi", "Bandhej", "Hand-work border"],
     description:
       "An exclusive Banarasi Khaddi Georgette saree in bandhej (tie-dye). The magenta-to-pink ombré body is worked in a gold-zari diamond lattice and finished with a hand-worked border of mirrors, sequins and gota; the plain rani-pink end is scattered with sequins and edged with a scalloped hand-embroidered trim. Available in multiple pieces — book soon.",
@@ -565,6 +566,148 @@ const SEEDS: ProductSeed[] = [
     colourRangeNote: null,
     createdAt: "2026-09-06",
   },
+  {
+    id: "wcs-012",
+    slug: "kanjivaram-peacock-pallu",
+    title: "Antique-Gold Kanjivaram Tissue Brocade Saree with Peacock Pallu",
+    reference: "WCS-012",
+    weave: "Kanjivaram tissue brocade",
+    material: "Tissue brocade",
+    origin: null,
+    colour: "Antique gold with a red-gold border",
+    colourFamily: "Gold",
+    price: 4990,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A regal Kanjivaram tissue brocade saree, featuring a rich antique-gold base with intricate woven motifs and a striking red-gold Benarasi border and pallu. The traditional detailing and luxurious drape give it a timeless, royal appeal.",
+    details: [
+      "Kanjivaram tissue brocade with an antique-gold ground",
+      "Intricate woven motifs throughout the body",
+      "Striking red-gold Benarasi border and pallu",
+      "Traditional detailing with a luxurious, royal drape",
+    ],
+    tags: ["Kanjivaram tissue", "Antique gold", "Royal"],
+    includes: null,
+    images: [
+      img("kanjivaram-peacock-pallu", "01-full.jpg", "full", "Antique-gold Kanjivaram saree draped on a stand"),
+      img("kanjivaram-peacock-pallu", "02-full-alt.jpg", "full", "Alternative full view of the antique-gold saree"),
+      img("kanjivaram-peacock-pallu", "03-drape.jpg", "drape", "Drape and pleats of the antique-gold saree"),
+      img("kanjivaram-peacock-pallu", "04-pallu-spread.jpg", "pallu", "Red-gold peacock pallu of the saree, spread out"),
+      img("kanjivaram-peacock-pallu", "05-torso-detail.jpg", "detail", "Torso drape and border detail"),
+      img("kanjivaram-peacock-pallu", "06-blouse-detail.jpg", "blouse", "Close-up of the blouse and border"),
+      img("kanjivaram-peacock-pallu", "07-flatlay.jpg", "flatlay", "The saree folded, showing the full body and pallu pattern"),
+    ],
+    videos: [video("kanjivaram-peacock-pallu", "video-1.mp4", "The antique-gold Kanjivaram saree shown in motion")],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-07",
+  },
+  {
+    id: "wcs-013",
+    slug: "semi-benarasi-patola-blue",
+    title: "Royal-Blue Semi-Benarasi Patola Saree",
+    reference: "WCS-013",
+    weave: "Semi-Benarasi Patola",
+    material: null,
+    origin: null,
+    colour: "Royal blue with a gold-orange border",
+    colourFamily: "Blue",
+    price: 4000,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A stunning Semi-Benarasi Patola saree, blending the grandeur of Benarasi weaving with the intricate geometric artistry of Patola. Adorned with traditional motifs, a richly woven Patola-inspired border and an exquisite statement pallu, this saree is a beautiful celebration of timeless Indian craftsmanship. One of three colourways from the same design.",
+    details: [
+      "Semi-Benarasi Patola weave, blending Benarasi and Patola traditions",
+      "Traditional motifs throughout the body",
+      "Richly woven Patola-inspired border",
+      "Exquisite statement pallu",
+    ],
+    tags: ["Semi-Benarasi Patola", "Patola border", "Statement"],
+    includes: null,
+    images: [
+      img("semi-benarasi-patola-blue", "01-full.jpg", "full", "Royal-blue Semi-Benarasi Patola saree draped on a stand"),
+      img("semi-benarasi-patola-blue", "02-full-alt.jpg", "full", "Alternative full view of the royal-blue saree"),
+      img("semi-benarasi-patola-blue", "03-drape.jpg", "drape", "Drape and pleats of the royal-blue saree"),
+      img("semi-benarasi-patola-blue", "04-pallu-spread.jpg", "pallu", "Patola-inspired pallu of the saree, spread out"),
+      img("semi-benarasi-patola-blue", "05-detail.jpg", "detail", "Macro of the Patola-style motif grid"),
+    ],
+    videos: [video("semi-benarasi-patola-blue", "video-1.mp4", "The royal-blue Semi-Benarasi Patola saree shown in motion")],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-07",
+  },
+  {
+    id: "wcs-014",
+    slug: "semi-benarasi-patola-ivory",
+    title: "Ivory Semi-Benarasi Patola Saree",
+    reference: "WCS-014",
+    weave: "Semi-Benarasi Patola",
+    material: null,
+    origin: null,
+    colour: "Ivory with a maroon-orange border",
+    colourFamily: "Ivory",
+    price: 4000,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A stunning Semi-Benarasi Patola saree, blending the grandeur of Benarasi weaving with the intricate geometric artistry of Patola. Adorned with traditional motifs, a richly woven Patola-inspired border and an exquisite statement pallu, this saree is a beautiful celebration of timeless Indian craftsmanship. One of three colourways from the same design.",
+    details: [
+      "Semi-Benarasi Patola weave, blending Benarasi and Patola traditions",
+      "Traditional motifs throughout the body",
+      "Richly woven Patola-inspired border",
+      "Exquisite statement pallu",
+    ],
+    tags: ["Semi-Benarasi Patola", "Patola border", "Statement"],
+    includes: null,
+    images: [
+      img("semi-benarasi-patola-ivory", "01-full.jpg", "full", "Ivory Semi-Benarasi Patola saree draped on a stand"),
+      img("semi-benarasi-patola-ivory", "02-full-alt.jpg", "full", "Alternative full view of the ivory saree"),
+      img("semi-benarasi-patola-ivory", "03-drape.jpg", "drape", "Drape and pleats of the ivory saree"),
+      img("semi-benarasi-patola-ivory", "04-pallu-spread.jpg", "pallu", "Patola-inspired pallu of the saree, spread out"),
+      img("semi-benarasi-patola-ivory", "05-detail.jpg", "detail", "Macro of the Patola-style motif grid"),
+    ],
+    videos: [video("semi-benarasi-patola-ivory", "video-1.mp4", "The ivory Semi-Benarasi Patola saree shown in motion")],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-07",
+  },
+  {
+    id: "wcs-015",
+    slug: "semi-benarasi-patola-aubergine",
+    title: "Aubergine Semi-Benarasi Patola Saree",
+    reference: "WCS-015",
+    weave: "Semi-Benarasi Patola",
+    material: null,
+    origin: null,
+    colour: "Aubergine with a peach border and gold floral pallu",
+    colourFamily: "Purple",
+    price: 4000,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A stunning Semi-Benarasi Patola saree, blending the grandeur of Benarasi weaving with the intricate geometric artistry of Patola. Adorned with traditional motifs, a richly woven Patola-inspired border and an exquisite statement pallu, this saree is a beautiful celebration of timeless Indian craftsmanship. One of three colourways from the same design.",
+    details: [
+      "Semi-Benarasi Patola weave, blending Benarasi and Patola traditions",
+      "Traditional motifs throughout the body",
+      "Richly woven Patola-inspired border",
+      "Exquisite statement pallu",
+    ],
+    tags: ["Semi-Benarasi Patola", "Patola border", "Statement"],
+    includes: null,
+    images: [
+      img("semi-benarasi-patola-aubergine", "01-full.jpg", "full", "Aubergine Semi-Benarasi Patola saree draped on a stand"),
+      img("semi-benarasi-patola-aubergine", "02-full-alt.jpg", "full", "Alternative full view of the aubergine saree"),
+      img("semi-benarasi-patola-aubergine", "03-drape.jpg", "drape", "Drape and pleats of the aubergine saree"),
+      img("semi-benarasi-patola-aubergine", "04-pallu-spread.jpg", "pallu", "Gold floral pallu of the saree, spread out"),
+      img("semi-benarasi-patola-aubergine", "05-detail.jpg", "detail", "Macro of the Patola-style motif grid and pallu florals"),
+    ],
+    videos: [video("semi-benarasi-patola-aubergine", "video-1.mp4", "The aubergine Semi-Benarasi Patola saree shown in motion")],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-07",
+  },
 ];
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({
@@ -579,26 +722,32 @@ export function getAllProducts(): Product[] {
   return PRODUCTS;
 }
 
-export function getProductBySlug(slug: string): Product | undefined {
-  return PRODUCTS.find((p) => p.slug === slug);
+/**
+ * `products` defaults to the static file data everywhere below — pages that
+ * merge in a runtime availability override (src/lib/storefront-overrides.ts)
+ * pass the merged array through instead, so "sold"/"pre-order" signals set
+ * from admin are reflected without needing this file re-edited/redeployed.
+ */
+export function getProductBySlug(slug: string, products: Product[] = PRODUCTS): Product | undefined {
+  return products.find((p) => p.slug === slug);
 }
 
 export function getAllSlugs(): string[] {
   return PRODUCTS.map((p) => p.slug);
 }
 
-export function getFeaturedProducts(limit = 6): Product[] {
-  const featured = PRODUCTS.filter((p) => p.featured);
-  return (featured.length ? featured : PRODUCTS).slice(0, limit);
+export function getFeaturedProducts(limit = 6, products: Product[] = PRODUCTS): Product[] {
+  const featured = products.filter((p) => p.featured);
+  return (featured.length ? featured : products).slice(0, limit);
 }
 
-export function getRelatedProducts(slug: string, limit = 3): Product[] {
-  const current = getProductBySlug(slug);
-  if (!current) return PRODUCTS.slice(0, limit);
-  const sameColour = PRODUCTS.filter(
+export function getRelatedProducts(slug: string, limit = 3, products: Product[] = PRODUCTS): Product[] {
+  const current = getProductBySlug(slug, products);
+  if (!current) return products.slice(0, limit);
+  const sameColour = products.filter(
     (p) => p.slug !== slug && p.colourFamily === current.colourFamily,
   );
-  const rest = PRODUCTS.filter(
+  const rest = products.filter(
     (p) => p.slug !== slug && p.colourFamily !== current.colourFamily,
   );
   return [...sameColour, ...rest].slice(0, limit);
@@ -638,8 +787,8 @@ export interface CatalogFilters {
   availability?: string;
 }
 
-export function filterProducts(filters: CatalogFilters): Product[] {
-  return PRODUCTS.filter((p) => {
+export function filterProducts(filters: CatalogFilters, products: Product[] = PRODUCTS): Product[] {
+  return products.filter((p) => {
     if (filters.category && p.categorySlug !== filters.category) return false;
     if (filters.colour && p.colourFamily !== filters.colour) return false;
     if (filters.availability && p.availability !== filters.availability)

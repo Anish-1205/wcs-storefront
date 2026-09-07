@@ -66,6 +66,7 @@ const MAP = {
       ["WhatsApp Image 2026-09-03 at 22.48.11.jpeg", "07-border-detail.jpg"],
       ["WhatsApp Image 2026-09-03 at 22.48.21 (2).jpeg", "08-patola-macro.jpg"],
       ["WhatsApp Image 2026-09-03 at 22.49.53.jpeg", "09-colour-range.jpg"],
+      ["1/colours.jpeg", "10-colour-range-2.jpg"],
     ],
     videos: [["WhatsApp Video 2026-09-03 at 22.48.20.mp4", "video-1.mp4"]],
   },
@@ -164,6 +165,48 @@ const MAP = {
       ["New folder/WhatsApp Image 2026-09-06 at 04.37.22.jpeg", "04-pallu.jpg"],
     ],
     videos: [],
+  },
+  "kanjivaram-peacock-pallu": {
+    images: [
+      ["2/WhatsApp Image 2026-09-07 at 07.38.14 (2).jpeg", "01-full.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.14.jpeg", "02-full-alt.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.15 (2).jpeg", "03-drape.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.14 (1).jpeg", "04-pallu-spread.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.15.jpeg", "05-torso-detail.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.15 (1).jpeg", "06-blouse-detail.jpg"],
+      ["2/WhatsApp Image 2026-09-07 at 07.38.13.jpeg", "07-flatlay.jpg"],
+    ],
+    videos: [["2/WhatsApp Video 2026-09-07 at 07.38.12.mp4", "video-1.mp4"]],
+  },
+  "semi-benarasi-patola-blue": {
+    images: [
+      ["3/WhatsApp Image 2026-09-07 at 08.36.06.jpeg", "01-full.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.36.05.jpeg", "02-full-alt.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.35.58.jpeg", "03-drape.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.35.57.jpeg", "04-pallu-spread.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.35.58 (1).jpeg", "05-detail.jpg"],
+    ],
+    videos: [["3/WhatsApp Video 2026-09-07 at 08.36.05.mp4", "video-1.mp4"]],
+  },
+  "semi-benarasi-patola-ivory": {
+    images: [
+      ["3/WhatsApp Image 2026-09-07 at 08.30.12.jpeg", "01-full.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.30.09.jpeg", "02-full-alt.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.30.00.jpeg", "03-drape.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.29.59 (1).jpeg", "04-pallu-spread.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.30.10.jpeg", "05-detail.jpg"],
+    ],
+    videos: [["3/WhatsApp Video 2026-09-07 at 08.30.09.mp4", "video-1.mp4"]],
+  },
+  "semi-benarasi-patola-aubergine": {
+    images: [
+      ["3/WhatsApp Image 2026-09-07 at 08.46.16.jpeg", "01-full.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.46.15.jpeg", "02-full-alt.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.46.15 (2).jpeg", "03-drape.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.46.17.jpeg", "04-pallu-spread.jpg"],
+      ["3/WhatsApp Image 2026-09-07 at 08.46.16 (2).jpeg", "05-detail.jpg"],
+    ],
+    videos: [["3/WhatsApp Video 2026-09-07 at 08.46.14.mp4", "video-1.mp4"]],
   },
 };
 

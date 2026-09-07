@@ -39,7 +39,6 @@ function waLink(text: string): string {
 
 export interface WhatsAppOpts {
   productName?: string;
-  productCode?: string | null;
   variantColor?: string | null;
 }
 
@@ -49,9 +48,8 @@ export function buildWhatsAppURL(opts?: WhatsAppOpts): string {
     "Hello Weavers Club Sarees, I'd like to know more about your saree collection.";
 
   if (opts?.productName) {
-    const codeRef = opts.productCode ? ` (${opts.productCode})` : "";
     const colorRef = opts.variantColor ? ` in ${opts.variantColor}` : "";
-    message = `Hello Weavers Club Sarees, I'm interested in the ${opts.productName}${codeRef}${colorRef}. Could you confirm current availability and the price?`;
+    message = `Hello Weavers Club Sarees, I'm interested in the ${opts.productName}${colorRef}. Could you confirm current availability and the price?`;
   }
 
   return waLink(message);
@@ -93,7 +91,6 @@ export function buildEnquiryMessage(
 
   items.forEach((item, idx) => {
     lines.push(`${idx + 1}. ${item.title}`);
-    lines.push(`   Ref: ${item.reference}`);
     if (item.colour) lines.push(`   Colour: ${item.colour}`);
     lines.push(`   Quantity: ${item.qty}`);
     lines.push(

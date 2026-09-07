@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
 import { getAiProvider } from "@/lib/ai";
 import { classifyGroupCollection } from "@/lib/import/collection-classification";
+import { resolveColorVariantAssignment } from "@/lib/import/color-variants";
 import { proposeGroups, type GroupableAsset } from "@/lib/import/grouping";
 import { selectPendingGroupIds } from "@/lib/import/ai-pipeline";
 import {
@@ -501,7 +502,7 @@ async function recordJobAttempt(
   admin: AdminClient,
   batchId: string,
   groupId: string,
-  jobType: "ai_group_metadata" | "ai_collection_classification",
+  jobType: "ai_group_metadata" | "ai_collection_classification" | "ai_color_variants",
   run: () => Promise<void>,
 ) {
   await admin
@@ -582,6 +583,103 @@ export async function requestGroupAiSuggestions(groupId: string): Promise<Action
 
     revalidateImport(group.batch_id);
     return { warning };
+  });
+}
+
+export async function requestGroupColorVariantSuggestions(
+  groupId: string,
+): Promise<ActionResult<{ warning: string | null }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { group, assets } = await loadGroupWithAssets(admin, groupId);
+    const images = assets
+      .filter((a) => a.kind === "image" && a.cloudinary_secure_url)
+      .map((a) => ({ client_upload_id: a.client_upload_id, url: a.cloudinary_secure_url! }));
+
+    let warning: string | null = null;
+    await recordJobAttempt(admin, group.batch_id, groupId, "ai_color_variants", async () => {
+      if (images.length < 2) {
+        warning = "Need at least two photos to detect colour variants.";
+        return;
+      }
+
+      const provider = getAiProvider();
+      const suggestions = await provider.suggestColorVariants({
+        adminDescription: group.admin_description,
+        images,
+      });
+
+      if (!suggestions || suggestions.length < 2) {
+        warning = "AI didn't find distinct colour variants in this group's photos (or is unavailable).";
+        const { error } = await admin
+          .from("import_product_groups")
+          .update({ ai_color_variants: null, ai_color_variants_generated_at: new Date().toISOString() })
+          .eq("id", groupId);
+        if (error) throw new Error(error.message);
+        return;
+      }
+
+      const { error } = await admin
+        .from("import_product_groups")
+        .update({ ai_color_variants: suggestions, ai_color_variants_generated_at: new Date().toISOString() })
+        .eq("id", groupId);
+      if (error) throw new Error(error.message);
+    });
+
+    revalidateImport(group.batch_id);
+    return { warning };
+  });
+}
+
+export async function applyGroupColorVariants(groupId: string): Promise<ActionResult<{ variantCount: number }>> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { group, assets } = await loadGroupWithAssets(admin, groupId);
+    if (!group.ai_color_variants || group.ai_color_variants.length === 0) {
+      throw new Error("No colour-variant suggestion to apply — run \"Detect color variants\" first.");
+    }
+
+    const assetIdByClientUploadId = new Map(assets.map((a) => [a.client_upload_id, a.id]));
+    const resolved = resolveColorVariantAssignment(group.ai_color_variants, assetIdByClientUploadId);
+    if (!resolved) {
+      throw new Error("The suggestion no longer covers at least two distinct groups of this group's current photos.");
+    }
+
+    for (const [assetId, colorLabel] of Array.from(resolved.assetIdToGroup)) {
+      const { error } = await admin.from("import_assets").update({ variant_group: colorLabel }).eq("id", assetId);
+      if (error) throw new Error(error.message);
+    }
+
+    const { error: groupError } = await admin
+      .from("import_product_groups")
+      .update({ best_variant_group: resolved.bestVariantGroup })
+      .eq("id", groupId);
+    if (groupError) throw new Error(groupError.message);
+
+    revalidateImport(group.batch_id);
+    return { variantCount: new Set(resolved.assetIdToGroup.values()).size };
+  });
+}
+
+export async function clearGroupColorVariants(groupId: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const { group } = await loadGroupWithAssets(admin, groupId);
+
+    const { error: assetsError } = await admin
+      .from("import_assets")
+      .update({ variant_group: null })
+      .eq("group_id", groupId);
+    if (assetsError) throw new Error(assetsError.message);
+
+    const { error: groupError } = await admin
+      .from("import_product_groups")
+      .update({ best_variant_group: null })
+      .eq("id", groupId);
+    if (groupError) throw new Error(groupError.message);
+
+    revalidateImport(group.batch_id);
+    return {};
   });
 }
 
@@ -864,21 +962,66 @@ export async function createProductFromGroup(
       productId = data.id as string;
     }
 
-    const { data: variant, error: variantError } = await admin
-      .from("product_variants")
-      .insert({ product_id: productId, color: "Default", status: "available", display_order: 0 })
-      .select("id")
-      .single();
-    if (variantError) throw new Error(variantError.message);
+    // A confirmed colour-variant split (applyGroupColorVariants) creates one
+    // product_variants row per colourway instead of a single "Default" one —
+    // fully backward-compatible when nothing was applied (the common case).
+    const distinctVariantGroups = Array.from(
+      new Set(imageAssets.map((a) => a.variant_group).filter((g): g is string => !!g)),
+    );
 
-    const imageRows = imageAssets.map((asset, index) => ({
-      variant_id: variant.id,
-      image_url: asset.cloudinary_secure_url!,
-      is_primary: index === 0,
-      display_order: index,
-    }));
-    const { error: imagesError } = await admin.from("variant_images").insert(imageRows);
-    if (imagesError) throw new Error(imagesError.message);
+    if (distinctVariantGroups.length < 2) {
+      const { data: variant, error: variantError } = await admin
+        .from("product_variants")
+        .insert({ product_id: productId, color: "Default", status: "available", display_order: 0 })
+        .select("id")
+        .single();
+      if (variantError) throw new Error(variantError.message);
+
+      const imageRows = imageAssets.map((asset, index) => ({
+        variant_id: variant.id,
+        image_url: asset.cloudinary_secure_url!,
+        is_primary: index === 0,
+        display_order: index,
+      }));
+      const { error: imagesError } = await admin.from("variant_images").insert(imageRows);
+      if (imagesError) throw new Error(imagesError.message);
+    } else {
+      // best_variant_group (set when the suggestion was applied) shows first;
+      // the rest follow in first-appearance order. Assets the suggestion
+      // didn't cover (variant_group still null) join whichever group ends up
+      // first rather than being silently dropped from the product.
+      const orderedGroups = [
+        ...(group.best_variant_group && distinctVariantGroups.includes(group.best_variant_group)
+          ? [group.best_variant_group]
+          : []),
+        ...distinctVariantGroups.filter((g) => g !== group.best_variant_group),
+      ];
+      const firstGroup = orderedGroups[0];
+
+      for (let groupIndex = 0; groupIndex < orderedGroups.length; groupIndex++) {
+        const colorLabel = orderedGroups[groupIndex];
+        const groupAssets = imageAssets.filter(
+          (a) => a.variant_group === colorLabel || (!a.variant_group && colorLabel === firstGroup),
+        );
+        if (groupAssets.length === 0) continue;
+
+        const { data: variant, error: variantError } = await admin
+          .from("product_variants")
+          .insert({ product_id: productId, color: colorLabel, status: "available", display_order: groupIndex })
+          .select("id")
+          .single();
+        if (variantError) throw new Error(variantError.message);
+
+        const imageRows = groupAssets.map((asset, index) => ({
+          variant_id: variant.id,
+          image_url: asset.cloudinary_secure_url!,
+          is_primary: index === 0,
+          display_order: index,
+        }));
+        const { error: imagesError } = await admin.from("variant_images").insert(imageRows);
+        if (imagesError) throw new Error(imagesError.message);
+      }
+    }
 
     if (resolvedClassification.collection_id) {
       await admin.from("collection_products").delete().eq("product_id", productId);

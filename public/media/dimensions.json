@@ -91,6 +91,10 @@
     "09-colour-range.jpg": {
       "w": 836,
       "h": 1280
+    },
+    "10-colour-range-2.jpg": {
+      "w": 1200,
+      "h": 1600
     }
   },
   "bandhani-patola-indigo": {
@@ -314,6 +318,102 @@
     },
     "04-pallu.jpg": {
       "w": 1234,
+      "h": 1600
+    }
+  },
+  "kanjivaram-peacock-pallu": {
+    "01-full.jpg": {
+      "w": 1055,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 1121,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "04-pallu-spread.jpg": {
+      "w": 894,
+      "h": 1600
+    },
+    "05-torso-detail.jpg": {
+      "w": 1106,
+      "h": 1599
+    },
+    "06-blouse-detail.jpg": {
+      "w": 708,
+      "h": 1600
+    },
+    "07-flatlay.jpg": {
+      "w": 936,
+      "h": 1280
+    }
+  },
+  "semi-benarasi-patola-blue": {
+    "01-full.jpg": {
+      "w": 626,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 760,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 1005,
+      "h": 1600
+    },
+    "04-pallu-spread.jpg": {
+      "w": 1087,
+      "h": 1600
+    },
+    "05-detail.jpg": {
+      "w": 1200,
+      "h": 1600
+    }
+  },
+  "semi-benarasi-patola-ivory": {
+    "01-full.jpg": {
+      "w": 897,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 746,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 846,
+      "h": 1600
+    },
+    "04-pallu-spread.jpg": {
+      "w": 1139,
+      "h": 1600
+    },
+    "05-detail.jpg": {
+      "w": 1120,
+      "h": 1600
+    }
+  },
+  "semi-benarasi-patola-aubergine": {
+    "01-full.jpg": {
+      "w": 759,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 1082,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 1012,
+      "h": 1599
+    },
+    "04-pallu-spread.jpg": {
+      "w": 984,
+      "h": 1600
+    },
+    "05-detail.jpg": {
+      "w": 1200,
       "h": 1600
     }
   }
