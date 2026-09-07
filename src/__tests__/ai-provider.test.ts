@@ -77,12 +77,11 @@ describe("anthropic provider — degrades gracefully, never fabricates", () => {
     await expect(anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] })).resolves.toBeNull();
   });
 
-  it("structurally cannot surface fabricated fabric/authenticity/price/stock/supplier claims", async () => {
+  it("structurally cannot surface fabricated authenticity/price/stock/supplier claims", async () => {
     const raw = {
       name: { value: "Maroon Saree", confidence: 0.8 },
       // A non-compliant model might still try to add these — the schema has
       // no place for them, so they must not survive parsing.
-      fabric_type: { value: "Pure Silk", confidence: 0.9 },
       handloom_authenticity: { value: "Handwoven in Kanchipuram", confidence: 0.9 },
       price: { value: 12000, confidence: 0.9 },
       stock_count: { value: 5, confidence: 0.9 },
@@ -92,15 +91,50 @@ describe("anthropic provider — degrades gracefully, never fabricates", () => {
     const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] });
     expect(result).not.toBeNull();
     expect(result!.name).toEqual({ value: "Maroon Saree", confidence: 0.8 });
-    expect(result).not.toHaveProperty("fabric_type");
     expect(result).not.toHaveProperty("handloom_authenticity");
     expect(result).not.toHaveProperty("price");
     expect(result).not.toHaveProperty("stock_count");
     expect(result).not.toHaveProperty("supplier_name");
     // Confirms the schema export itself is the guardrail, not just this test's shape.
     expect(Object.keys(metadataResponseSchema.shape)).not.toEqual(
-      expect.arrayContaining(["fabric_type", "price", "stock_count", "supplier_name"]),
+      expect.arrayContaining(["price", "stock_count", "supplier_name", "handloom_authenticity"]),
     );
+  });
+
+  it("drops fabric/code/price when there is no admin description or trusted fact to source them from", async () => {
+    const raw = {
+      name: { value: "Maroon Saree", confidence: 0.8 },
+      fabric_type: { value: "Pure Silk", confidence: 0.9 },
+      product_code: { value: "WCS-999", confidence: 0.9 },
+      base_price_min: { value: 12000, confidence: 0.9 },
+      base_price_max: { value: 12000, confidence: 0.9 },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(textResponse(raw)));
+    const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] });
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("fabric_type");
+    expect(result).not.toHaveProperty("product_code");
+    expect(result).not.toHaveProperty("base_price_min");
+    expect(result).not.toHaveProperty("base_price_max");
+  });
+
+  it("keeps fabric/code/price when an admin description is present to source them from", async () => {
+    const raw = {
+      name: { value: "Maroon Saree", confidence: 0.8 },
+      fabric_type: { value: "Pure Silk", confidence: 0.9 },
+      product_code: { value: "WCS-999", confidence: 0.9 },
+      base_price_min: { value: 4000, confidence: 0.9 },
+      base_price_max: { value: 4500, confidence: 0.9 },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(textResponse(raw)));
+    const result = await anthropicAiProvider.suggestProductMetadata({
+      adminDescription: "Maroon pure silk saree. Code WCS-999. Priced 4000–4500.",
+      imageUrls: [],
+    });
+    expect(result!.fabric_type).toEqual({ value: "Pure Silk", confidence: 0.9 });
+    expect(result!.product_code).toEqual({ value: "WCS-999", confidence: 0.9 });
+    expect(result!.base_price_min).toEqual({ value: 4000, confidence: 0.9 });
+    expect(result!.base_price_max).toEqual({ value: 4500, confidence: 0.9 });
   });
 
   it("never returns a collection candidate outside the offered closed list, even if the model tries", async () => {

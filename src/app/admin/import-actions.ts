@@ -854,6 +854,22 @@ export async function removeCollectionAlias(id: string): Promise<ActionResult> {
 
 // ── Product creation from a reviewed group ──────────────────────────
 
+/** First clause of a pasted blurb, capped — used only as a name fallback when
+ * the AI couldn't distil one. A marketing paragraph is never a product name. */
+function firstClause(text: string | null | undefined, max: number): string | null {
+  const t = text?.trim();
+  if (!t) return null;
+  const clause = t.split(/[.\n,;]/)[0]!.trim();
+  if (!clause) return null;
+  if (clause.length <= max) return clause;
+  return clause.slice(0, max).replace(/\s+\S*$/, "").trim() || clause.slice(0, max);
+}
+
+/** A price suggestion is only usable if it's a finite non-negative number. */
+function usablePrice(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 /**
  * Fail-closed: only groups whose collection classification has reached
  * 'confirmed' (by any method) may become a product. A SUGGESTED or
@@ -890,17 +906,24 @@ export async function createProductFromGroup(
     }
     const videoCount = assets.filter((a) => a.kind === "video").length;
 
-    const aiName = group.ai_metadata?.name?.value?.trim();
-    const aiDescription = group.ai_metadata?.short_description?.value?.trim();
+    const meta = group.ai_metadata ?? {};
+    const aiName = meta.display_name?.value?.trim() || meta.name?.value?.trim();
+    const aiDescription = meta.short_description?.value?.trim();
     const name =
-      group.admin_description?.trim()?.slice(0, 200) ||
       aiName ||
+      firstClause(group.admin_description, 80) ||
       imageAssets[0].original_filename?.replace(/\.[a-z0-9]+$/i, "") ||
       `Imported item ${new Date().toISOString().slice(0, 10)}`;
     const description = group.admin_description?.trim() || aiDescription || null;
+    const fabricType = meta.fabric_type?.value?.trim() || null;
+    const productCode = meta.product_code?.value?.trim() || null;
+    const priceMin = usablePrice(meta.base_price_min?.value);
+    const priceMaxRaw = usablePrice(meta.base_price_max?.value);
+    // Keep min ≤ max even if the AI returned them the wrong way round.
+    const priceMax = priceMaxRaw != null && priceMin != null ? Math.max(priceMin, priceMaxRaw) : priceMaxRaw;
 
     let categoryId: string | null = null;
-    const categorySlug = group.ai_metadata?.category_slug?.value;
+    const categorySlug = meta.category_slug?.value;
     if (categorySlug) {
       const { data: category } = await admin.from("categories").select("id").eq("slug", categorySlug).maybeSingle();
       categoryId = (category as { id?: string } | null)?.id ?? null;
@@ -909,13 +932,13 @@ export async function createProductFromGroup(
     const productRow = {
       name,
       category_id: categoryId,
-      fabric_type: null,
+      fabric_type: fabricType,
       description,
-      highlights: group.ai_metadata?.highlights?.value ?? [],
-      base_price_min: null,
-      base_price_max: null,
+      highlights: meta.highlights?.value ?? [],
+      base_price_min: priceMin,
+      base_price_max: priceMax,
       status: "draft" as const,
-      product_code: null,
+      product_code: productCode,
       is_featured: false,
       stock_type: "supplier" as const,
       import_group_id: groupId,

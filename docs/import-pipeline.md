@@ -112,10 +112,21 @@ run unless the classification is `confirmed`.
   API (no SDK dependency), gated by `ANTHROPIC_API_KEY` (model overridable
   via `ANTHROPIC_IMPORT_MODEL`, default `claude-haiku-4-5-20251001`). Its
   response schemas (`metadataResponseSchema` /
-  `classificationResponseSchema`) simply have no fields for fabric
-  composition, authenticity, price, stock, or supplier — zod strips
-  anything else, so those claims are structurally impossible to surface,
-  not just discouraged by prompt.
+  `classificationResponseSchema`) have no fields for authenticity, stock, or
+  supplier — zod strips anything else, so those claims are structurally
+  impossible to surface, not just discouraged by prompt. `fabric_type`,
+  `product_code` and `base_price_min`/`base_price_max` *do* have schema
+  fields (the admin routinely pastes these into the description), but the
+  provider deletes them from the parsed result unless an `adminDescription`
+  or a `trustedFacts` entry was supplied to source them from — they can
+  never be inferred from the photos alone.
+
+  Pasting/editing a group's description in the review UI re-runs
+  `suggestProductMetadata` on blur, so the extracted name / fabric / code /
+  price / highlights refresh from the new text. `createProductFromGroup`
+  then uses the AI-distilled short name (never the pasted paragraph, which
+  becomes the product description) and maps the four fields onto the draft
+  product.
 
 **Not exercised against the live API in this environment** — no
 `ANTHROPIC_API_KEY` is configured here, so `getAiProvider()` always returns

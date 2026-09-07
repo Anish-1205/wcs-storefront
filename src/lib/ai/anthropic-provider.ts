@@ -45,6 +45,12 @@ export const metadataResponseSchema = z.object({
   category_slug: suggestionSchema(z.string().max(100)),
   alt_text: suggestionSchema(z.array(z.string().max(300)).max(20)),
   primary_asset_client_upload_id: suggestionSchema(z.string().max(100)),
+  // Populated only from an explicit statement in the admin description — the
+  // prompt forbids inferring any of these from the photos.
+  fabric_type: suggestionSchema(z.string().max(120)),
+  product_code: suggestionSchema(z.string().max(60)),
+  base_price_min: suggestionSchema(z.number().nonnegative().max(10_000_000)),
+  base_price_max: suggestionSchema(z.number().nonnegative().max(10_000_000)),
 });
 
 export const colorVariantResponseSchema = z.object({
@@ -80,8 +86,10 @@ Hard rules:
 - Everything you output is an unverified suggestion an admin will review — never state it as fact.
 - NEVER invent or assert: fabric composition (e.g. "pure silk"), handloom/handwoven authenticity, geographic/weave authenticity (e.g. "Kanjivaram", "Banarasi"), price, stock levels, or supplier information — unless that exact fact is present in the admin description or trusted facts you were given. If you are not given a fact, omit the corresponding field rather than guess.
 - If an admin description is provided, treat it as ground truth and do not contradict it; you may lightly rephrase it for a tagline/short_description but do not add unstated factual claims.
+- "name" must be a short product name (a few words — e.g. "Benarsi crepe saree"), NEVER a sentence or the whole description. If the admin description opens with a marketing sentence, distil the product name out of it.
+- "fabric_type", "product_code", "base_price_min" and "base_price_max" may ONLY be filled when that value is written explicitly in the admin description (e.g. "Fabric: pure silk", "Code: WCS-012", "₹4500", "priced 4000–4500"). Never derive them from the photos. Omit them otherwise. Prices are plain numbers in rupees, no currency symbol or separators. If a single price is stated, use it for both min and max.
 - Respond with ONLY a single JSON object matching this exact shape (omit any field you are not confident about — do not fabricate a value just to fill a field):
-{"name":{"value":string,"confidence":0..1,"evidence":string},"display_name":{...},"short_description":{...},"tagline":{...},"highlights":{"value":string[],...},"colour":{...},"tags":{"value":string[],...},"category_slug":{...},"alt_text":{"value":string[],...},"primary_asset_client_upload_id":{...}}
+{"name":{"value":string,"confidence":0..1,"evidence":string},"display_name":{...},"short_description":{...},"tagline":{...},"highlights":{"value":string[],...},"colour":{...},"tags":{"value":string[],...},"category_slug":{...},"alt_text":{"value":string[],...},"primary_asset_client_upload_id":{...},"fabric_type":{...},"product_code":{...},"base_price_min":{"value":number,...},"base_price_max":{"value":number,...}}
 No prose, no markdown fences, JSON only.`;
 
 const CLASSIFICATION_SYSTEM_PROMPT = `You match a proposed product (photos + optional description) to an EXISTING catalog collection. You are given the full closed list of collections that may be chosen — you must NEVER propose a collection that is not in that list, and never invent a new one.
@@ -191,6 +199,20 @@ export const anthropicAiProvider: AiProvider = {
       console.warn("anthropic provider: metadata response failed validation");
       return null;
     }
+
+    // Fabric / code / price may only ever come from an explicit admin
+    // statement (or trusted facts) — never from the photos. With neither
+    // source present, drop them defensively even if the model returned them,
+    // so the schema staying permissive can't become a fabrication channel.
+    const hasTrustedSource =
+      !!input.adminDescription?.trim() || Object.keys(input.trustedFacts ?? {}).length > 0;
+    if (!hasTrustedSource) {
+      delete parsed.data.fabric_type;
+      delete parsed.data.product_code;
+      delete parsed.data.base_price_min;
+      delete parsed.data.base_price_max;
+    }
+
     return parsed.data;
   },
 

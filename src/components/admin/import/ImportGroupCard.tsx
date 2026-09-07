@@ -41,8 +41,15 @@ interface Props {
 }
 
 function groupDisplayName(group: ImportProductGroup, assets: ImportAsset[]): string {
-  if (group.admin_description?.trim()) return group.admin_description.trim();
-  if (group.ai_metadata?.name?.value?.trim()) return group.ai_metadata.name.value.trim();
+  const aiName = group.ai_metadata?.display_name?.value?.trim() || group.ai_metadata?.name?.value?.trim();
+  if (aiName) return aiName;
+  // Fall back to just the first clause of the pasted description — the whole
+  // paragraph is a description, not a name.
+  const blurb = group.admin_description?.trim();
+  if (blurb) {
+    const clause = blurb.split(/[.\n,;]/)[0]!.trim();
+    return clause.length > 80 ? `${clause.slice(0, 80).trimEnd()}…` : clause || blurb.slice(0, 80);
+  }
   const imageCount = assets.filter((a) => a.kind === "image").length;
   const videoCount = assets.filter((a) => a.kind === "video").length;
   const parts = [imageCount > 0 ? `${imageCount} photo${imageCount === 1 ? "" : "s"}` : null, videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null];
@@ -244,7 +251,16 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          onBlur={() => run(() => updateImportGroupDescription({ group_id: group.id, admin_description: description.trim() || null }))}
+          onBlur={() => {
+            const next = description.trim() || null;
+            if (next === (group.admin_description ?? null)) return;
+            run(async () => {
+              const saved = await updateImportGroupDescription({ group_id: group.id, admin_description: next });
+              // Re-extract name / fabric / code / price / highlights from the pasted text.
+              if (saved.ok && next) return requestGroupAiSuggestions(group.id);
+              return saved;
+            });
+          }}
           className="min-h-[70px] text-sm"
         />
       </div>
@@ -277,6 +293,29 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
                 <dd className="inline">{group.ai_metadata.tags.value.join(", ")}</dd>
               </div>
             ) : null}
+            {group.ai_metadata.fabric_type && (
+              <div>
+                <dt className="inline font-medium">Fabric: </dt>
+                <dd className="inline">{group.ai_metadata.fabric_type.value}</dd>
+              </div>
+            )}
+            {group.ai_metadata.product_code && (
+              <div>
+                <dt className="inline font-medium">Code: </dt>
+                <dd className="inline">{group.ai_metadata.product_code.value}</dd>
+              </div>
+            )}
+            {(group.ai_metadata.base_price_min || group.ai_metadata.base_price_max) && (
+              <div>
+                <dt className="inline font-medium">Price: </dt>
+                <dd className="inline">
+                  {[group.ai_metadata.base_price_min?.value, group.ai_metadata.base_price_max?.value]
+                    .filter((v): v is number => v != null)
+                    .map((v) => `₹${v}`)
+                    .join(" – ")}
+                </dd>
+              </div>
+            )}
           </dl>
         )}
       </div>

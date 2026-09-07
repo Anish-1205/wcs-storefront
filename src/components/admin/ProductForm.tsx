@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { VariantManager } from "./VariantManager";
 import { CollectionCheckboxes } from "./CollectionCheckboxes";
-import { saveProduct } from "@/app/admin/actions";
+import { saveProduct, saveCategory } from "@/app/admin/actions";
 import { slugify } from "@/lib/utils";
 import type { Category, Collection } from "@/lib/supabase/types";
 import type { ProductInputShape, VariantInputShape } from "@/lib/validation";
@@ -37,6 +37,36 @@ export function ProductForm({ categories, collections, initial }: Props) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(!!initial?.slug);
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
+  const [categoryOptions, setCategoryOptions] = useState<Pick<Category, "id" | "name">[]>(categories);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  async function createCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setCreatingCategory(true);
+    setCategoryError(null);
+    const result = await saveCategory({
+      name,
+      slug: null,
+      description: null,
+      image_url: null,
+      display_order: categoryOptions.length,
+    });
+    setCreatingCategory(false);
+    if (!result.ok) {
+      setCategoryError(result.error);
+      return;
+    }
+    setCategoryOptions((prev) =>
+      [...prev, { id: result.id, name }].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    setCategoryId(result.id);
+    setNewCategoryName("");
+    setShowNewCategory(false);
+  }
   const [fabric, setFabric] = useState(initial?.fabric_type ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [highlights, setHighlights] = useState(
@@ -229,15 +259,53 @@ export function ProductForm({ categories, collections, initial }: Props) {
         <h2 className="mb-4 font-serif text-lg text-primary">Categorize</h2>
         <div className="space-y-4">
           <div className="space-y-1.5 sm:max-w-xs">
-            <Label htmlFor="category">Category (primary)</Label>
-            <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">— Select —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="category">Category (primary)</Label>
+              <button
+                type="button"
+                className="text-xs text-primary underline underline-offset-2"
+                onClick={() => {
+                  setShowNewCategory((v) => !v);
+                  setCategoryError(null);
+                }}
+              >
+                {showNewCategory ? "Cancel" : "+ New category"}
+              </button>
+            </div>
+            {showNewCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void createCategory();
+                    }
+                  }}
+                  placeholder="e.g. Silk Sarees"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={creatingCategory || !newCategoryName.trim()}
+                  onClick={() => void createCategory()}
+                >
+                  {creatingCategory ? "Adding…" : "Add"}
+                </Button>
+              </div>
+            ) : (
+              <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">— Select —</option>
+                {categoryOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+            {categoryError && <p className="text-xs text-destructive">{categoryError}</p>}
           </div>
           <div className="space-y-1.5">
             <Label>Collections (tags)</Label>

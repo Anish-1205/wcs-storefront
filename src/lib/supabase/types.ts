@@ -189,6 +189,11 @@ export interface ImportAiMetadata {
   category_slug?: { value: string; confidence: number; evidence?: string };
   alt_text?: { value: string[]; confidence: number; evidence?: string };
   primary_asset_client_upload_id?: { value: string; confidence: number; evidence?: string };
+  // Extracted only from an explicit statement in the admin description.
+  fabric_type?: { value: string; confidence: number; evidence?: string };
+  product_code?: { value: string; confidence: number; evidence?: string };
+  base_price_min?: { value: number; confidence: number; evidence?: string };
+  base_price_max?: { value: number; confidence: number; evidence?: string };
 }
 
 export interface ImportColorVariantSuggestion {

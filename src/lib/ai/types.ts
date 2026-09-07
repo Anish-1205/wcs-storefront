@@ -12,9 +12,10 @@ export interface AiSuggestion<T> {
 
 /** Draft-only metadata a provider may propose for a product group. Nothing
  * here may include fabric composition, authenticity claims, price, stock, or
- * supplier information unless the caller explicitly fed that fact in via
- * `trustedFacts` (see AiMetadataInput) — providers are instructed never to
- * invent it, and callers must not merge these fields over trusted input. */
+ * supplier information unless that exact fact is present in the admin
+ * description or the caller fed it in via `trustedFacts` (see
+ * AiMetadataInput) — providers are instructed never to infer it from photos,
+ * and callers must not merge these fields over trusted input. */
 export interface ProductMetadataSuggestions {
   name?: AiSuggestion<string>;
   display_name?: AiSuggestion<string>;
@@ -27,6 +28,12 @@ export interface ProductMetadataSuggestions {
   alt_text?: AiSuggestion<string[]>;
   /** client_upload_id of the asset the provider thinks is the best primary image. */
   primary_asset_client_upload_id?: AiSuggestion<string>;
+  /** The four fields below may ONLY be populated from an explicit statement in
+   * the admin description (or trustedFacts) — never inferred from photos. */
+  fabric_type?: AiSuggestion<string>;
+  product_code?: AiSuggestion<string>;
+  base_price_min?: AiSuggestion<number>;
+  base_price_max?: AiSuggestion<number>;
 }
 
 export interface AiMetadataInput {
