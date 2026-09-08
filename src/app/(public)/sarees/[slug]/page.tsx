@@ -89,19 +89,39 @@ export default async function ProductPage({ params }: { params: { slug: string }
             : product.availability === "pre-order"
               ? "https://schema.org/PreOrder"
               : "https://schema.org/LimitedAvailability",
-      // Return/shipping terms are confirmed per order on WhatsApp, not a fixed
-      // window or rate (see /shipping-returns) — declared as "Unspecified"
-      // rather than inventing a day-count or shipping fee that isn't real.
+      // There is no change-of-mind return window — returns are only for items
+      // that arrive faulty or not as confirmed (see /shipping-returns). Google
+      // rejects "MerchantReturnUnspecified", so this is declared as
+      // NotPermitted, which is the accurate mapping for that stance.
       hasMerchantReturnPolicy: {
         "@type": "MerchantReturnPolicy",
-        returnPolicyCategory: "https://schema.org/MerchantReturnUnspecified",
+        applicableCountry: "IN",
+        returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
         merchantReturnLink: `${SITE.url}/shipping-returns`,
       },
+      // The shipping charge is quoted per order (it depends on the item and
+      // quantity) so no shippingRate is declared, but the delivery-time range
+      // below is a genuine domestic estimate.
       shippingDetails: {
         "@type": "OfferShippingDetails",
         shippingDestination: {
           "@type": "DefinedRegion",
           addressCountry: "IN",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 3,
+            unitCode: "DAY",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 2,
+            maxValue: 10,
+            unitCode: "DAY",
+          },
         },
       },
     },
