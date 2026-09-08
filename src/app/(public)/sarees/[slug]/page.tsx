@@ -6,6 +6,8 @@ import {
   getProductBySlug,
   getAllSlugs,
   getRelatedProducts,
+  getColourwaySiblings,
+  derivedColourways,
   primaryImage,
 } from "@/data/products";
 import { getProductsWithOverrides } from "@/lib/storefront-overrides";
@@ -15,7 +17,7 @@ import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
 import { CONCIERGE_NOTE } from "@/lib/copy";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
-import { ProductGallery } from "@/components/product/ProductGallery";
+import { ProductMedia } from "@/components/product/ProductMedia";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { SareeCard } from "@/components/catalog/SareeCard";
@@ -62,6 +64,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
   if (!product) notFound();
 
   const related = getRelatedProducts(product.slug, 3, allProducts);
+  const siblings = getColourwaySiblings(product, allProducts);
+  const derived = derivedColourways(product);
   const pageUrl = `${SITE.url}/sarees/${product.slug}`;
 
   const jsonLd = {
@@ -158,7 +162,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,62%)_minmax(0,38%)] lg:gap-14">
         <div>
-          <ProductGallery product={product} />
+          <ProductMedia product={product} siblings={siblings} derived={derived} />
         </div>
 
         <div>

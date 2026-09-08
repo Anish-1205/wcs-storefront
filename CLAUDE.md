@@ -34,6 +34,7 @@ supabase gen types typescript --local > src/lib/supabase/types.ts   # Regenerate
 node scripts/prepare-media.mjs "<source folder>"   # (re)build public/media from the raw photo/video library
 node scripts/optimize-video.mjs                      # re-encode public/media/**/*.mp4 (H.264 CRF 28, audio stripped)
 node scripts/prepare-logo.mjs "<logo file>"          # (re)build public/brand/** + src/app icons from the brand artwork
+node scripts/extract-colour-variants.mjs             # AI-extract colourway swatches from public/media/**/*colour-range*.jpg -> public/media/colour-variants.json (needs ANTHROPIC_API_KEY; degrades to no-op)
 ```
 
 See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-driven storefront (products, media, cart, WhatsApp), [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.

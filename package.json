@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "audit:lighthouse": "lighthouse http://localhost:3000 --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=reports/lighthouse.json --quiet",
     "check:env": "node scripts/check-env.mjs --production",
+    "media:colours": "node scripts/extract-colour-variants.mjs",
     "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {

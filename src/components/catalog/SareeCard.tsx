@@ -8,6 +8,7 @@ import {
   type Product,
   primaryImage,
   secondaryImage,
+  swatchHints,
 } from "@/data/products";
 import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
 
@@ -35,6 +36,7 @@ export function SareeCard({
   const main = primaryImage(product);
   const alt = secondaryImage(product);
   const video = product.videos[0];
+  const swatches = swatchHints(product, 5);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hover, setHover] = useState(false);
 
@@ -131,6 +133,30 @@ export function SareeCard({
       <p className="mt-0.5 text-[0.72rem] uppercase tracking-[0.18em] text-antique-gold">
         {availabilityLabel(product.availability)}
       </p>
+
+      {swatches.length > 0 && (
+        <div className="mt-1.5 flex items-center gap-1">
+          {swatches.map((s, i) =>
+            s.src ? (
+              <span
+                key={i}
+                className="relative h-4 w-3.5 overflow-hidden border border-line/50"
+              >
+                <Image src={s.src} alt="" fill sizes="14px" className="object-cover" />
+              </span>
+            ) : (
+              <span
+                key={i}
+                className="h-3.5 w-3.5 rounded-full border border-line/50"
+                style={s.hex ? { backgroundColor: s.hex } : undefined}
+              />
+            ),
+          )}
+          <span className="ml-0.5 text-[0.68rem] text-muted-foreground">
+            more colours
+          </span>
+        </div>
+      )}
     </Link>
   );
 }

@@ -27,6 +27,12 @@
 import RAW_DIMS from "../../public/media/dimensions.json";
 import RAW_VIDEO_DIMS from "../../public/media/video-dimensions.json";
 import RAW_QUALITY from "../../public/media/media-quality.json";
+import RAW_COLOUR_VARIANTS from "../../public/media/colour-variants.json";
+import {
+  type ColourVariantsFile,
+  type DerivedColour,
+  sanitiseDerivedColours,
+} from "@/lib/colour-variants";
 
 type DimMap = Record<string, Record<string, { w: number; h: number }>>;
 const DIMS = RAW_DIMS as DimMap;
@@ -40,6 +46,11 @@ const QUALITY = RAW_QUALITY as Record<
   string,
   Record<string, { score: number }>
 >;
+/** Derived colourway swatches per design — plain colour names + optional hex,
+ *  extracted from the folded "colour-range" photos by
+ *  scripts/extract-colour-variants.mjs. Re-sanitised here so a hand-edit to the
+ *  JSON can't bypass the banned-token guard. */
+const COLOUR_VARIANTS = RAW_COLOUR_VARIANTS as ColourVariantsFile;
 
 function imageScore(src: string): number {
   const m = src.match(/\/media\/([^/]+)\/([^/]+)$/);
@@ -96,6 +107,10 @@ export interface Product {
   /** dominant visible colour(s) */
   colour: string;
   colourFamily: string;
+  /** Non-null when this product is one colourway of a design that has other
+   *  colourways as their own products — the shared key links them into a
+   *  swatch row (see getColourwaySiblings). */
+  variantGroup: string | null;
   /** INR. null → "Price on Enquiry" */
   price: number | null;
   availability: Availability;
@@ -155,7 +170,10 @@ function video(
   };
 }
 
-type ProductSeed = Omit<Product, "category" | "categorySlug">;
+type ProductSeed = Omit<
+  Product,
+  "category" | "categorySlug" | "variantGroup"
+> & { variantGroup?: string | null };
 
 const SEEDS: ProductSeed[] = [
   {
@@ -277,6 +295,7 @@ const SEEDS: ProductSeed[] = [
     slug: "bandhani-patola-indigo",
     title: "Royal-Blue Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-004",
+    variantGroup: "bandhani-patola",
     weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
@@ -313,6 +332,7 @@ const SEEDS: ProductSeed[] = [
     slug: "bandhani-patola-vermilion",
     title: "Vermilion Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-005",
+    variantGroup: "bandhani-patola",
     weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
@@ -348,6 +368,7 @@ const SEEDS: ProductSeed[] = [
     slug: "bandhani-patola-emerald",
     title: "Bottle-Green Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-006",
+    variantGroup: "bandhani-patola",
     weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
@@ -383,6 +404,7 @@ const SEEDS: ProductSeed[] = [
     slug: "bandhani-patola-parrot",
     title: "Parrot-Green Banarasi–Bandhej–Patola Fusion Saree",
     reference: "WCS-007",
+    variantGroup: "bandhani-patola",
     weave: "Banarasi · Bandhej · Patola",
     material: null,
     origin: null,
@@ -608,6 +630,7 @@ const SEEDS: ProductSeed[] = [
     slug: "semi-benarasi-patola-blue",
     title: "Royal-Blue Semi-Benarasi Patola Saree",
     reference: "WCS-013",
+    variantGroup: "semi-benarasi-patola",
     weave: "Semi-Benarasi Patola",
     material: null,
     origin: null,
@@ -643,6 +666,7 @@ const SEEDS: ProductSeed[] = [
     slug: "semi-benarasi-patola-ivory",
     title: "Ivory Semi-Benarasi Patola Saree",
     reference: "WCS-014",
+    variantGroup: "semi-benarasi-patola",
     weave: "Semi-Benarasi Patola",
     material: null,
     origin: null,
@@ -678,6 +702,7 @@ const SEEDS: ProductSeed[] = [
     slug: "semi-benarasi-patola-aubergine",
     title: "Aubergine Semi-Benarasi Patola Saree",
     reference: "WCS-015",
+    variantGroup: "semi-benarasi-patola",
     weave: "Semi-Benarasi Patola",
     material: null,
     origin: null,
@@ -714,6 +739,7 @@ export const PRODUCTS: Product[] = SEEDS.map((s) => ({
   ...s,
   category: s.colourFamily,
   categorySlug: slugify(s.colourFamily),
+  variantGroup: s.variantGroup ?? null,
 }));
 
 // ── Derived helpers ───────────────────────────────────────────────────
@@ -751,6 +777,87 @@ export function getRelatedProducts(slug: string, limit = 3, products: Product[] 
     (p) => p.slug !== slug && p.colourFamily !== current.colourFamily,
   );
   return [...sameColour, ...rest].slice(0, limit);
+}
+
+// ── Colour variants ───────────────────────────────────────────────────
+
+export interface ColourwaySibling {
+  slug: string;
+  reference: string;
+  /** short colour label for the swatch — the product's own `colour` phrase */
+  label: string;
+  image: ProductImage;
+  price: number | null;
+  availability: Availability;
+  isCurrent: boolean;
+}
+
+/**
+ * The other products that are the SAME design in a different colour (linked by
+ * `variantGroup`), plus this one, ordered by reference. `[]` when the product
+ * has no `variantGroup` or is the only member.
+ */
+export function getColourwaySiblings(
+  product: Product,
+  products: Product[] = PRODUCTS,
+): ColourwaySibling[] {
+  if (!product.variantGroup) return [];
+  const members = products
+    .filter((p) => p.variantGroup === product.variantGroup)
+    .sort((a, b) => a.reference.localeCompare(b.reference));
+  if (members.length < 2) return [];
+  return members.map((p) => ({
+    slug: p.slug,
+    reference: p.reference,
+    label: p.colour,
+    image: primaryImage(p),
+    price: p.price,
+    availability: p.availability,
+    isCurrent: p.slug === product.slug,
+  }));
+}
+
+export interface DerivedColourways {
+  /** the folded assortment photo the swatches were read from + the viewer
+   *  jumps to when a swatch is clicked */
+  image: ProductImage;
+  colours: DerivedColour[];
+}
+
+/**
+ * AI-derived "also made in these shades" swatches for a design that ships a
+ * folded `colour-range` photo (scripts/extract-colour-variants.mjs →
+ * public/media/colour-variants.json). Colour name + optional hex only — never a
+ * price, weave or availability. `null` when the product has no such photo or no
+ * colours were extracted.
+ */
+export function derivedColourways(product: Product): DerivedColourways | null {
+  const entry = COLOUR_VARIANTS[product.slug];
+  const rangeImage = product.images.find((i) => i.role === "colour-range");
+  if (!entry || !rangeImage) return null;
+  const colours = sanitiseDerivedColours(entry.colours);
+  if (colours.length === 0) return null;
+  return { image: rangeImage, colours };
+}
+
+export interface SwatchHint {
+  hex: string | null;
+  src: string | null;
+}
+
+/** Compact colour dots for a catalogue card: sibling primary-image crops first,
+ *  then derived hex dots. Empty when the product has neither. */
+export function swatchHints(product: Product, limit = 6): SwatchHint[] {
+  const hints: SwatchHint[] = [];
+  for (const s of getColourwaySiblings(product)) {
+    hints.push({ hex: null, src: s.image.src });
+  }
+  if (hints.length === 0) {
+    for (const c of derivedColourways(product)?.colours ?? []) {
+      hints.push({ hex: c.hex, src: null });
+    }
+  }
+  return hints.slice(0, limit);
 }
 
 export interface CategoryFacet {

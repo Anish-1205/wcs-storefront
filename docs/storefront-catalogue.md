@@ -147,9 +147,36 @@ then `node scripts/score-media.mjs`.
   card-hover still, (c) order the gallery — sharper first within a role, visibly
   soft frames pushed to the end.
 
-The gallery (`ProductGallery.tsx`) also de-dupes: no image is shown twice, all
-photos render (not just the first "full" shot), close-ups pair into a 2-col
-grid, and each non-hero shot gets a small role caption. Video (`PortraitVideo`)
+### Colour-variant swatches (product page)
+
+The product page shows an Amazon-style **thumbnail rail + single main stage**
+(`src/components/product/ProductMediaViewer.tsx`, wrapped by `ProductMedia.tsx`)
+and, beneath it, a **colour-variant row** (`ColourVariantRow.tsx`). Two swatch
+sources:
+
+- **Sibling colourways** — products sharing `Product.variantGroup` in
+  `src/data/products.ts` (`bandhani-patola`, `semi-benarasi-patola`). Each is a
+  real product: the swatch links to its page and shows its real price.
+  `getColourwaySiblings()` builds the list.
+- **Derived shades** — for a design that ships a folded `role:"colour-range"`
+  photo, `scripts/extract-colour-variants.mjs` calls Anthropic over that photo
+  and writes `public/media/colour-variants.json`
+  (`{ "<slug>": { images, colours:[{name,hex}] } }`). `derivedColourways()`
+  reads it. A derived swatch has **no page and no price** — clicking it just
+  points the main stage at the colour-range photo. Names are sanitised
+  (`src/lib/colour-variants.ts`, `BANNED_COLOUR_TOKENS`) so no weave / fibre /
+  region word can ride in through a colour label. Run
+  `npm run media:colours` after adding/replacing a colour-range image; commit
+  the JSON (like `media-quality.json`). No key → the script is a no-op.
+
+Catalogue cards (`SareeCard.tsx`) show a compact `swatchHints()` dot row from the
+same two sources.
+
+### Gallery de-duplication
+
+`ProductMediaViewer` de-dupes: no image is shown twice, all
+photos are reachable from the rail (not just the first "full" shot), and the
+active shot gets a small role caption. Video (`PortraitVideo`)
 autoplays muted/looped whenever it's ≥30% on screen and pauses on its current
 frame once it's almost gone — **no play button, ever** (a client decision that
 overrides the usual `prefers-reduced-motion` courtesy for this muted b-roll).
