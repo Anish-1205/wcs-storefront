@@ -21,6 +21,7 @@ import {
   contactImportRowSchema,
   contactSchema,
   contactsQuerySchema,
+  firstIssueMessage,
   parseContactDateTimeValue,
   parseContactDateValue,
   productInputSchema,
@@ -275,7 +276,7 @@ export async function saveCategory(input: CategoryInputShape): Promise<ActionRes
   return toResult(async () => {
     const { admin } = await assertAdmin();
     const parsed = categoryInputSchema.safeParse(input);
-    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid category");
+    if (!parsed.success) throw new Error(firstIssueMessage(parsed.error, "Invalid category"));
     input = parsed.data;
 
     let previousSlug: string | null = null;
@@ -482,7 +483,7 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
   return toResult(async () => {
   const { admin } = await assertAdmin();
   const parsed = productInputSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product");
+  if (!parsed.success) throw new Error(firstIssueMessage(parsed.error, "Invalid product"));
   input = parsed.data;
 
   await ensurePublishAllowed(admin, input.id, input.status);
@@ -803,7 +804,7 @@ export async function saveCollection(input: CollectionInputShape): Promise<Actio
   return toResult(async () => {
   const { admin } = await assertAdmin();
   const parsed = collectionInputSchema.safeParse(input);
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid collection");
+  if (!parsed.success) throw new Error(firstIssueMessage(parsed.error, "Invalid collection"));
   input = parsed.data;
 
   let previousSlug: string | null = null;

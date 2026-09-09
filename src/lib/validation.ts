@@ -11,6 +11,18 @@ import type {
 
 const phoneRegex = /^[+]?\d[\d\s-]{6,14}$/;
 
+/**
+ * "field.path: message" for the first issue of a failed `safeParse`, so admin
+ * forms surface *which* field is wrong (e.g. `variants.0.images.2.image_url:
+ * Invalid url`) instead of a bare, context-free message.
+ */
+export function firstIssueMessage(error: z.ZodError, fallback: string): string {
+  const issue = error.issues[0];
+  if (!issue) return fallback;
+  const path = issue.path.join(".");
+  return path ? `${path}: ${issue.message}` : issue.message;
+}
+
 /** Inquiry form (retail / wholesale / general). Includes honeypot field. */
 export const inquirySchema = z.object({
   name: z.string().min(2, "Please enter your name").max(100),
@@ -37,8 +49,20 @@ export const subscriberSchema = z.object({
 
 export type SubscriberInput = z.infer<typeof subscriberSchema>;
 
+/**
+ * Product/variant image reference. Admin uploads are absolute Cloudinary URLs;
+ * file-synced products (source='file_sync') carry site-relative media paths
+ * like `/media/<slug>/<file>` — both are valid here.
+ */
+const imageRefSchema = z
+  .string()
+  .max(2048)
+  .refine((value) => /^https?:\/\//i.test(value) || value.startsWith("/"), {
+    message: "Invalid url",
+  });
+
 export const variantImageSchema = z.object({
-  image_url: z.string().url().max(2048),
+  image_url: imageRefSchema,
   is_primary: z.boolean(),
   display_order: z.number().int().nonnegative(),
 });

@@ -1,6 +1,65 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { contactSchema, inquirySchema, subscriberSchema } from "@/lib/validation";
+import {
+  contactSchema,
+  firstIssueMessage,
+  inquirySchema,
+  productInputSchema,
+  subscriberSchema,
+} from "@/lib/validation";
 import { isEmailAllowed } from "@/lib/admin-auth";
+
+describe("productInputSchema variant images", () => {
+  const base = {
+    name: "Kanjivaram",
+    slug: "kanjivaram",
+    category_id: null,
+    fabric_type: null,
+    description: null,
+    highlights: [],
+    base_price_min: null,
+    base_price_max: null,
+    status: "draft" as const,
+    product_code: null,
+    is_featured: false,
+    stock_type: "held" as const,
+    collection_ids: [],
+  };
+
+  function withImage(image_url: string) {
+    return productInputSchema.safeParse({
+      ...base,
+      variants: [
+        {
+          color: "Green",
+          color_hex: null,
+          status: "available" as const,
+          price_min: null,
+          price_max: null,
+          display_order: 0,
+          images: [{ image_url, is_primary: true, display_order: 0 }],
+        },
+      ],
+    });
+  }
+
+  it("accepts a site-relative media path (file-synced products)", () => {
+    expect(withImage("/media/kanjivaram/01.jpg").success).toBe(true);
+  });
+
+  it("accepts an absolute Cloudinary URL", () => {
+    expect(withImage("https://res.cloudinary.com/demo/image/upload/x.jpg").success).toBe(true);
+  });
+
+  it("rejects a bare string that is neither a URL nor a rooted path", () => {
+    const result = withImage("media/kanjivaram/01.jpg");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(firstIssueMessage(result.error, "fallback")).toBe(
+        "variants.0.images.0.image_url: Invalid url",
+      );
+    }
+  });
+});
 
 describe("inquirySchema", () => {
   it("accepts a valid retail inquiry", () => {
