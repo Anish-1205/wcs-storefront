@@ -16,7 +16,7 @@ export function isEmailAllowed(email: string | null | undefined) {
  * privileged reads/writes (RLS-bypassing) once the session is confirmed.
  */
 export async function requireAdmin() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -32,7 +32,7 @@ export async function requireAdmin() {
 
 /** Like requireAdmin but throws instead of redirecting — for use inside actions. */
 export async function assertAdmin() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

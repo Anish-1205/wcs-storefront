@@ -18,11 +18,23 @@ const E2E_SERVER_ENV = {
   CLOUDINARY_API_KEY: "local-test-key",
   CLOUDINARY_API_SECRET: "local-test-secret",
   NEXT_PUBLIC_WHATSAPP_NUMBER: "919876543210",
-  NEXT_PUBLIC_BUSINESS_NAME: "Weavers Club Sarees (Test)",
+  // Must match the default in src/lib/site.ts — several specs compare rendered
+  // brand text against `SITE.name`, which the test process resolves to the
+  // default (webServer env doesn't reach the test runner).
+  NEXT_PUBLIC_BUSINESS_NAME: "Weavers Club Sarees",
   NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
   ADMIN_EMAILS: "admin@example.com",
   UPSTASH_REDIS_REST_URL: "http://127.0.0.1:8079",
   UPSTASH_REDIS_REST_TOKEN: "local-test-token",
+  // Relaxes the middleware CSP's connect-src to the local Supabase CLI. The
+  // suite runs a production build (NODE_ENV=production), which would otherwise
+  // only allow https://*.supabase.co. Never set in a real deployment.
+  E2E_TESTING: "true",
+  // Force the null AI provider. The import-pipeline spec asserts collection
+  // classification resolves to "unresolved" (never a silent AI guess), which
+  // requires no Anthropic key — otherwise a developer's .env.local key leaks
+  // into `next build` and the provider makes real calls.
+  ANTHROPIC_API_KEY: "",
 };
 
 export default defineConfig({
@@ -37,10 +49,11 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "node node_modules/next/dist/bin/next start",
+    command:
+      "node node_modules/next/dist/bin/next build && node node_modules/next/dist/bin/next start",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
     env: E2E_SERVER_ENV,
   },
 });

@@ -23,11 +23,12 @@ export function generateStaticParams() {
   return getCategories().map((c) => ({ category: c.slug }));
 }
 
-export function generateMetadata({
-  params,
-}: {
-  params: { category: string };
-}): Metadata {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ category: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const category = getCategories().find((c) => c.slug === params.category);
   if (!category) return { title: "Catalog" };
   return {
@@ -38,11 +39,13 @@ export function generateMetadata({
 }
 
 interface PageProps {
-  params: { category: string };
-  searchParams: { availability?: string };
+  params: Promise<{ category: string }>;
+  searchParams: Promise<{ availability?: string }>;
 }
 
-export default async function CategoryPage({ params, searchParams }: PageProps) {
+export default async function CategoryPage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const category = getCategories().find((c) => c.slug === params.category);
   if (!category) notFound();
 

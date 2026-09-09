@@ -65,7 +65,7 @@ interface UseProfile {
 export function useProfile(): UseProfile {
   const { user, loading: authLoading } = useAuth();
 
-  const supabaseRef = useRef<ReturnType<typeof createClient>>();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
   if (!supabaseRef.current) supabaseRef.current = createClient();
 
   const [profile, setProfile] = useState<Profile | null>(null);

@@ -1,4 +1,12 @@
 import { withSentryConfig } from "@sentry/nextjs";
+
+// Scope the Cloudinary remote pattern to our own delivery account. Cloudinary
+// URLs are https://res.cloudinary.com/<cloud-name>/<resource>/... so restricting
+// the pathname to our cloud name stops the Image Optimizer being used as a
+// fetch proxy for arbitrary third-party Cloudinary accounts. Falls back to the
+// broad pattern only if the (public) cloud name is unavailable at build time.
+const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -8,12 +16,7 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
+        pathname: cloudinaryCloudName ? `/${cloudinaryCloudName}/**` : "/**",
       },
     ],
   },

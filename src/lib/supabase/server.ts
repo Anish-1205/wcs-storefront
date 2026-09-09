@@ -5,11 +5,15 @@ import { cookies } from "next/headers";
 /**
  * Server Supabase client (ANON key) bound to the request cookies.
  * Use in Server Components / Route Handlers for:
- *   - public reads (respects RLS)
- *   - reading the authenticated admin session
+ *   - reading the authenticated admin session (see requireAdmin/assertAdmin)
+ *   - authenticated customer reads/writes (cart, profile) that respect RLS
+ *
+ * `cookies()` is async in Next 15, so this is async too — every caller must
+ * `await createClient()`. For cookie-less public catalog reads use
+ * `createPublicClient()` instead (that's what src/lib/queries.ts uses).
  */
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

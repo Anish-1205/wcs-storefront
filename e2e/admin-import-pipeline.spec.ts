@@ -44,9 +44,8 @@ test("import a batch of photos through to an approved, publishable product", asy
   await expect(page.getByText(/Proposed products \(1\)/)).toBeVisible();
 
   // No batch manifest, alias, or admin description was given, and there's
-  // no AI key configured in this test env, so classification must resolve
-  // to unresolved — never a silent guess.
-  await page.getByRole("button", { name: "Check collection" }).click();
+  // no AI key configured in this test env, so grouping's automatic
+  // classification must land on "unresolved" — never a silent guess.
   await expect(page.getByText("Collection unresolved")).toBeVisible();
 
   // "Create draft product" must stay disabled while unresolved — the

@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthValue | null>(null);
  * server-synced cart. Admin auth is separate (cookie session + ADMIN_EMAILS).
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabaseRef = useRef<ReturnType<typeof createClient>>();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
   if (!supabaseRef.current) supabaseRef.current = createClient();
   const supabase = supabaseRef.current;
 

@@ -5,7 +5,8 @@ import type { Contact } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditContactPage({ params }: { params: { id: string } }) {
+export default async function EditContactPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { admin } = await requireAdmin();
   const { data: contact } = await admin.from("contacts").select("*").eq("id", params.id).maybeSingle();
   if (!contact) notFound();
