@@ -454,5 +454,25 @@
       "w": 1200,
       "h": 1600
     }
+  },
+  "champagne-gold-hansa-tissue": {
+    "01-full.jpg": {
+      "w": 720,
+      "h": 1090
+    },
+    "02-drape.jpg": {
+      "w": 720,
+      "h": 1090
+    },
+    "03-texture-detail.jpg": {
+      "w": 720,
+      "h": 1090
+    }
+  },
+  "benarasi-munga-checkerboard-floral": {
+    "01-colour-range.jpg": {
+      "w": 1200,
+      "h": 1600
+    }
   }
 }

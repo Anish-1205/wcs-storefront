@@ -222,6 +222,20 @@ const MAP = {
     ],
     videos: [],
   },
+  "champagne-gold-hansa-tissue": {
+    images: [
+      ["1/crane-01.jpg", "01-full.jpg"],
+      ["1/crane-02.jpg", "02-drape.jpg"],
+      ["1/crane-03.jpg", "03-texture-detail.jpg"],
+    ],
+    videos: [["1/2.mp4", "video-1.mp4"]],
+  },
+  "benarasi-munga-checkerboard-floral": {
+    images: [
+      ["1/3.jpeg", "01-colour-range.jpg"],
+    ],
+    videos: [],
+  },
 };
 
 async function exists(p) {

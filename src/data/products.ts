@@ -773,6 +773,78 @@ const SEEDS: ProductSeed[] = [
       "Made to order in a wide range of colours (a selection shown). Tell us the shade you have in mind.",
     createdAt: "2026-09-07",
   },
+  {
+    id: "wcs-017",
+    slug: "champagne-gold-hansa-tissue",
+    title: "Champagne-Gold Banarasi Tissue Saree with Crane Motifs",
+    reference: "WCS-017",
+    weave: "Banarasi tissue brocade",
+    material: "Tissue brocade",
+    origin: null,
+    colour: "Champagne gold with ivory, blush and teal cranes",
+    colourFamily: "Gold",
+    price: 5500,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A soft, luminous Banarasi tissue saree in champagne gold, with a fine slub texture that shifts in the light. Large crane motifs in ivory, blush pink and teal drift across the pallu and skirt panel and scatter lightly over the body; the border is a plain gold band. A calm, contemporary drape with a fluid fall. Shown styled with a green bead mala (not included).",
+    details: [
+      "Banarasi tissue with a light, glossy fall and a fine slub texture",
+      "Large crane motifs in ivory, blush and teal across the pallu and body",
+      "Plain gold border",
+      "Soft, fluid drape",
+    ],
+    tags: ["Banarasi tissue", "Crane motifs", "Lightweight"],
+    includes: null,
+    images: [
+      img("champagne-gold-hansa-tissue", "01-full.jpg", "full", "Champagne-gold tissue saree with crane motifs, draped on a stand"),
+      img("champagne-gold-hansa-tissue", "02-drape.jpg", "drape", "Pallu of the champagne-gold saree, showing the crane motifs"),
+      img("champagne-gold-hansa-tissue", "03-texture-detail.jpg", "detail", "Close-up of the slub tissue texture"),
+    ],
+    videos: [
+      video(
+        "champagne-gold-hansa-tissue",
+        "video-1.mp4",
+        "The champagne-gold crane saree shown in motion",
+        "01-full.jpg",
+      ),
+    ],
+    featured: false,
+    colourRangeNote: null,
+    createdAt: "2026-09-09",
+  },
+  {
+    id: "wcs-018",
+    slug: "benarasi-munga-checkerboard-floral",
+    title: "Banarasi Munga Silk Saree with Checkerboard Grid and Floral Bouquet",
+    reference: "WCS-018",
+    weave: "Banarasi Munga",
+    material: "Munga silk",
+    origin: null,
+    colour: "Woven to order — silver, lilac, blush, blue, coral and more",
+    colourFamily: "Multicolour",
+    price: 4000,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A lightweight Banarasi munga silk saree woven in a two-tone checkerboard grid of soft metallic squares, with a woven floral bouquet filling one corner of the pallu. Tonal zari checks run edge to edge across the body. Each piece is made in a single tonal colour family — a selection of the available shades is shown folded together.",
+    details: [
+      "Banarasi munga silk with a light, crisp fall",
+      "Two-tone checkerboard grid of metallic zari squares",
+      "Woven floral-bouquet motif on the pallu",
+      "Made in one tonal colour per piece",
+    ],
+    tags: ["Banarasi Munga", "Checkerboard weave", "Lightweight"],
+    includes: null,
+    images: [
+      img("benarasi-munga-checkerboard-floral", "01-colour-range.jpg", "colour-range", "The checkerboard munga saree shown folded in a range of colours"),
+    ],
+    videos: [],
+    featured: false,
+    colourRangeNote:
+      "Woven to order in many shades (a selection shown). Tell us the colour you would like.",
+    createdAt: "2026-09-09",
+  },
 ];
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({
