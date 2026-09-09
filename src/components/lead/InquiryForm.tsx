@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import type { InquiryType } from "@/lib/supabase/types";
+import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import Link from "next/link";
 
 interface Props {
@@ -141,7 +142,18 @@ export function InquiryForm({
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="space-y-2 rounded-sm border border-destructive/30 bg-destructive/5 p-3">
+          <p className="text-sm text-destructive">{error}</p>
+          <WhatsAppLink
+            sourcePage="inquiry-error"
+            productName={productName ?? undefined}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-burgundy underline hover:text-burgundy/80"
+          >
+            Chat on WhatsApp
+          </WhatsAppLink>
+        </div>
+      )}
 
       <p className="text-xs leading-relaxed text-muted-foreground">
         By sending this enquiry, you agree that we may contact you about this
