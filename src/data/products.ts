@@ -733,6 +733,46 @@ const SEEDS: ProductSeed[] = [
     colourRangeNote: null,
     createdAt: "2026-09-07",
   },
+  {
+    id: "wcs-016",
+    slug: "purple-khaddi-georgette-minajaal",
+    title: "Purple Khaddi Georgette Saree with Minajaal Floral Work",
+    reference: "WCS-016",
+    weave: "Khaddi Georgette",
+    material: "Khaddi georgette",
+    origin: null,
+    colour: "Deep purple with multicolour florals and silver zari",
+    colourFamily: "Purple",
+    price: 5990,
+    availability: "available",
+    availabilityNote: null,
+    description:
+      "A celebration of timeless craftsmanship — a pure Khaddi Georgette saree intricately adorned with exquisite Minajaal work. The deep-purple body carries an all-over trailing floral jaal in rose, blue and marigold with green vines, framed by a jamdani-inspired border and a richly worked pallu in silver zari, and scattered with fine silver buti. Graceful and effortlessly luxurious — perfect for festive occasions and special celebrations.",
+    details: [
+      "Pure Khaddi Georgette with a soft, sheer fall",
+      "All-over multicolour Minajaal floral work on a deep-purple ground",
+      "Jamdani-inspired border with a silver-zari zigzag and floral band",
+      "Ornate silver-zari pallu with fine silver buti across the body",
+    ],
+    tags: ["Khaddi Georgette", "Minajaal work", "Festive"],
+    includes: null,
+    images: [
+      img("purple-khaddi-georgette-minajaal", "01-full.jpg", "full", "Purple floral Khaddi Georgette saree draped on a stand"),
+      img("purple-khaddi-georgette-minajaal", "02-full-alt.jpg", "full", "Alternative full view of the purple floral saree"),
+      img("purple-khaddi-georgette-minajaal", "03-drape.jpg", "drape", "Drape and fall of the purple floral saree"),
+      img("purple-khaddi-georgette-minajaal", "04-drape-alt.jpg", "drape", "The purple floral saree draped, showing body and pallu"),
+      img("purple-khaddi-georgette-minajaal", "05-drape-plant.jpg", "drape", "Side view of the purple floral saree drape"),
+      img("purple-khaddi-georgette-minajaal", "06-pallu.jpg", "pallu", "Silver-zari pallu of the purple saree, spread out"),
+      img("purple-khaddi-georgette-minajaal", "07-border-detail.jpg", "detail", "Close-up of the floral Minajaal work and zigzag border"),
+      img("purple-khaddi-georgette-minajaal", "08-colour-range.jpg", "colour-range", "The same design folded in a range of colours"),
+      img("purple-khaddi-georgette-minajaal", "09-colour-range-2.jpg", "colour-range", "The full range of colourways this saree is available in, folded together"),
+    ],
+    videos: [],
+    featured: false,
+    colourRangeNote:
+      "Made to order in a wide range of colours (a selection shown). Tell us the shade you have in mind.",
+    createdAt: "2026-09-07",
+  },
 ];
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({

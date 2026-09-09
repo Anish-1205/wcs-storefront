@@ -208,6 +208,20 @@ const MAP = {
     ],
     videos: [["3/WhatsApp Video 2026-09-07 at 08.46.14.mp4", "video-1.mp4"]],
   },
+  "purple-khaddi-georgette-minajaal": {
+    images: [
+      ["1/WhatsApp Image 2026-09-07 at 22.44.32 (1).jpeg", "01-full.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.34.jpeg", "02-full-alt.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.33 (1).jpeg", "03-drape.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.32.jpeg", "04-drape-alt.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.33 (2).jpeg", "05-drape-plant.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.33.jpeg", "06-pallu.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.32 (2).jpeg", "07-border-detail.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 22.44.31.jpeg", "08-colour-range.jpg"],
+      ["1/WhatsApp Image 2026-09-07 at 18.18.56.jpeg", "09-colour-range-2.jpg"],
+    ],
+    videos: [],
+  },
 };
 
 async function exists(p) {

@@ -1,219 +1,224 @@
 {
   "antique-gold-patola-tissue": {
     "01-full.jpg": {
-      "score": 0.4722,
+      "score": 0.4938,
       "sharpness": 3223,
       "brightness": 158
     },
     "02-full-pallu.jpg": {
-      "score": 0.2699,
+      "score": 0.2991,
       "sharpness": 2028,
       "brightness": 141
     },
     "03-drape.jpg": {
-      "score": 0.4213,
+      "score": 0.4449,
       "sharpness": 2844,
       "brightness": 142
     },
     "04-pallu-spread.jpg": {
-      "score": 0.4825,
+      "score": 0.5039,
       "sharpness": 3258,
       "brightness": 128
     },
     "05-tone.jpg": {
-      "score": 0.5045,
+      "score": 0.5251,
       "sharpness": 3402,
       "brightness": 142
     },
     "06-torso.jpg": {
-      "score": 0.6686,
+      "score": 0.6832,
       "sharpness": 4952,
       "brightness": 116
     },
     "07-border-detail.jpg": {
-      "score": 0.7301,
+      "score": 0.7419,
       "sharpness": 5833,
       "brightness": 109
     },
     "08-patola-macro.jpg": {
-      "score": 0.8093,
+      "score": 0.8184,
       "sharpness": 6894,
       "brightness": 128
     },
     "09-colour-range.jpg": {
-      "score": 0.3786,
+      "score": 0.4036,
       "sharpness": 2623,
       "brightness": 140
+    },
+    "10-colour-range-2.jpg": {
+      "score": 0.1116,
+      "sharpness": 1220,
+      "brightness": 160
     }
   },
   "bandhani-patola-emerald": {
     "01-full.jpg": {
-      "score": 0.3921,
+      "score": 0.4168,
       "sharpness": 2667,
       "brightness": 126
     },
     "02-drape.jpg": {
-      "score": 0.6329,
+      "score": 0.6488,
       "sharpness": 4561,
       "brightness": 116
     },
     "03-pallu.jpg": {
-      "score": 0.7119,
+      "score": 0.7246,
       "sharpness": 5554,
       "brightness": 109
     },
     "04-detail.jpg": {
-      "score": 0.5834,
+      "score": 0.601,
       "sharpness": 4117,
       "brightness": 121
     },
     "05-border.jpg": {
-      "score": 0.5081,
+      "score": 0.5288,
       "sharpness": 3415,
       "brightness": 111
     }
   },
   "bandhani-patola-indigo": {
     "01-full.jpg": {
-      "score": 0.557,
+      "score": 0.5754,
       "sharpness": 3899,
       "brightness": 120
     },
     "02-drape.jpg": {
-      "score": 0.6453,
+      "score": 0.6605,
       "sharpness": 4766,
       "brightness": 108
     },
     "03-pallu.jpg": {
-      "score": 0.4703,
+      "score": 0.492,
       "sharpness": 3194,
       "brightness": 123
     },
     "04-full-alt.jpg": {
-      "score": 0.5933,
+      "score": 0.6105,
       "sharpness": 4217,
       "brightness": 116
     },
     "05-border-detail.jpg": {
-      "score": 0.2156,
+      "score": 0.2468,
       "sharpness": 1785,
       "brightness": 117
     },
     "06-detail.jpg": {
-      "score": 0.3573,
+      "score": 0.3835,
       "sharpness": 2430,
       "brightness": 81
     }
   },
   "bandhani-patola-parrot": {
     "01-full.jpg": {
-      "score": 0.6591,
+      "score": 0.6738,
       "sharpness": 4902,
       "brightness": 100
     },
     "02-drape.jpg": {
-      "score": 0.5621,
+      "score": 0.5804,
       "sharpness": 3936,
       "brightness": 121
     },
     "03-pallu.jpg": {
-      "score": 0.4681,
+      "score": 0.4904,
       "sharpness": 3080,
       "brightness": 104
     },
     "04-full-alt.jpg": {
-      "score": 0.612,
+      "score": 0.6288,
       "sharpness": 4309,
       "brightness": 101
     },
     "05-detail.jpg": {
-      "score": 0.2735,
+      "score": 0.3026,
       "sharpness": 2036,
       "brightness": 121
     },
     "06-border.jpg": {
-      "score": 0.6453,
+      "score": 0.6605,
       "sharpness": 4758,
       "brightness": 116
     },
     "07-pallu-close.jpg": {
-      "score": 0.2821,
+      "score": 0.3109,
       "sharpness": 2085,
       "brightness": 122
     },
     "08-flatlay.jpg": {
-      "score": 0.3682,
+      "score": 0.3948,
       "sharpness": 2371,
       "brightness": 89
     }
   },
   "bandhani-patola-vermilion": {
     "01-full.jpg": {
-      "score": 0.2997,
+      "score": 0.3281,
       "sharpness": 2125,
       "brightness": 113
     },
     "02-drape.jpg": {
-      "score": 0.3361,
+      "score": 0.3631,
       "sharpness": 2322,
       "brightness": 122
     },
     "03-pallu.jpg": {
-      "score": 0.1046,
+      "score": 0.1402,
       "sharpness": 1370,
       "brightness": 116
     },
     "04-border.jpg": {
-      "score": 0.3684,
+      "score": 0.3944,
       "sharpness": 2448,
       "brightness": 93
     },
     "05-pair.jpg": {
-      "score": 0.3282,
+      "score": 0.3564,
       "sharpness": 2163,
       "brightness": 89
     }
   },
   "coral-tissue-paithani-pallu": {
     "01-full.jpg": {
-      "score": 0.2041,
+      "score": 0.2362,
       "sharpness": 1690,
       "brightness": 153
     },
     "02-drape.jpg": {
-      "score": 0.2281,
+      "score": 0.2592,
       "sharpness": 1803,
       "brightness": 155
     },
     "03-pallu-spread.jpg": {
-      "score": 0.1337,
+      "score": 0.1688,
       "sharpness": 1414,
       "brightness": 152
     },
     "04-full-side.jpg": {
-      "score": 0.1852,
+      "score": 0.2178,
       "sharpness": 1643,
       "brightness": 143
     },
     "05-shoulder.jpg": {
-      "score": 0.0928,
+      "score": 0.1293,
       "sharpness": 1296,
       "brightness": 139
     },
     "06-pallu-detail.jpg": {
-      "score": 0.0762,
+      "score": 0.1136,
       "sharpness": 1226,
       "brightness": 142
     },
     "07-border-detail.jpg": {
-      "score": 0.0437,
+      "score": 0.0822,
       "sharpness": 1147,
       "brightness": 139
     }
   },
   "indigo-blockprint-modal-silk": {
     "01-full.jpg": {
-      "score": 0.5958,
+      "score": 0.6123,
       "sharpness": 4382,
       "brightness": 107
     },
@@ -223,12 +228,12 @@
       "brightness": 99
     },
     "03-drape.jpg": {
-      "score": 0.8102,
+      "score": 0.8189,
       "sharpness": 7118,
       "brightness": 103
     },
     "04-pallu.jpg": {
-      "score": 0.9572,
+      "score": 0.9602,
       "sharpness": 9968,
       "brightness": 101
     },
@@ -243,152 +248,317 @@
       "brightness": 114
     },
     "07-colour-range.jpg": {
-      "score": 0.8693,
+      "score": 0.8758,
       "sharpness": 8088,
       "brightness": 123
     },
     "08-colour-range.jpg": {
-      "score": 0.9844,
+      "score": 0.9864,
       "sharpness": 10638,
       "brightness": 98
     }
   },
+  "kanjivaram-peacock-pallu": {
+    "01-full.jpg": {
+      "score": 0.3285,
+      "sharpness": 2103,
+      "brightness": 131
+    },
+    "02-full-alt.jpg": {
+      "score": 0.3681,
+      "sharpness": 2302,
+      "brightness": 129
+    },
+    "03-drape.jpg": {
+      "score": 0.048,
+      "sharpness": 1044,
+      "brightness": 142
+    },
+    "04-pallu-spread.jpg": {
+      "score": 0.2345,
+      "sharpness": 1697,
+      "brightness": 129
+    },
+    "05-torso-detail.jpg": {
+      "score": 0.2934,
+      "sharpness": 1920,
+      "brightness": 133
+    },
+    "06-blouse-detail.jpg": {
+      "score": 0.077,
+      "sharpness": 1176,
+      "brightness": 137
+    },
+    "07-flatlay.jpg": {
+      "score": 0.3735,
+      "sharpness": 2418,
+      "brightness": 131
+    }
+  },
   "magenta-bandhej-khaddi-georgette": {
     "01-full.jpg": {
-      "score": 0.5159,
+      "score": 0.5365,
       "sharpness": 3427,
       "brightness": 126
     },
     "02-drape.jpg": {
-      "score": 0.3731,
+      "score": 0.3989,
       "sharpness": 2483,
       "brightness": 107
     },
     "03-full-alt.jpg": {
-      "score": 0.5094,
+      "score": 0.5302,
       "sharpness": 3394,
       "brightness": 119
     },
     "04-pallu.jpg": {
-      "score": 0.4171,
+      "score": 0.4414,
       "sharpness": 2723,
       "brightness": 113
     }
   },
+  "purple-khaddi-georgette-minajaal": {
+    "01-full.jpg": {
+      "score": 0.8583,
+      "sharpness": 7569,
+      "brightness": 115
+    },
+    "02-full-alt.jpg": {
+      "score": 0.833,
+      "sharpness": 7139,
+      "brightness": 121
+    },
+    "03-drape.jpg": {
+      "score": 0.8292,
+      "sharpness": 7050,
+      "brightness": 131
+    },
+    "04-drape-alt.jpg": {
+      "score": 0.8666,
+      "sharpness": 7759,
+      "brightness": 125
+    },
+    "05-drape-plant.jpg": {
+      "score": 0.8685,
+      "sharpness": 7802,
+      "brightness": 130
+    },
+    "06-pallu.jpg": {
+      "score": 0.8308,
+      "sharpness": 7078,
+      "brightness": 109
+    },
+    "07-border-detail.jpg": {
+      "score": 0.8888,
+      "sharpness": 8149,
+      "brightness": 120
+    },
+    "08-colour-range.jpg": {
+      "score": 0.569,
+      "sharpness": 3843,
+      "brightness": 128
+    },
+    "09-colour-range-2.jpg": {
+      "score": 0.1116,
+      "sharpness": 1220,
+      "brightness": 160
+    }
+  },
   "purple-tanchoi-silk": {
     "01-full.jpg": {
-      "score": 0.4155,
+      "score": 0.4394,
       "sharpness": 2797,
       "brightness": 118
     },
     "02-full-length.jpg": {
-      "score": 0.1829,
+      "score": 0.2151,
       "sharpness": 1685,
       "brightness": 123
     },
     "03-drape.jpg": {
-      "score": 0.7704,
+      "score": 0.7808,
       "sharpness": 6365,
       "brightness": 108
     },
     "04-pallu.jpg": {
-      "score": 0.6837,
+      "score": 0.6977,
       "sharpness": 5112,
       "brightness": 115
     },
     "05-weave-detail.jpg": {
-      "score": 0.7549,
+      "score": 0.7662,
       "sharpness": 6044,
       "brightness": 112
     },
     "06-colour-range.jpg": {
-      "score": 0.6911,
+      "score": 0.704,
       "sharpness": 5460,
       "brightness": 137
     }
   },
   "rajwadi-patchwork-mirror-saree": {
     "01-full.jpg": {
-      "score": 0.8456,
+      "score": 0.8536,
       "sharpness": 7352,
       "brightness": 104
     },
     "02-drape.jpg": {
-      "score": 0.5207,
+      "score": 0.541,
       "sharpness": 3485,
       "brightness": 103
     },
     "03-with-dupatta.jpg": {
-      "score": 0.5432,
+      "score": 0.5627,
       "sharpness": 3674,
       "brightness": 99
     },
     "04-flatlay.jpg": {
-      "score": 0.5882,
+      "score": 0.6057,
       "sharpness": 4141,
       "brightness": 111
     },
     "05-detail.jpg": {
-      "score": 0.4603,
+      "score": 0.4825,
       "sharpness": 3086,
       "brightness": 90
     },
     "06-mirror-border.jpg": {
-      "score": 0.5763,
+      "score": 0.5944,
       "sharpness": 3971,
       "brightness": 103
     },
     "07-full-alt.jpg": {
-      "score": 0.5901,
+      "score": 0.6076,
       "sharpness": 4120,
       "brightness": 100
     }
   },
   "red-hansa-jamdani-silk": {
     "01-full.jpg": {
-      "score": 0.4005,
+      "score": 0.4254,
       "sharpness": 2627,
       "brightness": 123
     },
     "02-flatlay.jpg": {
-      "score": 0.3817,
+      "score": 0.4073,
       "sharpness": 2519,
       "brightness": 128
     },
     "03-torso.jpg": {
-      "score": 0.2364,
+      "score": 0.2674,
       "sharpness": 1814,
       "brightness": 95
     },
     "04-drape.jpg": {
-      "score": 0.6074,
+      "score": 0.6246,
       "sharpness": 4216,
       "brightness": 100
     },
     "05-flatlay-alt.jpg": {
-      "score": 0.2927,
+      "score": 0.3217,
       "sharpness": 2053,
       "brightness": 116
     },
     "06-body-detail.jpg": {
-      "score": 0.3474,
+      "score": 0.3743,
       "sharpness": 2324,
       "brightness": 121
     },
     "07-pallu.jpg": {
-      "score": 0.8107,
+      "score": 0.8203,
       "sharpness": 6699,
       "brightness": 123
     },
     "08-fold-detail.jpg": {
-      "score": 0.2641,
+      "score": 0.2938,
       "sharpness": 1965,
       "brightness": 98
     },
     "09-colour-range.jpg": {
-      "score": 0.1436,
+      "score": 0.1784,
       "sharpness": 1436,
       "brightness": 146
+    }
+  },
+  "semi-benarasi-patola-aubergine": {
+    "01-full.jpg": {
+      "score": 0.4959,
+      "sharpness": 3259,
+      "brightness": 135
+    },
+    "02-full-alt.jpg": {
+      "score": 0.5187,
+      "sharpness": 3339,
+      "brightness": 144
+    },
+    "03-drape.jpg": {
+      "score": 0.5738,
+      "sharpness": 3846,
+      "brightness": 140
+    },
+    "04-pallu-spread.jpg": {
+      "score": 0.5873,
+      "sharpness": 3986,
+      "brightness": 131
+    },
+    "05-detail.jpg": {
+      "score": 0.4181,
+      "sharpness": 2580,
+      "brightness": 135
+    }
+  },
+  "semi-benarasi-patola-blue": {
+    "01-full.jpg": {
+      "score": 0.3984,
+      "sharpness": 2602,
+      "brightness": 137
+    },
+    "02-full-alt.jpg": {
+      "score": 0.4519,
+      "sharpness": 2926,
+      "brightness": 117
+    },
+    "03-drape.jpg": {
+      "score": 0.5186,
+      "sharpness": 3363,
+      "brightness": 120
+    },
+    "04-pallu-spread.jpg": {
+      "score": 0.6373,
+      "sharpness": 4459,
+      "brightness": 106
+    },
+    "05-detail.jpg": {
+      "score": 0.5889,
+      "sharpness": 3918,
+      "brightness": 118
+    }
+  },
+  "semi-benarasi-patola-ivory": {
+    "01-full.jpg": {
+      "score": 0.4222,
+      "sharpness": 2685,
+      "brightness": 136
+    },
+    "02-full-alt.jpg": {
+      "score": 0.3736,
+      "sharpness": 2420,
+      "brightness": 128
+    },
+    "03-drape.jpg": {
+      "score": 0.4971,
+      "sharpness": 3241,
+      "brightness": 139
+    },
+    "04-pallu-spread.jpg": {
+      "score": 0.5074,
+      "sharpness": 3230,
+      "brightness": 133
+    },
+    "05-detail.jpg": {
+      "score": 0.5059,
+      "sharpness": 3224,
+      "brightness": 131
     }
   }
 }

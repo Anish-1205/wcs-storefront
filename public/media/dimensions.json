@@ -416,5 +416,43 @@
       "w": 1200,
       "h": 1600
     }
+  },
+  "purple-khaddi-georgette-minajaal": {
+    "01-full.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "02-full-alt.jpg": {
+      "w": 1165,
+      "h": 1600
+    },
+    "03-drape.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "04-drape-alt.jpg": {
+      "w": 1154,
+      "h": 1600
+    },
+    "05-drape-plant.jpg": {
+      "w": 1144,
+      "h": 1599
+    },
+    "06-pallu.jpg": {
+      "w": 1200,
+      "h": 1600
+    },
+    "07-border-detail.jpg": {
+      "w": 1208,
+      "h": 1600
+    },
+    "08-colour-range.jpg": {
+      "w": 989,
+      "h": 1456
+    },
+    "09-colour-range-2.jpg": {
+      "w": 1200,
+      "h": 1600
+    }
   }
 }
