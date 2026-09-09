@@ -18,9 +18,26 @@ function buildCsp(isProd: boolean) {
   // Dev only: the local Supabase CLI serves plain http on 127.0.0.1, and
   // Next's dev server needs a same-origin websocket for HMR — neither
   // applies in production (real Supabase is always https://*.supabase.co).
-  const connectSrc = isProd
-    ? `'self' https://*.supabase.co https://api.cloudinary.com https://www.google-analytics.com https://*.google-analytics.com https://*.clarity.ms https://*.pinterest.com`
-    : `'self' https://*.supabase.co http://127.0.0.1:* ws://127.0.0.1:* ws://localhost:*`;
+  // E2E_TESTING relaxes connect-src to the local Supabase CLI as well: the
+  // Playwright suite runs a production build (`next start`, so NODE_ENV=production)
+  // against the local stack. Never set in a real deployment.
+  const allowLocalSupabase = !isProd || process.env.E2E_TESTING === "true";
+  const connectSrc = [
+    `'self'`,
+    `https://*.supabase.co`,
+    ...(isProd
+      ? [
+          `https://api.cloudinary.com`,
+          `https://www.google-analytics.com`,
+          `https://*.google-analytics.com`,
+          `https://*.clarity.ms`,
+          `https://*.pinterest.com`,
+        ]
+      : []),
+    ...(allowLocalSupabase
+      ? [`http://127.0.0.1:*`, `ws://127.0.0.1:*`, `ws://localhost:*`]
+      : []),
+  ].join(" ");
 
   return [
     `default-src 'self'`,

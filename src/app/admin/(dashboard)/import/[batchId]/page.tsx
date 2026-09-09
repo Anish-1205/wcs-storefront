@@ -5,7 +5,8 @@ import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, P
 
 export const dynamic = "force-dynamic";
 
-export default async function ImportBatchPage({ params }: { params: { batchId: string } }) {
+export default async function ImportBatchPage(props: { params: Promise<{ batchId: string }> }) {
+  const params = await props.params;
   const { admin } = await requireAdmin();
 
   const [{ data: batch }, { data: assets }, { data: groups }, { data: collections }] = await Promise.all([

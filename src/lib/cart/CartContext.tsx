@@ -90,14 +90,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const supabaseRef = useRef<ReturnType<typeof createClient>>();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
   if (!supabaseRef.current) supabaseRef.current = createClient();
 
   // The user id whose server cart is currently loaded into state.
   const syncedUserRef = useRef<string | null>(null);
   const itemsRef = useRef<CartItem[]>(items);
   itemsRef.current = items;
-  const syncTimer = useRef<ReturnType<typeof setTimeout>>();
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Hydrate from localStorage once, on the client.
   useEffect(() => {

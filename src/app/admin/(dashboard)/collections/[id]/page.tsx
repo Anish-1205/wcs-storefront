@@ -5,7 +5,8 @@ import type { Collection, Product } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditCollectionPage({ params }: { params: { id: string } }) {
+export default async function EditCollectionPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { admin } = await requireAdmin();
 
   const [{ data: collection }, { data: products }, { data: joins }] = await Promise.all([

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ContactTable } from "@/components/admin/ContactTable";
 import type { Contact } from "@/lib/supabase/types";
@@ -5,7 +6,10 @@ import { contactsQuerySchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContactsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function ContactsPage(
+  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+) {
+  const searchParams = await props.searchParams;
   const { admin } = await requireAdmin();
   const query = contactsQuerySchema.parse({
     q: typeof searchParams.q === "string" ? searchParams.q : "",
@@ -33,7 +37,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Rec
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-serif text-3xl text-primary">Contacts CRM</h1>
         <div className="flex gap-3">
-          <a href="/admin/contacts/new" className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light">+ Add Contact</a>
+          <Link href="/admin/contacts/new" className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-light">+ Add Contact</Link>
         </div>
       </div>
       <ContactTable contacts={(data ?? []) as Contact[]} query={query} />

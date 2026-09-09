@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
 
   // Verify an authenticated admin session.
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

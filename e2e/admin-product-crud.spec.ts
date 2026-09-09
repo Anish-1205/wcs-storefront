@@ -46,9 +46,9 @@ test.describe("Admin product CRUD", () => {
     await page.waitForURL(/\/admin\/products$/);
     await expect(page.getByRole("link", { name: productName })).toBeVisible();
 
-    // Confirm it is now live on the public catalog.
-    await page.goto("/catalog");
-    await expect(page.getByText(productName)).toBeVisible();
+    // The public storefront is file-driven (see CLAUDE.md) — admin-authored
+    // products are managed here but never render on /catalog, so this test
+    // stays within the admin panel.
 
     // --- Delete ---
     await page.goto("/admin/products");
@@ -56,9 +56,6 @@ test.describe("Admin product CRUD", () => {
     const row = page.locator("tr", { has: page.getByRole("link", { name: productName }) });
     await row.getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("link", { name: productName })).toHaveCount(0);
-
-    await page.goto("/catalog");
-    await expect(page.getByText(productName)).toHaveCount(0);
   });
 
   test("product list search filters by name", async ({ page }) => {

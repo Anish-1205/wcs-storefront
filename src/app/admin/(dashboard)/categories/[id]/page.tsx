@@ -5,7 +5,8 @@ import type { Category } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditCategoryPage({ params }: { params: { id: string } }) {
+export default async function EditCategoryPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { admin } = await requireAdmin();
 
   const { data: category } = await admin

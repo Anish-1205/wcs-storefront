@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: { category?: string; availability?: string };
+  searchParams: Promise<{ category?: string; availability?: string }>;
 }
 
 const AVAIL_LABELS: Record<string, string> = {
@@ -25,7 +25,8 @@ const AVAIL_LABELS: Record<string, string> = {
   sold: "Unavailable",
 };
 
-export default async function CatalogPage({ searchParams }: PageProps) {
+export default async function CatalogPage(props: PageProps) {
+  const searchParams = await props.searchParams;
   const all = await getProductsWithOverrides(getAllProducts());
   const products = filterProducts(searchParams, all);
   const availabilities = Array.from(new Set(all.map((p) => p.availability)));

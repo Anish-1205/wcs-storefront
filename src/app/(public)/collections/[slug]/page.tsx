@@ -22,11 +22,12 @@ export function generateStaticParams() {
   return getAllCollectionSlugs().map((slug) => ({ slug }));
 }
 
-export function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Metadata {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const c = getCollection(params.slug);
   if (!c) return { title: "Collection" };
   return {
@@ -42,7 +43,8 @@ export function generateMetadata({
   };
 }
 
-export default async function CollectionPage({ params }: { params: { slug: string } }) {
+export default async function CollectionPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const collection = getCollection(params.slug);
   if (!collection) notFound();
   const all = await getProductsWithOverrides(getAllProducts());

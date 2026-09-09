@@ -30,7 +30,7 @@ test("mobile homepage has no horizontal overflow and one floating WhatsApp contr
     viewportWidth: document.documentElement.clientWidth,
   }));
   expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
-  await expect(page.getByRole("link", { name: "Chat with us on WhatsApp" })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Speak to us on WhatsApp" })).toHaveCount(1);
 
   const menu = page.getByRole("button", { name: "Open menu" });
   await expect(menu).toBeVisible();
@@ -38,12 +38,23 @@ test("mobile homepage has no horizontal overflow and one floating WhatsApp contr
   await expect(page.getByRole("banner").getByRole("link", { name: "Wholesale", exact: true })).toBeVisible();
 });
 
-test("catalog filters update the URL", async ({ page }) => {
+test("catalog colour + availability filters update the URL", async ({ page }) => {
   await page.goto("/catalog");
-  await page.getByLabel("Fabric").selectOption("Silk");
-  await expect(page).toHaveURL(/fabric=Silk/);
-  await page.getByLabel("Price").selectOption("-5000");
-  await expect(page).toHaveURL(/maxPrice=5000/);
+
+  // The filter bar renders each facet as a label span + option buttons
+  // (src/components/catalog/CatalogFilterBar.tsx). Scope to the innermost
+  // div carrying the facet label so product cards can't shadow the match.
+  const colour = page.locator("div").filter({ has: page.getByText("Colour", { exact: true }) }).last();
+  await colour.getByRole("button", { name: "Blue" }).click();
+  await expect(page).toHaveURL(/[?&]category=blue/);
+
+  const availability = page.locator("div").filter({ has: page.getByText("Availability", { exact: true }) }).last();
+  await availability.getByRole("button", { name: "Available now" }).click();
+  await expect(page).toHaveURL(/[?&]availability=available/);
+
+  // Clicking the same colour option again clears it (toggle behaviour).
+  await colour.getByRole("button", { name: "Blue" }).click();
+  await expect(page).not.toHaveURL(/category=blue/);
 });
 
 test("admin dashboard requires authentication", async ({ page }) => {
@@ -51,15 +62,19 @@ test("admin dashboard requires authentication", async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/login\?redirect=%2Fadmin/);
 });
 
-test("product variants update selection and retain a WhatsApp CTA", async ({ page }) => {
+test("product page keeps a WhatsApp CTA after switching colour swatch", async ({ page }) => {
   await page.goto("/catalog");
   const firstProduct = page.locator('a[href^="/sarees/"]').first();
   await expect(firstProduct).toBeVisible();
   await firstProduct.click();
-  const swatches = page.locator('button[aria-pressed]');
+  await page.waitForURL(/\/sarees\//);
+
+  // Derived colour swatches under the media viewer (ColourVariantRow) — only
+  // present for products with a colour range, so guard on the count.
+  const swatches = page.locator("button[aria-pressed]");
   if ((await swatches.count()) > 1) {
     await swatches.nth(1).click();
     await expect(swatches.nth(1)).toHaveAttribute("aria-pressed", "true");
   }
-  await expect(page.getByRole("link", { name: /Enquire on WhatsApp/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Ask About This Piece/ }).first()).toBeVisible();
 });

@@ -9,11 +9,12 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-export default async function EditProductPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function EditProductPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const { admin } = await requireAdmin();
 
   const [{ data: product }, { data: categories }, { data: collections }, { data: joins }] =
