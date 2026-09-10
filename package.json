@@ -47,7 +47,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.2",
     "eslint": "^8",
-    "eslint-config-next": "15.5.25",
+    "eslint-config-next": "16.3.4",
     "ffmpeg-static": "^5.2.0",
     "ffprobe-static": "^3.1.0",
     "lighthouse": "^13.4.1",
