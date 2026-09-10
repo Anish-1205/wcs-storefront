@@ -1,0 +1,77 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: Playwright (storefront + admin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      SENTRY_AUTH_TOKEN: ""
+      # Fixed Supabase CLI demo keys — the documented defaults for a local
+      # `supabase start`, not secrets (also in playwright.config.ts).
+      LOCAL_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: |
+          supabase start
+          supabase db reset --local
+
+      - name: Seed E2E auth users
+        run: |
+          for email in admin@example.com staff@example.com; do
+            curl -sf -X POST 'http://127.0.0.1:54321/auth/v1/admin/users' \
+              -H "apikey: ${LOCAL_SERVICE_ROLE_KEY}" \
+              -H "Authorization: Bearer ${LOCAL_SERVICE_ROLE_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"${email}\",\"password\":\"TestPassw0rd!23\",\"email_confirm\":true}" \
+              > /dev/null
+          done
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chrome
+
+      - name: Run E2E suite
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup

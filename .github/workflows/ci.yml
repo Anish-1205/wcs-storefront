@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # `next build` prerenders the file-driven storefront and needs no real
+  # backend. These placeholders satisfy the client bundles that read
+  # NEXT_PUBLIC_* at build time; nothing here contacts a live service.
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: placeholder-cloud
+  CLOUDINARY_API_KEY: placeholder-key
+  CLOUDINARY_API_SECRET: placeholder-secret
+  NEXT_PUBLIC_WHATSAPP_NUMBER: "919876543210"
+  NEXT_PUBLIC_BUSINESS_NAME: Weavers Club Sarees
+  NEXT_PUBLIC_SITE_URL: https://example.com
+  ADMIN_EMAILS: admin@example.com
+  UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+  UPSTASH_REDIS_REST_TOKEN: placeholder-token
+  # Never upload source maps / create releases from CI.
+  SENTRY_AUTH_TOKEN: ""
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  verify:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run types
+
+      - name: Unit tests
+        run: npm test -- --coverage
+
+      - name: Production build
+        run: npm run build
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore

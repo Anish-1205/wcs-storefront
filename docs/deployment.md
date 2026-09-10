@@ -3,6 +3,21 @@
 Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
 (images) + **Resend** (email).
 
+## CI
+
+GitHub Actions run on every PR and every push to `main` (`.github/workflows/`):
+
+- **CI** (`ci.yml`) — `lint` → `types` → `npm test --coverage` → `npm run build`,
+  plus a dependency-review gate on PRs. The build uses placeholder `NEXT_PUBLIC_*`
+  env (no secrets); it only prerenders the file-driven storefront.
+- **E2E** (`e2e.yml`) — spins up the local Supabase stack, seeds the
+  `admin@example.com` / `staff@example.com` users, and runs the Playwright suite.
+- **CodeQL** (`codeql.yml`) — `security-and-quality` static analysis, also weekly.
+- **Dependabot** (`.github/dependabot.yml`) — weekly npm + actions updates,
+  grouped, with Next/React majors held for manual upgrades.
+
+Make CI + E2E required status checks on the `main` branch protection rule.
+
 ## 1. Create the production Supabase project
 
 1. Create a project at <https://supabase.com>.
