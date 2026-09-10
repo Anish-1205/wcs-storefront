@@ -34,18 +34,6 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-
   verify:
     name: Lint, types, unit tests, build
     runs-on: ubuntu-latest

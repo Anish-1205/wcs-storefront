@@ -4,24 +4,26 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    # Majors (Next, React, zod, eslint, vitest, typescript, …) are breaking and
+    # get upgraded deliberately, in their own PR — see git history. Dependabot
+    # only proposes minor/patch, grouped into one PR each.
     groups:
-      dev-dependencies:
-        dependency-type: development
-        update-types: [minor, patch]
-      production-minor-patch:
+      npm-production:
         dependency-type: production
         update-types: [minor, patch]
+      npm-development:
+        dependency-type: development
+        update-types: [minor, patch]
     ignore:
-      # Next.js majors need a manual, coordinated upgrade (see git history).
-      - dependency-name: next
-        update-types: [version-update:semver-major]
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
+      - dependency-name: "*"
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
