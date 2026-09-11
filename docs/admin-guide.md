@@ -29,6 +29,13 @@ needed — everything is done through the admin panel.
    - Click **Upload images** and choose photos for that color. The first image
      becomes the **Primary** (the one shown on the catalog). Click **Set
      primary** on any image to change it.
+   - **Fixing a wrong colour split** (e.g. a WhatsApp-created product lumped
+     two colours into one "Default" variant): click **+ Add color variant**
+     to open an empty one, then drag a photo from the wrong variant's grid
+     onto the new one's — it moves across immediately. The Color name and
+     swatch re-detect automatically from whatever photos end up in each
+     variant (same AI colour-detection as the import tool), unless you've
+     already typed a colour in yourself, which is never overwritten.
 4. **Collections** — tick any collections this saree belongs to (e.g. "Bridal
    Sarees").
 5. Choose the **Status**:
