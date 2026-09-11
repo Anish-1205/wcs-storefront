@@ -270,10 +270,13 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
     },
   );
 
+  const responseText = await response.text();
+
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`WhatsApp reply failed (${response.status}): ${errorText}`);
+    throw new Error(`WhatsApp reply failed (${response.status}): ${responseText}`);
   }
+
+  console.log(`whatsapp webhook: reply sent to ${to} (${response.status}): ${responseText}`);
 }
 
 async function persistIngestEvent(params: {
