@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const NAV = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/pages", label: "Website pages" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/storefront-availability", label: "Storefront Signals" },
   { href: "/admin/import", label: "Import" },

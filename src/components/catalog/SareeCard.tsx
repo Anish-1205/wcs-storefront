@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState } from "react";
@@ -30,7 +32,7 @@ export function SareeCard({
   product,
   index,
   priority,
-  sizes = "(min-width:1024px) 32vw, (min-width:640px) 45vw, 90vw",
+  sizes = "(min-width:1024px) 32vw, 45vw",
   className,
 }: Props) {
   const main = primaryImage(product);
@@ -41,6 +43,7 @@ export function SareeCard({
   const [hover, setHover] = useState(false);
 
   function enter() {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     setHover(true);
     const el = videoRef.current;
     if (el) el.play().catch(() => {});
@@ -55,9 +58,9 @@ export function SareeCard({
   }
 
   return (
-    <Link
+    <ContentRegion region={`saree-card/${product.slug}`}><Link
       href={`/sarees/${product.slug}`}
-      className={cn("group block", className)}
+      className={cn("saree-card group block min-w-0", className)}
       onMouseEnter={enter}
       onMouseLeave={leave}
       onFocus={enter}
@@ -109,7 +112,7 @@ export function SareeCard({
         ) : null}
 
         {product.availability === "sold" && (
-          <span className="absolute left-3 top-3 bg-ivory/90 px-2 py-1 text-[0.65rem] uppercase tracking-[0.2em] text-deep-brown">
+          <span className="absolute left-3 top-3 bg-ivory/90 px-2 py-1 text-base uppercase tracking-[0.2em] text-deep-brown">
             Unavailable
           </span>
         )}
@@ -118,24 +121,24 @@ export function SareeCard({
       <div className="mt-3 flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           {index != null && (
-            <span className="mr-2 font-serif text-sm text-antique-gold">
+            <span className="mr-2 font-serif text-base text-antique-gold">
               {String(index).padStart(2, "0")}
             </span>
           )}
-          <span className="font-serif text-[1.05rem] leading-snug text-deep-brown">
+          <span className="font-serif text-[1.05rem] font-semibold leading-normal text-deep-brown">
             {product.title}
           </span>
         </div>
       </div>
-      <div className="mt-1 flex items-center justify-end gap-3 text-[0.8rem] text-muted-foreground">
+      <div className="mt-2 text-base font-semibold text-deep-brown">
         <span>{priceLabel(product.price)}</span>
       </div>
-      <p className="mt-0.5 text-[0.72rem] uppercase tracking-[0.18em] text-antique-gold">
+      <p className="mt-1 text-base text-muted-foreground">
         {availabilityLabel(product.availability)}
       </p>
 
       {swatches.length > 0 && (
-        <div className="mt-1.5 flex items-center gap-1">
+        <div className="mt-2 flex flex-wrap items-center gap-1">
           {swatches.map((s, i) =>
             s.src ? (
               <span
@@ -152,11 +155,12 @@ export function SareeCard({
               />
             ),
           )}
-          <span className="ml-0.5 text-[0.68rem] text-muted-foreground">
+          <span className="ml-0.5 text-base text-muted-foreground">
             more colours
           </span>
         </div>
       )}
-    </Link>
+      <span className="mt-2 inline-flex min-h-11 items-center font-medium text-oxblood underline underline-offset-4">View saree →</span>
+    </Link></ContentRegion>
   );
 }

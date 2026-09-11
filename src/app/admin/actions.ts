@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/utils";
 import type {
@@ -59,6 +59,8 @@ export async function toResult<T extends object>(fn: () => Promise<T>): Promise<
 }
 
 function revalidatePublic(slug: string) {
+  revalidateTag("storefront-media");
+  revalidatePath("/search");
   revalidatePath("/");
   revalidatePath("/catalog");
   revalidatePath("/catalog/[category]", "page");
@@ -67,6 +69,7 @@ function revalidatePublic(slug: string) {
 }
 
 function revalidateCatalogShell() {
+  revalidateTag("storefront-collections");
   revalidatePath("/");
   revalidatePath("/catalog");
   revalidatePath("/collections");
@@ -893,8 +896,8 @@ export async function reorderCollectionProducts(collectionId: string, productIds
       );
     if (error) throw new Error(error.message);
     if (slug) revalidatePath(`/collections/${slug}`);
+    revalidateTag("storefront-collections");
     revalidateCatalogShell();
     return {};
   });
 }
-

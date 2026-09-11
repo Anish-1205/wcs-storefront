@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -115,12 +117,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const isSignup = mode === "signup";
 
   return (
-    <div className="mx-auto w-full max-w-sm">
+    <ContentRegion region="AuthForm"><div className="mx-auto w-full max-w-sm">
       <p className="eyebrow">{isSignup ? "Create an account" : "Welcome back"}</p>
       <h1 className="display-sm mt-3 text-oxblood">
         {isSignup ? "Join the showroom." : "Sign in."}
       </h1>
-      <p className="mt-4 text-sm text-muted-foreground">
+      <p className="mt-4 text-base text-muted-foreground">
         {isSignup
           ? "An account keeps your selections saved across your devices. It’s optional — you can always enquire as a guest."
           : "Access the cart and selections tied to your account."}
@@ -132,13 +134,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="button"
             onClick={handleGoogle}
             disabled={busy !== ""}
-            className="mt-7 flex h-12 w-full items-center justify-center gap-3 border border-line text-[0.8rem] font-medium uppercase tracking-[0.16em] text-deep-brown transition-colors hover:bg-warm-cream disabled:opacity-60"
+            className="mt-7 flex h-12 w-full items-center justify-center gap-3 border border-line text-base font-medium uppercase tracking-[0.08em] text-deep-brown transition-colors hover:bg-warm-cream disabled:opacity-60"
           >
             <GoogleMark />
             {busy === "google" ? "Redirecting…" : "Continue with Google"}
           </button>
 
-          <div className="my-6 flex items-center gap-4 text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="my-6 flex items-center gap-4 text-base uppercase tracking-[0.2em] text-muted-foreground">
             <span className="h-px flex-1 bg-line" />
             or
             <span className="h-px flex-1 bg-line" />
@@ -168,7 +170,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             {!isSignup && (
               <Link
                 href="/forgot-password"
-                className="text-xs text-muted-foreground hover:text-oxblood"
+                className="text-base text-muted-foreground hover:text-oxblood"
               >
                 Forgot?
               </Link>
@@ -183,19 +185,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
             required
           />
           {isSignup && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               At least 8 characters.
             </p>
           )}
         </div>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="text-base text-destructive" role="alert">
             {error}
           </p>
         )}
         {notice && (
-          <p className="text-sm text-antique-gold" role="status">
+          <p className="text-base text-antique-gold" role="status">
             {notice}
           </p>
         )}
@@ -204,7 +206,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           type="submit"
           disabled={busy !== ""}
           className={cn(
-            "flex h-12 w-full items-center justify-center gap-2 bg-oxblood text-[0.8rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:opacity-60",
+            "flex h-12 w-full items-center justify-center gap-2 bg-oxblood text-base font-medium uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:opacity-60",
           )}
         >
           {busy === "email"
@@ -215,7 +217,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-muted-foreground">
+      <p className="mt-6 text-base text-muted-foreground">
         {isSignup ? (
           <>
             Already have an account?{" "}
@@ -238,7 +240,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </>
         )}
       </p>
-    </div>
+    </div></ContentRegion>
   );
 }
 

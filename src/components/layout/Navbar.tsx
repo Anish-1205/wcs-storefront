@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -28,7 +30,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <header
+    <ContentRegion region="Navbar" global><header
       className={cn(
         "sticky top-0 z-40 border-b bg-ivory/90 backdrop-blur transition-colors",
         scrolled ? "border-line" : "border-transparent",
@@ -36,23 +38,24 @@ export function Navbar() {
     >
       <nav className="container-px mx-auto flex h-[4.25rem] max-w-[90rem] items-center gap-2 sm:h-[4.5rem] sm:justify-between sm:gap-6">
         <button
-          className="-ml-2 shrink-0 p-2 md:hidden"
+          className="-ml-2 flex shrink-0 items-center gap-1 p-2 lg:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <span>Menu</span>
         </button>
 
         {/* Desktop links (left) */}
-        <div className="hidden flex-1 items-center gap-6 md:flex lg:gap-7">
+        <div className="hidden flex-1 items-center gap-6 lg:flex lg:gap-7">
           {NAV_LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               aria-current={isActive(l.href) ? "page" : undefined}
               className={cn(
-                "link-underline whitespace-nowrap text-[0.78rem] uppercase tracking-[0.12em] transition-colors hover:text-oxblood lg:text-[0.82rem] lg:tracking-[0.14em]",
+                "link-underline whitespace-nowrap text-base uppercase tracking-[0.12em] transition-colors hover:text-oxblood lg:text-base lg:tracking-[0.08em]",
                 isActive(l.href) ? "text-oxblood" : "text-deep-brown/80",
                 l.xlOnly && "hidden xl:inline",
               )}
@@ -81,15 +84,15 @@ export function Navbar() {
           >
             <Search className="h-[1.05rem] w-[1.05rem]" />
           </Link>
-          <ThemeToggle />
-          <AccountButton />
+          <ThemeToggle className="hidden sm:inline-flex" />
+          <div className="hidden sm:block"><AccountButton /></div>
           <CartButton />
           {WHATSAPP_CONFIGURED && (
             <a
               href={buildWhatsAppURL()}
               target="_blank"
               rel="noopener noreferrer"
-              className="link-underline hidden whitespace-nowrap text-[0.82rem] uppercase tracking-[0.14em] text-oxblood lg:inline-flex"
+              className="link-underline hidden whitespace-nowrap text-base uppercase tracking-[0.08em] text-oxblood xl:inline-flex"
             >
               Speak to Us ↗
             </a>
@@ -97,13 +100,18 @@ export function Navbar() {
         </div>
       </nav>
 
+      <div className="container-px flex gap-6 border-t border-line lg:hidden">
+        <Link href="/catalog" className="inline-flex items-center font-semibold text-oxblood">Browse sarees</Link>
+        <Link href="/search" className="inline-flex items-center">Search</Link>
+      </div>
+
       {open && (
-        <div className="border-t border-line bg-ivory md:hidden">
+        <div className="border-t border-line bg-ivory lg:hidden">
           <div className="container-px mx-auto flex max-w-[90rem] flex-col py-3">
             <Link
               href="/"
               onClick={() => setOpen(false)}
-              className="py-3 text-[0.9rem] uppercase tracking-[0.14em] text-deep-brown/85"
+              className="py-3 text-base uppercase tracking-[0.08em] text-deep-brown/85"
             >
               Home
             </Link>
@@ -114,7 +122,7 @@ export function Navbar() {
                 onClick={() => setOpen(false)}
                 aria-current={isActive(l.href) ? "page" : undefined}
                 className={cn(
-                  "py-3 text-[0.9rem] uppercase tracking-[0.14em]",
+                  "py-3 text-base uppercase tracking-[0.08em]",
                   isActive(l.href) ? "text-oxblood" : "text-deep-brown/85",
                 )}
               >
@@ -124,14 +132,15 @@ export function Navbar() {
             <Link
               href="/search"
               onClick={() => setOpen(false)}
-              className="py-3 text-[0.9rem] uppercase tracking-[0.14em] text-deep-brown/85"
+              className="py-3 text-base uppercase tracking-[0.08em] text-deep-brown/85"
             >
               Search
             </Link>
+            <ThemeToggle showLabel className="my-2 inline-flex self-start" />
             <Link
               href="/account"
               onClick={() => setOpen(false)}
-              className="py-3 text-[0.9rem] uppercase tracking-[0.14em] text-deep-brown/85"
+              className="py-3 text-base uppercase tracking-[0.08em] text-deep-brown/85"
             >
               Account
             </Link>
@@ -140,7 +149,7 @@ export function Navbar() {
                 href={buildWhatsAppURL()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-3 text-[0.9rem] uppercase tracking-[0.14em] text-oxblood"
+                className="py-3 text-base uppercase tracking-[0.08em] text-oxblood"
               >
                 Speak to Us ↗
               </a>
@@ -148,6 +157,6 @@ export function Navbar() {
           </div>
         </div>
       )}
-    </header>
+    </header></ContentRegion>
   );
 }

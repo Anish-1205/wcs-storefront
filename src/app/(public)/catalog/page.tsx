@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
 import { getProductsWithOverrides } from "@/lib/storefront-overrides";
@@ -53,11 +55,11 @@ export default async function CatalogPage(props: PageProps) {
   ];
 
   return (
-    <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
       <header className="mb-8">
         <p className="eyebrow">The catalog</p>
         <h1 className="display-sm mt-3 text-oxblood">Every saree in the room</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-base text-muted-foreground">
           {products.length} {products.length === 1 ? "piece" : "pieces"} · browse
           by colour
         </p>
@@ -70,12 +72,12 @@ export default async function CatalogPage(props: PageProps) {
           <p className="font-serif text-xl text-deep-brown">
             Nothing matches those filters.
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-base text-muted-foreground">
             Try clearing a filter, or tell us what you’re after on WhatsApp.
           </p>
         </div>
       ) : (
-        <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:gap-x-8">
+        <div className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
           {products.map((p, i) => (
             <Reveal key={p.slug} delay={(i % 3) * 50}>
               <SareeCard
@@ -87,6 +89,6 @@ export default async function CatalogPage(props: PageProps) {
           ))}
         </div>
       )}
-    </div>
+    </div></ContentRegion>
   );
 }

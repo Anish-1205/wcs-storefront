@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -35,7 +37,7 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  const product = getProductBySlug(params.slug);
+  const product = getProductBySlug(params.slug, await getProductsWithOverrides(getAllProducts()));
   if (!product) return { title: "Saree" };
   const title = product.title;
   const description = `${product.description.slice(0, 155)} Availability personally confirmed before purchase.`;
@@ -77,7 +79,7 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
     sku: product.reference,
     mpn: product.reference,
     description: product.description,
-    image: product.images.map((i) => `${SITE.url}${i.src}`),
+    image: product.images.map((i) => new URL(i.src, SITE.url).href),
     color: product.colour,
     ...(product.material ? { material: product.material } : {}),
     ...(product.weave ? { pattern: product.weave } : {}),
@@ -140,7 +142,7 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
   ]);
 
   return (
-    <div className="container-px mx-auto max-w-[90rem] py-8 lg:py-12">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-8 lg:py-12">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
@@ -150,7 +152,7 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
       />
 
-      <nav className="mb-8 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+      <nav className="mb-8 text-base uppercase tracking-[0.08em] text-muted-foreground">
         <Link href="/catalog" className="hover:text-oxblood">
           Catalog
         </Link>
@@ -159,25 +161,39 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
           {product.category}
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-deep-brown">{product.title}</span>
+        <span className="hidden text-deep-brown lg:inline">{product.title}</span>
       </nav>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,62%)_minmax(0,38%)] lg:gap-14">
-        <div>
-          <ProductMedia product={product} siblings={siblings} derived={derived} />
+      <section className="mb-6 lg:hidden">
+        <h1 className="font-serif text-3xl leading-tight text-oxblood">{product.title}</h1>
+        <p className="mt-3 text-lg font-semibold">{priceLabel(product.price)}</p>
+        <WhatsAppLink
+          sourcePage="product"
+          productId={product.slug}
+          productName={product.title}
+          variantColor={product.colour}
+          className="mt-4 flex min-h-12 items-center justify-center bg-oxblood px-4 py-3 text-base font-semibold text-primary-foreground"
+        >
+          {WHATSAPP_CONFIGURED ? "Ask on WhatsApp ↗" : "Ask about this saree"}
+        </WhatsAppLink>
+      </section>
+
+      <section className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-14">
+        <div className="min-w-0">
+          <ProductMedia key={`${product.slug}:${primaryImage(product).src}`} product={product} siblings={siblings} derived={derived} />
         </div>
 
         <div>
           <div className="lg:sticky lg:top-28">
             <p className="eyebrow">{product.category}</p>
-            <h1 className="display-sm mt-3 text-oxblood">{product.title}</h1>
+            <h1 className="display-sm mt-3 hidden text-oxblood lg:block">{product.title}</h1>
 
             {product.tags.length > 0 && (
               <ul className="mt-4 flex flex-wrap gap-2">
                 {product.tags.map((t) => (
                   <li
                     key={t}
-                    className="border border-line px-2.5 py-1 text-[0.66rem] uppercase tracking-[0.16em] text-deep-brown/75"
+                    className="border border-line px-2.5 py-1 text-base uppercase tracking-[0.08em] text-deep-brown/90"
                   >
                     {t}
                   </li>
@@ -185,7 +201,7 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
               </ul>
             )}
 
-            <dl className="mt-6 space-y-1.5 text-sm">
+            <dl className="mt-6 space-y-1.5 text-base">
               <Row label="Colour" value={product.colour} />
               {product.weave && <Row label="Weave" value={product.weave} />}
               {product.material && <Row label="Material" value={product.material} />}
@@ -196,11 +212,11 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
               <p className="font-serif text-2xl text-deep-brown">
                 {priceLabel(product.price)}
               </p>
-              <p className="mt-1 text-[0.72rem] uppercase tracking-[0.2em] text-antique-gold">
+              <p className="mt-1 text-base uppercase tracking-[0.2em] text-antique-gold">
                 {availabilityLabel(product.availability)}
               </p>
               {product.availabilityNote && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-base text-muted-foreground">
                   {product.availabilityNote}
                 </p>
               )}
@@ -213,21 +229,21 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
                 productId={product.slug}
                 productName={product.title}
                 variantColor={product.colour}
-                className="mt-3 flex h-11 items-center justify-center gap-2 border border-line text-[0.75rem] font-medium uppercase tracking-[0.2em] text-deep-brown hover:bg-warm-cream"
+                className="mt-3 flex h-11 items-center justify-center gap-2 border border-line text-base font-medium uppercase tracking-[0.2em] text-deep-brown hover:bg-warm-cream"
               >
-                {WHATSAPP_CONFIGURED ? "Ask About This Piece ↗" : "Ask About This Piece"}
+                {WHATSAPP_CONFIGURED ? "Ask on WhatsApp ↗" : "Ask about this saree"}
               </WhatsAppLink>
-              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                 Add to your cart as usual. {CONCIERGE_NOTE}
               </p>
             </div>
 
             <div className="mt-8">
-              <p className="text-[0.98rem] leading-relaxed text-deep-brown/90">
+              <p className="text-base leading-relaxed text-deep-brown/90">
                 {product.description}
               </p>
               {product.details.length > 0 && (
-                <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
+                <ul className="mt-5 space-y-2 text-base text-muted-foreground">
                   {product.details.map((d) => (
                     <li key={d} className="flex gap-3">
                       <span className="mt-2 h-px w-4 shrink-0 bg-antique-gold" />
@@ -237,12 +253,12 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
                 </ul>
               )}
               {product.includes && (
-                <p className="mt-4 text-sm italic text-muted-foreground">
+                <p className="mt-4 text-base italic text-muted-foreground">
                   {product.includes}.
                 </p>
               )}
               {!product.weave && !product.material && (
-                <p className="mt-4 text-xs text-muted-foreground">
+                <p className="mt-4 text-base text-muted-foreground">
                   Weave, fabric and finishing details are confirmed personally on
                   enquiry.
                 </p>
@@ -250,21 +266,21 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {related.length > 0 && (
         <section className="mt-24 border-t border-line pt-14">
           <Reveal className="mb-10">
             <p className="eyebrow">Also in the room</p>
           </Reveal>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 lg:gap-x-8">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
             {related.map((p) => (
               <SareeCard key={p.slug} product={p} sizes="(min-width:768px) 30vw, 45vw" />
             ))}
           </div>
         </section>
       )}
-    </div>
+    </div></ContentRegion>
   );
 }
 

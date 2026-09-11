@@ -50,7 +50,7 @@ export function ColourVariantRow({
 
   return (
     <div className="mt-8 border-t border-line pt-6">
-      <p className="text-[0.72rem] uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="text-base uppercase tracking-[0.2em] text-muted-foreground">
         Colour:{" "}
         <span className="text-deep-brown">{activeLabel}</span>
       </p>
@@ -63,7 +63,7 @@ export function ColourVariantRow({
                 href={`/sarees/${s.slug}`}
                 aria-current={s.isCurrent ? "true" : undefined}
                 className={cn(
-                  "flex w-[4.75rem] flex-col gap-1 border-2 p-1 transition-colors",
+                  "flex w-28 flex-col gap-1 border-2 p-2 transition-colors",
                   s.isCurrent
                     ? "border-oxblood"
                     : "border-line/60 hover:border-line",
@@ -78,10 +78,10 @@ export function ColourVariantRow({
                     className="object-cover"
                   />
                 </span>
-                <span className="truncate text-[0.7rem] text-deep-brown" title={s.label}>
+                <span className="text-base text-deep-brown" title={s.label}>
                   {s.label}
                 </span>
-                <span className="text-[0.7rem] text-muted-foreground">
+                <span className="text-base text-muted-foreground">
                   {s.availability === "sold"
                     ? availabilityLabel(s.availability)
                     : priceLabel(s.price)}
@@ -95,7 +95,7 @@ export function ColourVariantRow({
       {derived && (
         <div className="mt-4">
           {siblings.length > 0 && (
-            <p className="text-[0.7rem] uppercase tracking-[0.16em] text-antique-gold">
+            <p className="text-base uppercase tracking-[0.08em] text-antique-gold">
               Also made to order in
             </p>
           )}
@@ -113,7 +113,7 @@ export function ColourVariantRow({
                     aria-pressed={isActive}
                     title={displayColourName(c.name)}
                     className={cn(
-                      "flex items-center gap-1.5 border px-1.5 py-1 text-[0.7rem] text-deep-brown transition-colors",
+                      "flex items-center gap-1.5 border px-1.5 py-1 text-base text-deep-brown transition-colors",
                       isActive
                         ? "border-oxblood"
                         : "border-line/60 hover:border-line",
@@ -131,7 +131,7 @@ export function ColourVariantRow({
             })}
           </ul>
           {product.colourRangeNote && (
-            <p className="mt-3 max-w-md text-sm italic text-muted-foreground">
+            <p className="mt-3 max-w-md text-base italic text-muted-foreground">
               {product.colourRangeNote}
             </p>
           )}

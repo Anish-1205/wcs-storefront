@@ -27,6 +27,7 @@ export default async function AdminDashboard() {
   ]);
 
   const cards = [
+    { label: "Website pages", value: "→", href: "/admin/pages" },
     { label: "Total products", value: products, href: "/admin/products" },
     { label: "Published", value: published, href: "/admin/products" },
     { label: "Drafts", value: drafts, href: "/admin/products" },

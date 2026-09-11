@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -58,7 +60,7 @@ export default async function GuidePage(props: { params: Promise<{ slug: string 
   };
 
   return (
-    <article className="container-px mx-auto max-w-3xl py-14">
+    <ContentRegion region="page"><article className="container-px mx-auto max-w-3xl py-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
@@ -71,7 +73,7 @@ export default async function GuidePage(props: { params: Promise<{ slug: string 
       <span className="gold-rule" />
       <h1 className="mt-4 font-serif text-4xl text-burgundy">{guide.title}</h1>
 
-      <div className="mt-8 space-y-5 text-[0.98rem] leading-relaxed text-foreground/80">
+      <div className="mt-8 space-y-5 text-base leading-relaxed text-foreground/80">
         {guide.body.map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
@@ -85,7 +87,7 @@ export default async function GuidePage(props: { params: Promise<{ slug: string 
               <Link
                 key={c.slug}
                 href={`/collections/${c.slug}`}
-                className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+                className="link-underline text-base uppercase tracking-[0.08em] text-oxblood"
               >
                 {c.title}
               </Link>
@@ -94,7 +96,7 @@ export default async function GuidePage(props: { params: Promise<{ slug: string 
               <Link
                 key={p.slug}
                 href={`/sarees/${p.slug}`}
-                className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+                className="link-underline text-base uppercase tracking-[0.08em] text-oxblood"
               >
                 {p.title}
               </Link>
@@ -102,6 +104,6 @@ export default async function GuidePage(props: { params: Promise<{ slug: string 
           </div>
         </section>
       )}
-    </article>
+    </article></ContentRegion>
   );
 }

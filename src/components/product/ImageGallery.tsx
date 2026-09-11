@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { cld } from "@/lib/cloudinary";
+import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { PinterestSaveButton } from "./PinterestSaveButton";
 import type { VariantImage } from "@/lib/supabase/types";
@@ -25,7 +25,7 @@ export function ImageGallery({ images, alt, productId, pageUrl }: Props) {
     setFailedUrl(null);
   }, [images]);
 
-  const current = images[active];
+  const current = images[active] ?? images[0];
 
   if (images.length === 0) {
     return (
@@ -46,6 +46,8 @@ export function ImageGallery({ images, alt, productId, pageUrl }: Props) {
               Photo temporarily unavailable
             </span>
           </div>
+        ) : /\/video\/upload\/|\.(mp4|mov|webm|m4v)(\?|$)/i.test(current.image_url) || current.media_type === "video" ? (
+          <video key={current.image_url} src={current.image_url} poster={cldVideoThumbnail(current.image_url)} controls playsInline preload="metadata" className="h-full w-full object-contain" />
         ) : (
           <Image
             src={cld(current.image_url, "full")}

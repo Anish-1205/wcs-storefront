@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import Image from "next/image";
 import { SITE } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -47,7 +49,7 @@ export function BrandMark({
   };
 
   return (
-    <span className={cn("inline-flex", className)}>
+    <ContentRegion region={`brand/${variant}`} global><span className={cn("inline-flex", className)}>
       <Image
         {...common}
         src={SRC[variant].light}
@@ -60,6 +62,6 @@ export function BrandMark({
         alt={SITE.name}
         className="brand-dark h-full w-auto"
       />
-    </span>
+    </span></ContentRegion>
   );
 }

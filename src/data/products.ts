@@ -121,6 +121,8 @@ export interface Product {
   /** e.g. "Blouse piece shown" — only when visibly present */
   includes: string | null;
   images: ProductImage[];
+  /** Explicit admin choice takes precedence over automatic photo ranking. */
+  primaryImageSrc?: string;
   videos: ProductVideo[];
   /** short badges — weave family, occasion, or the look's provenance */
   tags: string[];
@@ -1031,6 +1033,8 @@ const rankSort = (a: ProductImage, b: ProductImage) =>
  * full shot is clearly crisper — then the sharper one wins.
  */
 export function primaryImage(p: Product): ProductImage {
+  const selected = p.images.find((image) => image.src === p.primaryImageSrc);
+  if (selected) return selected;
   const fulls = p.images.filter((i) => i.role === "full");
   const authored =
     fulls[0] ??

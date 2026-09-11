@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { EnquirySent } from "@/components/enquiry/EnquirySent";
 
@@ -7,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function EnquirySentPage() {
-  return <EnquirySent />;
+  return <ContentRegion region="page"><EnquirySent /></ContentRegion>;
 }

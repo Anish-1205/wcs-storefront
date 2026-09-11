@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -53,7 +55,7 @@ export function EnquiryForm() {
 
   if (!ready) {
     return (
-      <div className="py-20 text-center text-sm text-muted-foreground">
+      <div className="py-20 text-center text-base text-muted-foreground">
         Loading your selection…
       </div>
     );
@@ -67,7 +69,7 @@ export function EnquiryForm() {
         </p>
         <Link
           href="/catalog"
-          className="link-underline mt-4 inline-flex text-sm font-medium text-oxblood"
+          className="link-underline mt-4 inline-flex text-base font-medium text-oxblood"
         >
           Browse the catalog
         </Link>
@@ -222,12 +224,12 @@ export function EnquiryForm() {
   }
 
   return (
-    <div className="grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
+    <ContentRegion region="EnquiryForm"><div className="grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
         {prefilled && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Filled in from your{" "}
             <Link href="/account" className="underline hover:text-oxblood">
               account details
@@ -293,7 +295,7 @@ export function EnquiryForm() {
           <Textarea id="message" name="message" placeholder="Anything specific — occasion, date, colours, budget…" />
         </div>
 
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-base leading-relaxed text-muted-foreground">
           {CONCIERGE_NOTE} Sending this shares your selection with us and opens
           WhatsApp so we can continue there. See our{" "}
           <Link href="/privacy" className="underline hover:text-oxblood">privacy policy</Link>.
@@ -302,7 +304,7 @@ export function EnquiryForm() {
         <button
           type="submit"
           disabled={submittingState}
-          className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft disabled:opacity-60"
+          className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft disabled:opacity-60"
         >
           {submittingState
             ? "Continuing…"
@@ -321,10 +323,10 @@ export function EnquiryForm() {
               <div className="relative aspect-[4/5] w-14 shrink-0 overflow-hidden bg-warm-cream">
                 <Image src={i.image} alt={i.title} fill sizes="56px" className="object-cover" />
               </div>
-              <div className="min-w-0 flex-1 text-sm">
+              <div className="min-w-0 flex-1 text-base">
                 <p className="font-serif leading-snug text-deep-brown">{i.title}</p>
-                <p className="text-xs text-muted-foreground">Qty {i.qty}</p>
-                <p className="text-xs text-deep-brown/80">
+                <p className="text-base text-muted-foreground">Qty {i.qty}</p>
+                <p className="text-base text-deep-brown/80">
                   {i.price == null ? "Price on Enquiry" : formatINR(i.price * i.qty)}
                 </p>
               </div>
@@ -332,7 +334,7 @@ export function EnquiryForm() {
           ))}
         </ul>
         {knownSubtotal != null && (
-          <p className="mt-3 flex justify-between text-sm">
+          <p className="mt-3 flex justify-between text-base">
             <span className="text-muted-foreground">
               {hasUnpriced ? "Priced items" : "Subtotal"}
             </span>
@@ -340,12 +342,12 @@ export function EnquiryForm() {
           </p>
         )}
         {hasUnpriced && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-base text-muted-foreground">
             Remaining pieces are priced on enquiry — price to be confirmed.
           </p>
         )}
       </aside>
-    </div>
+    </div></ContentRegion>
   );
 }
 
@@ -394,7 +396,7 @@ function Field({
         className={cn(error && "border-destructive focus-visible:ring-destructive")}
       />
       {error && (
-        <p id={`${id}-error`} className="text-xs text-destructive">
+        <p id={`${id}-error`} className="text-base text-destructive">
           {error}
         </p>
       )}

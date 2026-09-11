@@ -9,7 +9,7 @@
  * never overwrite a pre-existing admin-authored product at the same slug.
  */
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
 import { toResult, type ActionResult } from "@/app/admin/actions";
 import { PRODUCTS, primaryImage } from "@/data/products";
@@ -51,7 +51,7 @@ async function syncProducts(
   );
 
   let created = 0;
-  let updated = 0;
+  const updated = 0;
   const skippedNames: string[] = [];
   const productIdBySlug = new Map<string, string>();
 
@@ -81,10 +81,9 @@ async function syncProducts(
 
     let productId: string;
     if (existingRow) {
-      const { error: updateError } = await admin.from("products").update(row).eq("id", existingRow.id);
-      if (updateError) throw new Error(`Product "${p.title}": ${updateError.message}`);
+      // Existing products are now editable on the live storefront. Sync must
+      // not overwrite their saved copy, prices or media with file defaults.
       productId = existingRow.id;
-      updated += 1;
     } else {
       const { data, error: insertError } = await admin.from("products").insert(row).select("id").single();
       if (insertError) throw new Error(`Product "${p.title}": ${insertError.message}`);
@@ -93,10 +92,8 @@ async function syncProducts(
     }
     productIdBySlug.set(p.slug, productId);
 
-    // The file is the source of truth for a file_sync product's variant/
-    // images, so replace them wholesale on every sync (same pattern as
-    // saveProduct's variant replacement in actions.ts).
-    await admin.from("product_variants").delete().eq("product_id", productId);
+    // Existing media may have been curated in admin. Never erase those edits.
+    if (existingRow) continue;
 
     const best = primaryImage(p);
     const { data: variantRow, error: variantError } = await admin
@@ -147,8 +144,8 @@ async function syncCollections(admin: AdminClient, productIdBySlug: Map<string, 
 
     let collectionId = idBySlug.get(c.slug);
     if (collectionId) {
-      const { error: updateError } = await admin.from("collections").update(row).eq("id", collectionId);
-      if (updateError) throw new Error(`Collection "${c.title}": ${updateError.message}`);
+      // Keep existing collection copy, cover and membership chosen in admin.
+      continue;
     } else {
       const { data, error: insertError } = await admin.from("collections").insert(row).select("id").single();
       if (insertError) throw new Error(`Collection "${c.title}": ${insertError.message}`);
@@ -184,6 +181,8 @@ export async function syncFileProducts(): Promise<
     const categoryIdBySlug = await syncCategories(admin);
     const { created, updated, skippedNames, productIdBySlug } = await syncProducts(admin, categoryIdBySlug);
     await syncCollections(admin, productIdBySlug);
+    revalidateTag("storefront-media");
+    revalidateTag("storefront-collections");
 
     revalidatePath("/admin/products");
     revalidatePath("/admin/collections");

@@ -1,11 +1,11 @@
+
+import { getStorefrontCollections } from "@/lib/storefront-collections";
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  getCollection,
-  getCollectionProducts,
   getAllCollectionSlugs,
-  COLLECTIONS,
 } from "@/data/collections";
 import { getAllProducts } from "@/data/products";
 import { getProductsWithOverrides } from "@/lib/storefront-overrides";
@@ -28,7 +28,7 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  const c = getCollection(params.slug);
+  const c = (await getStorefrontCollections()).find((c) => c.slug === params.slug);
   if (!c) return { title: "Collection" };
   return {
     title: c.title,
@@ -45,23 +45,24 @@ export async function generateMetadata(
 
 export default async function CollectionPage(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const collection = getCollection(params.slug);
+  const collections = await getStorefrontCollections();
+  const collection = collections.find((c) => c.slug === params.slug);
   if (!collection) notFound();
   const all = await getProductsWithOverrides(getAllProducts());
-  const products = getCollectionProducts(params.slug, all);
-  const others = COLLECTIONS.filter((c) => c.slug !== params.slug);
+  const products = collection.productSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
+  const others = collections.filter((c) => c.slug !== params.slug);
   const breadcrumbs = breadcrumbList([
     { name: "Collections", path: "/collections" },
     { name: collection.title, path: `/collections/${collection.slug}` },
   ]);
 
   return (
-    <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
       />
-      <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,38vw)_1fr] lg:gap-16">
+      <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,38vw)_1fr] lg:gap-16">
         <Reveal settle className="overflow-hidden">
           <PortraitImage
             src={collection.cover}
@@ -76,19 +77,19 @@ export default async function CollectionPage(props: { params: Promise<{ slug: st
         <Reveal>
           <p className="eyebrow">{collection.tagline}</p>
           <h1 className="display mt-4 text-oxblood">{collection.title}</h1>
-          <p className="mt-6 max-w-md text-[0.98rem] leading-relaxed text-muted-foreground">
+          <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
             {collection.description}
           </p>
         </Reveal>
-      </div>
+      </section>
 
-      <div className="mt-20 grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:gap-x-8">
+      <section className="mt-20 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
         {products.map((p, i) => (
           <Reveal key={p.slug} delay={(i % 3) * 50}>
             <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
           </Reveal>
         ))}
-      </div>
+      </section>
 
       <section className="mt-24 border-t border-line pt-12">
         <p className="eyebrow mb-8">Other collections</p>
@@ -109,12 +110,12 @@ export default async function CollectionPage(props: { params: Promise<{ slug: st
                 <h3 className="font-serif text-lg text-deep-brown group-hover:text-oxblood">
                   {c.title}
                 </h3>
-                <p className="text-sm text-muted-foreground">{c.tagline}</p>
+                <p className="text-base text-muted-foreground">{c.tagline}</p>
               </div>
             </Link>
           ))}
         </div>
       </section>
-    </div>
+    </div></ContentRegion>
   );
 }

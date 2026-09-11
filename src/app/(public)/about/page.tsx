@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { jsonLdScript } from "@/lib/json-ld";
@@ -28,13 +30,13 @@ const schema = {
 
 export default function AboutPage() {
   return (
-    <div className="container-px mx-auto max-w-[80rem] py-14">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[80rem] py-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(schema) }}
       />
 
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,36vw)_1fr] lg:gap-16">
+      <section className="grid gap-12 lg:grid-cols-[minmax(0,36vw)_1fr] lg:gap-16">
         <Reveal settle className="overflow-hidden">
           <PortraitImage
             src="/media/purple-tanchoi-silk/03-drape.jpg"
@@ -54,7 +56,7 @@ export default function AboutPage() {
             <br />
             saree showroom.
           </h1>
-          <div className="mt-8 space-y-5 text-[0.98rem] leading-relaxed text-deep-brown/85">
+          <div className="mt-8 space-y-5 text-base leading-relaxed text-deep-brown/85">
             <p>
               {SITE.name} is a curated selection of premium Indian sarees and
               handloom pieces, brought together through trusted weaving partners.
@@ -80,10 +82,10 @@ export default function AboutPage() {
               ["Personal service", "Availability confirmed by us, not a bot."],
             ].map(([h, p]) => (
               <div key={h}>
-                <h3 className="text-[0.78rem] uppercase tracking-[0.18em] text-deep-brown">
+                <h3 className="text-base uppercase tracking-[0.08em] text-deep-brown">
                   {h}
                 </h3>
-                <p className="mt-2 text-sm text-muted-foreground">{p}</p>
+                <p className="mt-2 text-base text-muted-foreground">{p}</p>
               </div>
             ))}
           </div>
@@ -91,20 +93,20 @@ export default function AboutPage() {
           <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
             <Link
               href="/catalog"
-              className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-[0.8rem] font-medium uppercase tracking-[0.2em] text-oxblood"
+              className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-base font-medium uppercase tracking-[0.2em] text-oxblood"
             >
               Explore the catalog
               <span className="arrow-shift">→</span>
             </Link>
             <WhatsAppLink
               sourcePage="about"
-              className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70"
+              className="link-underline text-base uppercase tracking-[0.08em] text-deep-brown/90"
             >
               Speak to Us ↗
             </WhatsAppLink>
           </div>
         </Reveal>
-      </div>
-    </div>
+      </section>
+    </div></ContentRegion>
   );
 }

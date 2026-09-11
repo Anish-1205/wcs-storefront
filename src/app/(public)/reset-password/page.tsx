@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
 
@@ -8,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function ResetPasswordPage() {
   return (
-    <section className="container-px mx-auto max-w-6xl py-16 sm:py-24">
+    <ContentRegion region="page"><section className="container-px mx-auto max-w-6xl py-16 sm:py-24">
       <PasswordResetForm mode="update" />
-    </section>
+    </section></ContentRegion>
   );
 }

@@ -30,7 +30,7 @@ function applyTheme(theme: Theme) {
  * mount we just read it back off <html>. When the visitor hasn't made an
  * explicit choice, we keep following the device setting live.
  */
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle({ className = "", showLabel = false }: { className?: string; showLabel?: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
 
@@ -90,6 +90,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       ) : (
         <Moon className="h-[1.05rem] w-[1.05rem]" />
       )}
+      {showLabel && <span className="ml-2">{label}</span>}
     </button>
   );
 }

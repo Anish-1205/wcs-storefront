@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { SITE } from "../src/lib/site";
+import { PRODUCTS, getFeaturedProducts } from "../src/data/products";
+import { HERO } from "../src/lib/site";
 
 test("navbar brand mark links home and is the only banner home link", async ({ page }) => {
   await page.goto("/");
@@ -76,5 +78,37 @@ test("product page keeps a WhatsApp CTA after switching colour swatch", async ({
     await swatches.nth(1).click();
     await expect(swatches.nth(1)).toHaveAttribute("aria-pressed", "true");
   }
-  await expect(page.getByRole("link", { name: /Ask About This Piece/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Ask on WhatsApp|Ask about this saree/ }).first()).toBeVisible();
 });
+
+for (const width of [320, 390, 768, 1280]) {
+  test(`complete shelf and bounded cards at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const hero = HERO.href.split("/").pop();
+    const selection = getFeaturedProducts(5).filter((p) => p.slug !== hero).slice(0, 4);
+    const shown = new Set([hero, ...selection.map((p) => p.slug)]);
+    const expected = PRODUCTS.filter((p) => !shown.has(p.slug)).map((p) => `/sarees/${p.slug}`).sort();
+    const shelf = page.getByTestId("shelf-grid");
+    const cards = shelf.locator(".saree-card");
+    expect((await cards.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")))).sort()).toEqual(expected);
+    for (const card of await cards.all()) await expect(card).toBeVisible();
+    const boxes = await cards.evaluateAll((nodes) => nodes.map((node) => {
+      const rect = node.querySelector("img")!.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
+    expect(boxes[0].y).toBe(boxes[1].y);
+    expect(boxes[0].width).toBeLessThan(width / 2);
+    expect(boxes[0].height).toBeLessThan(500);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (width < 768) {
+      await cards.first().click();
+      const stage = page.locator(".product-stage");
+      await expect(stage).toBeVisible();
+      expect((await stage.boundingBox())!.height).toBeLessThanOrEqual(405.2);
+      const ask = page.getByRole("link", { name: /Ask on WhatsApp|Ask about this saree/ }).first();
+      expect((await ask.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  });
+}

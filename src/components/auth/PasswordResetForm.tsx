@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -66,7 +68,7 @@ export function PasswordResetForm({ mode }: { mode: "request" | "update" }) {
   const isRequest = mode === "request";
 
   return (
-    <div className="mx-auto w-full max-w-sm">
+    <ContentRegion region="PasswordResetForm"><div className="mx-auto w-full max-w-sm">
       <p className="eyebrow">Account</p>
       <h1 className="display-sm mt-3 text-oxblood">
         {isRequest ? "Reset your password." : "Choose a new password."}
@@ -88,12 +90,12 @@ export function PasswordResetForm({ mode }: { mode: "request" | "update" }) {
         </div>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="text-base text-destructive" role="alert">
             {error}
           </p>
         )}
         {notice && (
-          <p className="text-sm text-antique-gold" role="status">
+          <p className="text-base text-antique-gold" role="status">
             {notice}
           </p>
         )}
@@ -101,7 +103,7 @@ export function PasswordResetForm({ mode }: { mode: "request" | "update" }) {
         <button
           type="submit"
           disabled={busy}
-          className="flex h-12 w-full items-center justify-center gap-2 bg-oxblood text-[0.8rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:opacity-60"
+          className="flex h-12 w-full items-center justify-center gap-2 bg-oxblood text-base font-medium uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:opacity-60"
         >
           {busy
             ? "Please wait…"
@@ -111,11 +113,11 @@ export function PasswordResetForm({ mode }: { mode: "request" | "update" }) {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-muted-foreground">
+      <p className="mt-6 text-base text-muted-foreground">
         <Link href="/signin" className="text-oxblood hover:underline">
           Back to sign in
         </Link>
       </p>
-    </div>
+    </div></ContentRegion>
   );
 }

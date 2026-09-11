@@ -53,9 +53,9 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
     </svg>
   `);
   const fallbackSrc = `data:image/svg+xml;charset=utf-8,${placeholderSvg}`;
-  const [currentSrc, setCurrentSrc] = useState<string>(() =>
-    primaryImage ? cld(primaryImage, "card") : fallbackSrc,
-  );
+  const imageSrc = primaryImage ? cld(primaryImage, "card") : fallbackSrc;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const currentSrc = failedSrc === imageSrc ? fallbackSrc : imageSrc;
 
   return (
     <Link
@@ -73,7 +73,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
           unoptimized={currentSrc.startsWith("data:")}
           onError={() => {
             if (currentSrc !== fallbackSrc) {
-              setCurrentSrc(fallbackSrc);
+              setFailedSrc(imageSrc);
             }
           }}
         />
@@ -91,14 +91,14 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
 
       <div className="mt-3 space-y-1">
         {product.fabric_type && (
-          <p className="text-[11px] uppercase tracking-widest text-gold-dark">
+          <p className="text-base uppercase tracking-widest text-gold-dark">
             {product.fabric_type}
           </p>
         )}
         <h3 className="font-serif text-base leading-snug text-foreground group-hover:text-burgundy">
           {product.name}
         </h3>
-        <p className="text-sm text-muted-foreground">{formatPrice(price)}</p>
+        <p className="text-base text-muted-foreground">{formatPrice(price)}</p>
 
         {/* Color swatches */}
         {variants.length > 0 && (
@@ -112,7 +112,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
               />
             ))}
             {variants.length > 6 && (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-base text-muted-foreground">
                 +{variants.length - 6}
               </span>
             )}

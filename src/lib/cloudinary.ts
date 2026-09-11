@@ -19,6 +19,7 @@ const TRANSFORMS: Record<Transform, string> = {
  */
 export function cld(url: string | null | undefined, transform: Transform = "card"): string {
   if (!url) return "";
+  if (/\/video\/upload\/|\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)) return cldVideoThumbnail(url);
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (idx === -1) return url;
@@ -37,12 +38,16 @@ export function cld(url: string | null | undefined, transform: Transform = "card
  */
 export function cldVideoThumbnail(url: string | null | undefined): string {
   if (!url) return "";
-  const marker = "/upload/";
-  const idx = url.indexOf(marker);
-  if (idx === -1) return url;
-  const after = url.slice(idx + marker.length);
-  const withoutExt = after.replace(/\.[^./]+$/, "");
-  return `${url.slice(0, idx + marker.length)}so_0,c_fill,w_400,h_500,q_auto/${withoutExt}.jpg`;
+  if (url.startsWith("/")) return url.replace(/\.(mp4|mov|webm|m4v)(?=\?|$)/i, ".poster.jpg");
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return url; }
+  const marker = "/video/upload/";
+  const idx = parsed.pathname.indexOf(marker);
+  if (parsed.hostname !== "res.cloudinary.com" || idx === -1) return url;
+  if (/\.(jpg|jpeg|png|webp)$/i.test(parsed.pathname)) return url;
+  const after = parsed.pathname.slice(idx + marker.length).replace(/\.[^./]+$/, "");
+  parsed.pathname = `${parsed.pathname.slice(0, idx + marker.length)}so_0,c_fill,w_400,h_500,q_auto/${after}.jpg`;
+  return parsed.href;
 }
 
 /**

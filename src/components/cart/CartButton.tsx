@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/cart/CartContext";
 import { cn } from "@/lib/utils";
@@ -21,12 +23,12 @@ export function CartButton({ className }: { className?: string }) {
   }, [shown]);
 
   return (
-    <button
+    <ContentRegion region="CartButton" global><button
       type="button"
       onClick={openCart}
       aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
       className={cn(
-        "inline-flex items-center gap-1.5 text-sm text-deep-brown/80 transition-colors hover:text-oxblood focus-visible:text-oxblood focus-visible:outline-none",
+        "inline-flex items-center gap-1.5 text-base text-deep-brown/80 transition-colors hover:text-oxblood focus-visible:text-oxblood focus-visible:outline-none",
         className,
       )}
     >
@@ -39,6 +41,6 @@ export function CartButton({ className }: { className?: string }) {
       >
         ({shown})
       </span>
-    </button>
+    </button></ContentRegion>
   );
 }

@@ -25,7 +25,7 @@ export function CategoryCard({ category }: { category: Category }) {
         <h3 className="font-serif text-lg text-white drop-shadow">
           {category.name}
         </h3>
-        <span className="text-xs uppercase tracking-widest text-gold-light">
+        <span className="text-base uppercase tracking-widest text-gold-light">
           Shop now →
         </span>
       </div>

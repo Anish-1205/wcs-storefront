@@ -62,8 +62,8 @@ export function FilterPanel({ categories, hideCategory }: Props) {
 
   const hasFilters = Array.from(params.keys()).length > 0;
   const fieldClass =
-    "h-9 rounded-none border-0 border-b border-border bg-transparent px-0 text-sm focus-visible:border-burgundy focus-visible:ring-0 focus-visible:ring-offset-0";
-  const labelClass = "block text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
+    "h-9 rounded-none border-0 border-b border-border bg-transparent px-0 text-base focus-visible:border-burgundy focus-visible:ring-0 focus-visible:ring-offset-0";
+  const labelClass = "block text-base font-medium uppercase tracking-widest text-muted-foreground";
 
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-5">
@@ -126,7 +126,7 @@ export function FilterPanel({ categories, hideCategory }: Props) {
         <Button
           variant="link"
           size="sm"
-          className="h-auto p-0 text-xs uppercase tracking-widest text-muted-foreground hover:text-burgundy"
+          className="h-auto p-0 text-base uppercase tracking-widest text-muted-foreground hover:text-burgundy"
           onClick={() => router.push(pathname, { scroll: false })}
         >
           Clear filters

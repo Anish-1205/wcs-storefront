@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { InquiryForm } from "@/components/lead/InquiryForm";
 import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
@@ -14,16 +16,16 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="container-px mx-auto max-w-[80rem] py-14">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[80rem] py-14">
       <header className="max-w-2xl">
         <p className="eyebrow">Contact</p>
         <h1 className="display mt-4 text-oxblood">Speak with us.</h1>
-        <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
+        <p className="mt-6 text-base leading-relaxed text-muted-foreground">
           {CONCIERGE_PARAGRAPH}
         </p>
       </header>
 
-      <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_20rem] lg:gap-16">
+      <section className="mt-12 grid gap-12 lg:grid-cols-[1fr_20rem] lg:gap-16">
         <div>
           <InquiryForm heading="Send us a message" defaultType="general" />
         </div>
@@ -31,19 +33,19 @@ export default function ContactPage() {
         <aside className="space-y-8 lg:border-l lg:border-line lg:pl-10">
           <div>
             <h2 className="eyebrow">WhatsApp</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-base text-muted-foreground">
               The quickest way to reach us — share a screenshot or a reference
               (e.g. WCS-004) and we&apos;ll take it from there.
             </p>
             {WHATSAPP_CONFIGURED ? (
               <WhatsAppLink
                 sourcePage="contact"
-                className="link-underline mt-3 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+                className="link-underline mt-3 inline-flex text-base uppercase tracking-[0.08em] text-oxblood"
               >
                 Open WhatsApp ↗
               </WhatsAppLink>
             ) : (
-              <p className="mt-3 text-sm text-deep-brown">
+              <p className="mt-3 text-base text-deep-brown">
                 WhatsApp details coming soon — use the form for now.
               </p>
             )}
@@ -54,12 +56,12 @@ export default function ContactPage() {
             {EMAIL_CONFIGURED ? (
               <a
                 href={`mailto:${EMAIL}`}
-                className="link-underline mt-2 inline-flex text-sm text-deep-brown hover:text-oxblood"
+                className="link-underline mt-2 inline-flex text-base text-deep-brown hover:text-oxblood"
               >
                 {EMAIL}
               </a>
             ) : (
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 text-base text-muted-foreground">
                 Use the form and we&apos;ll reply by email or WhatsApp.
               </p>
             )}
@@ -68,7 +70,7 @@ export default function ContactPage() {
           {SITE.gstin && (
             <div>
               <h2 className="eyebrow">Business</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 text-base text-muted-foreground">
                 {SITE.name}
                 <br />
                 GSTIN {SITE.gstin}
@@ -76,7 +78,7 @@ export default function ContactPage() {
             </div>
           )}
         </aside>
-      </div>
-    </div>
+      </section>
+    </div></ContentRegion>
   );
 }

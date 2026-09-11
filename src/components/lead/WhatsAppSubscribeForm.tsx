@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useState } from "react";
 import { getSource } from "@/lib/source-tracking";
 import { subscriberSchema } from "@/lib/validation";
@@ -56,14 +58,14 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
 
   if (status === "done") {
     return (
-      <p className="rounded-sm bg-gold/10 px-4 py-3 text-sm text-gold-dark">
+      <p className="rounded-sm bg-gold/10 px-4 py-3 text-base text-gold-dark">
         🎉 You&apos;re on the list! We&apos;ll message you on WhatsApp with new arrivals.
       </p>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <ContentRegion region="WhatsAppSubscribeForm" global><form onSubmit={handleSubmit} className="space-y-2">
       <Input
         type="text"
         placeholder="Your name"
@@ -82,8 +84,8 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
         required
         className={compact ? "h-10" : ""}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+      {error && <p className="text-base text-destructive">{error}</p>}
+      <label className="flex items-start gap-2 text-base leading-relaxed text-muted-foreground">
         <input type="checkbox" required className="mt-0.5 h-4 w-4 shrink-0 accent-[#B8860B]" />
         <span>
           I agree to receive new-arrival and offer messages on WhatsApp. I can
@@ -102,6 +104,6 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
       >
         {status === "loading" ? "Subscribing…" : "Notify me on WhatsApp"}
       </Button>
-    </form>
+    </form></ContentRegion>
   );
 }

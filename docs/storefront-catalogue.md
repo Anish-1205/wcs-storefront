@@ -502,3 +502,21 @@ Per product in `src/data/products.ts`:
 persist/nav/reload, qty/remove, no `₹0` totals, enquiry -> WhatsApp handoff not
 popup-blocked, "Open WhatsApp Again", search by reference, mobile no-overflow at
 375/390/430) all passed against a production build.
+
+### Admin photo updates
+
+Published `file_sync` products now overlay saved database photos on the file catalog, matched by slug. The first colour variant with photos (by display order) supplies the shelf primary; within that variant, the saved Primary flag wins over automatic quality ranking. Local photos retain their authored roles and dimensions. Newly uploaded photos use a contained product viewer. Saved names, descriptions, highlights and base prices also overlay file defaults; uploaded videos are added to the authored video gallery.
+
+Saving a product expires the `storefront-media` cache and revalidates home, catalog, search, collection and product pages, including product sharing metadata. Uploaded Cloudinary URLs retain their versions, so selecting a different image also changes the Next.js image cache key. Subsequent catalog syncs preserve existing variant media. Without database access, the file catalog remains available. The product media bridge itself requires no new migration; the page editor below requires migration 017.
+
+### Website pages dashboard
+
+Open /admin/pages to edit visible public-page text, image descriptions, replacement images, and section visibility. Pick a page and content type, use the embedded preview, then Save and publish. Header/footer regions are shared across pages. Conditional content becomes editable when it is displayed in the preview. Product photos/details and collection membership remain available through their dedicated admin forms. For homepage sections use the separate homepage layout panel: welcome saree, four featured positions, section visibility/order, and shelf order. Hidden welcome/featured sections return their products to the shelf.
+
+Apply supabase/migrations/017_storefront_page_content.sql before enabling page publishing. The editor detects an unavailable table and disables publishing; storefront pages retain authored defaults. Writes require assertAdmin; public clients may only read published content. Page content renders during SSR and is invalidated with the storefront-pages tag on save. Images are restricted to local media/brand files or the configured Cloudinary account, and text is escaped rather than interpreted as HTML. No custom HTML, CSS, or script editor is exposed.
+
+ContentRegion identifiers combine page/region names with element paths and React keys. Preserve keys/structure when refactoring already-edited regions, or explicitly migrate their saved content keys. Homepage structure is stored separately from visible text; reload the general preview after publishing a homepage layout. Metadata, route names, and application behavior remain code-managed.
+
+Saved product names, descriptions, highlights and base prices now overlay their mirrored file entries as well as photos/videos. Existing collection copy, cover and membership are read from Supabase. Catalog sync fills missing records and preserves existing editorial changes.
+
+For current deployment steps, operator instructions, limitations and verification, see [Website page editing and mobile storefront](website-pages.md). Earlier verification figures in this document describe the original storefront rollout.

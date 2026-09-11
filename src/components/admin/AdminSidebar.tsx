@@ -22,6 +22,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const ICONS: Record<string, LucideIcon> = {
   "/admin": LayoutDashboard,
+  "/admin/pages": Layers,
   "/admin/products": ShoppingBag,
   "/admin/storefront-availability": Radio,
   "/admin/import": UploadCloud,

@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import Image from "next/image";
 import Link from "next/link";
 import { cld } from "@/lib/cloudinary";
@@ -5,7 +7,7 @@ import type { Collection } from "@/lib/supabase/types";
 
 export function CollectionCard({ collection }: { collection: Collection }) {
   return (
-    <Link
+    <ContentRegion region="CollectionCard"><Link
       href={`/collections/${collection.slug}`}
       className="group relative block aspect-[16/10] overflow-hidden rounded-sm bg-secondary"
     >
@@ -28,10 +30,10 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         <h3 className="font-serif text-2xl text-white drop-shadow">
           {collection.name}
         </h3>
-        <span className="mt-2 text-xs uppercase tracking-[0.2em] text-gold-light">
+        <span className="mt-2 text-base uppercase tracking-[0.2em] text-gold-light">
           Explore collection →
         </span>
       </div>
-    </Link>
+    </Link></ContentRegion>
   );
 }

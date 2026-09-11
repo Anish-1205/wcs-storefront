@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -20,20 +22,20 @@ export function AccountView() {
       <div className="mx-auto w-full max-w-sm">
         <p className="eyebrow">Account</p>
         <h1 className="display-sm mt-3 text-oxblood">You’re browsing as a guest.</h1>
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-base text-muted-foreground">
           Sign in to keep your selections saved across devices. You can always
           enquire without an account.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link
             href="/signin?next=/account"
-            className="flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
+            className="flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Sign in
           </Link>
           <Link
             href="/signup?next=/account"
-            className="flex h-12 items-center justify-center gap-2 border border-line px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-deep-brown hover:bg-warm-cream"
+            className="flex h-12 items-center justify-center gap-2 border border-line px-8 text-base font-medium uppercase tracking-[0.08em] text-deep-brown hover:bg-warm-cream"
           >
             Create account
           </Link>
@@ -49,11 +51,11 @@ export function AccountView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <ContentRegion region="AccountView"><div className="mx-auto w-full max-w-xl">
       <p className="eyebrow">Account</p>
       <h1 className="display-sm mt-3 text-oxblood">Your account.</h1>
 
-      <dl className="mt-8 divide-y divide-line border-y border-line text-sm">
+      <dl className="mt-8 divide-y divide-line border-y border-line text-base">
         <div className="flex justify-between gap-4 py-4">
           <dt className="text-muted-foreground">Signed in as</dt>
           <dd className="text-deep-brown">{user.email}</dd>
@@ -72,7 +74,7 @@ export function AccountView() {
         </div>
       </dl>
 
-      <p className="mt-4 text-xs text-muted-foreground">
+      <p className="mt-4 text-base text-muted-foreground">
         Your cart is saved to this account and follows you to any device you
         sign in on.
       </p>
@@ -82,18 +84,18 @@ export function AccountView() {
       <div className="mt-12 flex flex-wrap gap-3 border-t border-line pt-8">
         <Link
           href="/catalog"
-          className="flex h-12 items-center justify-center gap-2 border border-line px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-deep-brown hover:bg-warm-cream"
+          className="flex h-12 items-center justify-center gap-2 border border-line px-8 text-base font-medium uppercase tracking-[0.08em] text-deep-brown hover:bg-warm-cream"
         >
           Continue browsing
         </Link>
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex h-12 items-center justify-center gap-2 px-4 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-muted-foreground hover:text-oxblood"
+          className="flex h-12 items-center justify-center gap-2 px-4 text-base font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-oxblood"
         >
           Sign out
         </button>
       </div>
-    </div>
+    </div></ContentRegion>
   );
 }

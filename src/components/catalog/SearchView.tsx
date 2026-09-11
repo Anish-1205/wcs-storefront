@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getAllProducts, type Product } from "@/data/products";
@@ -44,7 +46,7 @@ export function SearchView({ products }: { products?: Product[] }) {
   }, [term, all]);
 
   return (
-    <>
+    <ContentRegion region="SearchView"><>
       <input
         type="search"
         autoFocus
@@ -53,7 +55,7 @@ export function SearchView({ products }: { products?: Product[] }) {
         placeholder="Search by colour, motif or reference (e.g. WCS-004)…"
         className="w-full border-b border-line bg-transparent pb-3 font-serif text-xl text-deep-brown placeholder:text-muted-foreground/50 focus:border-oxblood focus:outline-none sm:text-2xl"
       />
-      <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
+      <p className="mt-4 text-base text-muted-foreground" aria-live="polite">
         {results.length} {results.length === 1 ? "result" : "results"}
         {term ? ` for “${q.trim()}”` : ""}
       </p>
@@ -63,14 +65,14 @@ export function SearchView({ products }: { products?: Product[] }) {
           <p className="font-serif text-xl text-deep-brown">
             Nothing matches “{q.trim()}”.
           </p>
-          <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
+          <p className="mx-auto mt-3 max-w-sm text-base text-muted-foreground">
             Try a colour, a motif, or a reference number. Or tell us what you have
             in mind — we source to a brief.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-3">
             <Link
               href="/catalog"
-              className="link-underline text-[0.8rem] uppercase tracking-[0.18em] text-oxblood"
+              className="link-underline text-base uppercase tracking-[0.08em] text-oxblood"
             >
               Browse the catalog
             </Link>
@@ -79,7 +81,7 @@ export function SearchView({ products }: { products?: Product[] }) {
                 href={buildWhatsAppURL()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70"
+                className="link-underline text-base uppercase tracking-[0.08em] text-deep-brown/90"
               >
                 Ask us ↗
               </a>
@@ -87,12 +89,12 @@ export function SearchView({ products }: { products?: Product[] }) {
           </div>
         </div>
       ) : (
-        <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:gap-x-8">
+        <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
           {results.map((p) => (
             <SareeCard key={p.slug} product={p} sizes="(min-width:768px) 30vw, 45vw" />
           ))}
         </div>
       )}
-    </>
+    </></ContentRegion>
   );
 }

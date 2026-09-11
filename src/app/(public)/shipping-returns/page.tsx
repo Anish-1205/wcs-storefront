@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
 
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function ShippingReturnsPage() {
   return (
-    <article className="container-px mx-auto max-w-3xl py-14">
+    <ContentRegion region="page"><article className="container-px mx-auto max-w-3xl py-14">
       <span className="gold-rule" />
       <h1 className="mt-4 font-serif text-4xl text-burgundy">Shipping & Returns</h1>
       <div className="mt-8 space-y-7 leading-relaxed text-foreground/80">
@@ -18,6 +20,6 @@ export default function ShippingReturnsPage() {
         <section><h2 className="text-xl text-burgundy">Damage or incorrect item</h2><p className="mt-2">Inspect your parcel promptly. If it arrives damaged or differs from the confirmed item, contact us on WhatsApp with the order details, package-opening evidence and clear photographs so we can review it.</p></section>
         <section><h2 className="text-xl text-burgundy">Return eligibility</h2><p className="mt-2">Do not return an item without confirmation. Eligibility depends on the condition of the saree and the terms agreed before purchase; worn, washed, altered or damaged items cannot be accepted unless they arrived faulty.</p></section>
       </div>
-    </article>
+    </article></ContentRegion>
   );
 }

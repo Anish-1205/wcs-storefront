@@ -12,7 +12,7 @@ export function WhatsAppBanner({
   return (
     <section className="rounded-sm bg-burgundy px-6 py-12 text-center text-ivory">
       <h2 className="font-serif text-2xl text-ivory sm:text-3xl">{title}</h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm text-ivory/80">{subtitle}</p>
+      <p className="mx-auto mt-3 max-w-xl text-base text-ivory/80">{subtitle}</p>
       <div className="mt-6 flex justify-center">
         <WhatsAppLink sourcePage="banner">
           <Button variant="whatsapp" size="lg">

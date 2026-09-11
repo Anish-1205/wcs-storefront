@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { getAllProducts } from "@/data/products";
 import { getProductsWithOverrides } from "@/lib/storefront-overrides";
@@ -11,9 +13,9 @@ export const metadata: Metadata = {
 export default async function SearchPage() {
   const products = await getProductsWithOverrides(getAllProducts());
   return (
-    <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
       <p className="eyebrow mb-6">Search the catalog</p>
       <SearchView products={products} />
-    </div>
+    </div></ContentRegion>
   );
 }

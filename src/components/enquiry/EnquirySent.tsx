@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart/CartContext";
@@ -39,16 +41,16 @@ export function EnquirySent() {
   if (read && !snap) {
     return (
       <Wrapper heading="Thank you.">
-        <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
+        <p className="mt-6 text-base leading-relaxed text-muted-foreground">
           If you’ve just sent us a selection, we’ll personally confirm current
           availability with our weaving partners and reply with the next steps.
           If you haven’t heard from us, message us any time.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-3">
-          <Link href="/catalog" className="link-underline text-[0.8rem] uppercase tracking-[0.18em] text-oxblood">
+          <Link href="/catalog" className="link-underline text-base uppercase tracking-[0.08em] text-oxblood">
             Return to catalogue
           </Link>
-          <a href={EMAIL_HREF} className="link-underline text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70">
+          <a href={EMAIL_HREF} className="link-underline text-base uppercase tracking-[0.08em] text-deep-brown/90">
             {EMAIL_CONFIGURED ? EMAIL : "Contact us"}
           </a>
         </div>
@@ -61,22 +63,22 @@ export function EnquirySent() {
   const count = snap.items.reduce((n, i) => n + i.qty, 0);
 
   return (
-    <Wrapper heading="Your selection is on its way.">
-      <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
+    <ContentRegion region="EnquirySent"><Wrapper heading="Your selection is on its way.">
+      <p className="mt-6 text-base leading-relaxed text-muted-foreground">
         {snap.configured
           ? "A WhatsApp conversation should have opened in a new tab, with your selection ready to send. If it didn’t open — or you closed it — use the button below. Nothing has been lost."
           : "Your enquiry has reached us. We’ll personally confirm current availability and reply with the next steps."}
       </p>
 
       {snap.items.length > 0 && (
-        <ul className="mx-auto mt-8 max-w-sm space-y-1.5 border-y border-line py-4 text-left text-sm">
+        <ul className="mx-auto mt-8 max-w-sm space-y-1.5 border-y border-line py-4 text-left text-base">
           {snap.items.map((i) => (
             <li key={i.reference} className="flex justify-between gap-4">
               <span className="text-deep-brown">{i.title}</span>
               <span className="shrink-0 text-muted-foreground">×{i.qty}</span>
             </li>
           ))}
-          <li className="pt-1 text-xs text-muted-foreground">
+          <li className="pt-1 text-base text-muted-foreground">
             {count} {count === 1 ? "piece" : "pieces"} · availability personally
             confirmed before purchase
           </li>
@@ -90,7 +92,7 @@ export function EnquirySent() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleOpenWhatsApp}
-            className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
+            className="arrow-shift-host inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Open WhatsApp Again
             <span className="arrow-shift">→</span>
@@ -100,26 +102,26 @@ export function EnquirySent() {
           (EMAIL_CONFIGURED ? (
             <a
               href={EMAIL_HREF}
-              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
+              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft"
             >
               Email us your selection
             </a>
           ) : (
             <Link
               href="/contact"
-              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
+              className="inline-flex h-12 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft"
             >
               Contact us
             </Link>
           ))}
         <Link
           href="/catalog"
-          className="link-underline text-[0.78rem] uppercase tracking-[0.18em] text-deep-brown/70"
+          className="link-underline text-base uppercase tracking-[0.08em] text-deep-brown/90"
         >
           Return to catalogue
         </Link>
       </div>
-    </Wrapper>
+    </Wrapper></ContentRegion>
   );
 }
 

@@ -12,6 +12,14 @@ needed — everything is done through the admin panel.
 
 ## Adding a new saree
 
+For the current file-backed public catalog, see [Website page editing](website-pages.md)
+before adding new database products. Published mirrored products can be edited in
+Products, but unrelated new database rows do not automatically create storefront routes.
+
+To edit existing public text, images and sections, open **Dashboard → Website pages**.
+The [page editor guide](website-pages.md#everyday-editing) explains previews, publishing,
+homepage product placement and restoring the original content.
+
 1. Click **+ Add Product** (top right of the Dashboard or Products page).
 2. Fill in the details:
    - **Name** — e.g. "Royal Gadwal Silk Saree" (the web address fills in automatically).

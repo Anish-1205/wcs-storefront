@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -72,12 +74,12 @@ export default async function CategoryPage(props: PageProps) {
   ]);
 
   return (
-    <div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbs) }}
       />
-      <nav className="mb-6 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+      <nav className="mb-6 text-base uppercase tracking-[0.08em] text-muted-foreground">
         <Link href="/catalog" className="hover:text-oxblood">
           Catalog
         </Link>
@@ -94,19 +96,19 @@ export default async function CategoryPage(props: PageProps) {
 
       <CatalogFilterBar facets={facets} lockedCategory />
 
-      <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-14 md:grid-cols-3 lg:gap-x-8">
+      <section className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
         {products.map((p, i) => (
           <Reveal key={p.slug} delay={(i % 3) * 50}>
             <SareeCard product={p} priority={i < 3} sizes="(min-width:768px) 30vw, 45vw" />
           </Reveal>
         ))}
-      </div>
+      </section>
 
       {products.length === 0 && (
         <p className="py-24 text-center text-muted-foreground">
           Nothing here matches those filters.
         </p>
       )}
-    </div>
+    </div></ContentRegion>
   );
 }

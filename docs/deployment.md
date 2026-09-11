@@ -5,6 +5,12 @@ Stack: **Vercel** (hosting) + **Supabase** (database/auth) + **Cloudinary**
 
 ## CI
 
+For the website editor release, apply outstanding migrations through
+[017_storefront_page_content.sql](../supabase/migrations/017_storefront_page_content.sql)
+before enabling publishing. On an existing database, apply only migrations that
+have not already run. The [page editor deployment steps](website-pages.md#enable-publishing)
+include the required live-save smoke check; applying SQL is separate from deploying code.
+
 GitHub Actions run on every PR and every push to `main` (`.github/workflows/`):
 
 - **CI** (`ci.yml`) — `lint` → `types` → `npm test --coverage` → `npm run build`.

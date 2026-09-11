@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useMemo, useRef } from "react";
 import Image from "next/image";
 import type { Product, ProductImage, ProductVideo } from "@/data/products";
@@ -79,7 +81,7 @@ export function ProductMediaViewer({ product, activeSrc, onActiveSrc }: Props) {
   }
 
   return (
-    <div className="flex flex-col-reverse gap-4 lg:flex-row">
+    <ContentRegion region={`product-media/${product.slug}/${active.key}`}><div className="flex flex-col-reverse gap-4 lg:flex-row">
       {items.length > 1 && (
         <div
           ref={railRef}
@@ -142,17 +144,19 @@ export function ProductMediaViewer({ product, activeSrc, onActiveSrc }: Props) {
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="relative mx-auto w-full max-w-[34rem]">
+        <div className="product-stage relative mx-auto w-full max-w-[34rem]">
           {active.kind === "video" ? (
             <PortraitVideo
+              key={active.video.src}
               kind="video"
               src={active.video.src}
               poster={active.video.poster}
               alt={active.video.alt}
               width={active.video.w}
               height={active.video.h}
-              fit="cover"
+              fit="contain"
               preload="metadata"
+              controls
               posterSizes="(min-width:1024px) 34rem, 100vw"
             />
           ) : (
@@ -164,10 +168,11 @@ export function ProductMediaViewer({ product, activeSrc, onActiveSrc }: Props) {
                 alt={active.image.alt}
                 sizes="(min-width:1024px) 34rem, 100vw"
                 priority
+                fit="contain"
               />
               <PinterestSaveButton
                 productId={product.slug}
-                imageUrl={`${SITE.url}${active.image.src}`}
+                imageUrl={new URL(active.image.src, SITE.url).href}
                 pageUrl={`${SITE.url}/sarees/${product.slug}`}
                 description={product.title}
                 className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ivory/85 text-oxblood shadow-sm backdrop-blur transition-colors hover:bg-ivory"
@@ -176,11 +181,11 @@ export function ProductMediaViewer({ product, activeSrc, onActiveSrc }: Props) {
           )}
         </div>
         {active.kind === "image" && ROLE_CAPTION[active.image.role] && (
-          <p className="mx-auto mt-2 max-w-[34rem] text-[0.68rem] uppercase tracking-[0.2em] text-antique-gold">
+          <p className="mx-auto mt-2 max-w-[34rem] text-base uppercase tracking-[0.2em] text-antique-gold">
             {ROLE_CAPTION[active.image.role]}
           </p>
         )}
       </div>
-    </div>
+    </div></ContentRegion>
   );
 }

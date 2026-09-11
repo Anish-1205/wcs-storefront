@@ -5,12 +5,12 @@ and distribution business. Built to drive the proven funnel:
 
 > Instagram / Pinterest → Website → WhatsApp Inquiry → Sale
 
-There is **no cart or checkout** by design — every page drives a WhatsApp
-inquiry or a subscriber opt-in.
+Customers can collect sarees in an enquiry cart and continue on WhatsApp.
+There is no online payment checkout.
 
 ## Tech stack
 
-- **Next.js 14** (App Router) + **TypeScript**
+- **Next.js 15** (App Router) + **TypeScript**
 - **Tailwind CSS** + hand-rolled shadcn-style UI
 - **Supabase** (PostgreSQL + Auth + RLS)
 - **Cloudinary** (signed image uploads + CDN)
@@ -36,6 +36,7 @@ Full instructions: [`docs/setup.md`](docs/setup.md).
 | [docs/setup.md](docs/setup.md) | Local development setup |
 | [docs/deployment.md](docs/deployment.md) | Deploying to Vercel + Supabase + Cloudinary |
 | [docs/admin-guide.md](docs/admin-guide.md) | Non-technical guide for the family team |
+| [docs/website-pages.md](docs/website-pages.md) | Page editor, migration 017, mobile improvements and media fixes |
 | [docs/content-guide.md](docs/content-guide.md) | Writing descriptions & photo guidelines |
 
 ## Project structure

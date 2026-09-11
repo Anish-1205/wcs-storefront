@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import Link from "next/link";
 import { User } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -15,7 +17,7 @@ export function AccountButton() {
   const label = !loading && user ? "Your account" : "Account";
 
   return (
-    <Link
+    <ContentRegion region="AccountButton"><Link
       href="/account"
       aria-label={label}
       title={label}
@@ -28,6 +30,6 @@ export function AccountButton() {
           aria-hidden="true"
         />
       )}
-    </Link>
+    </Link></ContentRegion>
   );
 }

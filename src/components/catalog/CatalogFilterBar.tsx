@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -42,23 +44,24 @@ export function CatalogFilterBar({
   if (visible.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-start gap-x-10 gap-y-5 border-y border-line py-5">
+    <ContentRegion region="CatalogFilterBar"><div className="flex flex-wrap items-start gap-x-10 gap-y-5 border-y border-line py-5">
       {visible.map((facet) => {
         const active = params.get(facet.key);
         return (
           <div key={facet.key} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="text-[0.68rem] uppercase tracking-[0.2em] text-antique-gold">
+            <span className="text-base uppercase tracking-[0.2em] text-antique-gold">
               {facet.label}
             </span>
             {facet.options.map((o) => (
               <button
                 key={o.value}
                 onClick={() => setParam(facet.key, o.value)}
+                aria-pressed={active === o.value}
                 className={cn(
-                  "text-[0.8rem] transition-colors",
+                  "min-h-11 rounded-sm border border-line px-3 py-2 text-base transition-colors",
                   active === o.value
                     ? "text-oxblood underline underline-offset-4"
-                    : "text-deep-brown/70 hover:text-oxblood",
+                    : "text-deep-brown/90 hover:text-oxblood",
                 )}
               >
                 {o.label}
@@ -77,11 +80,11 @@ export function CatalogFilterBar({
             const qs = next.toString();
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
-          className="text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground hover:text-oxblood"
+          className="text-base uppercase tracking-[0.08em] text-muted-foreground hover:text-oxblood"
         >
           Clear
         </button>
       )}
-    </div>
+    </div></ContentRegion>
   );
 }

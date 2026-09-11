@@ -8,6 +8,7 @@ vi.mock("@/lib/admin-auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 type Row = Record<string, unknown> & { id: string };

@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GUIDES } from "@/data/guides";
@@ -16,14 +18,14 @@ export const metadata: Metadata = {
 
 export default function GuidesIndexPage() {
   return (
-    <div className="container-px mx-auto max-w-[80rem] py-14">
+    <ContentRegion region="page"><div className="container-px mx-auto max-w-[80rem] py-14">
       <header className="max-w-xl">
         <p className="eyebrow">Guides</p>
         <h1 className="display-sm mt-3 text-oxblood">Weaves, care and styling</h1>
       </header>
 
       {GUIDES.length === 0 ? (
-        <p className="mt-10 max-w-md text-[0.95rem] leading-relaxed text-muted-foreground">
+        <p className="mt-10 max-w-md text-base leading-relaxed text-muted-foreground">
           Our first guides are on the way. In the meantime,{" "}
           <Link href="/catalog" className="link-underline text-oxblood">
             browse the catalog
@@ -41,11 +43,11 @@ export default function GuidesIndexPage() {
               <h2 className="font-serif text-xl text-deep-brown group-hover:text-oxblood">
                 {g.title}
               </h2>
-              <p className="mt-2 text-sm text-muted-foreground">{g.description}</p>
+              <p className="mt-2 text-base text-muted-foreground">{g.description}</p>
             </Link>
           ))}
         </div>
       )}
-    </div>
+    </div></ContentRegion>
   );
 }

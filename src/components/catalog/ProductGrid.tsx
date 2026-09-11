@@ -11,7 +11,7 @@ export function ProductGrid({
   if (products.length === 0) {
     return (
       <div className="flex min-h-[30vh] items-center justify-center rounded-sm border border-dashed border-border">
-        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        <p className="text-base text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }

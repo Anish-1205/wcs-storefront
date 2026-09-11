@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useState } from "react";
 import { useCart } from "@/lib/cart/CartContext";
 import { cn } from "@/lib/utils";
@@ -35,12 +37,12 @@ export function AddToCartButton({
   const sold = product.availability === "sold";
 
   return (
-    <button
+    <ContentRegion region="AddToCartButton"><button
       type="button"
       onClick={handleAdd}
       disabled={sold}
       className={cn(
-        "inline-flex h-12 w-full items-center justify-center gap-2 bg-oxblood px-6 text-[0.8rem] font-medium uppercase tracking-[0.22em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-12 w-full items-center justify-center gap-2 bg-oxblood px-6 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-oxblood-soft disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
     >
@@ -51,6 +53,6 @@ export function AddToCartButton({
           : inCart
             ? "Add Another"
             : "Add to Cart"}
-    </button>
+    </button></ContentRegion>
   );
 }

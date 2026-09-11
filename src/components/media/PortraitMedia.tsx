@@ -50,6 +50,7 @@ interface VideoProps {
   /** render the poster through next/image (responsive, optimised) as an underlay */
   posterPriority?: boolean;
   posterSizes?: string;
+  controls?: boolean;
 }
 
 export function PortraitImage(props: ImageProps) {
@@ -126,6 +127,7 @@ export function PortraitVideo(props: VideoProps) {
     maxClassName,
     posterPriority,
     posterSizes = "(min-width:1024px) 44vw, 90vw",
+    controls = false,
   } = props;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -185,6 +187,7 @@ export function PortraitVideo(props: VideoProps) {
         muted
         loop
         playsInline
+        controls={controls}
         preload={preload}
         poster={poster}
         aria-label={alt}

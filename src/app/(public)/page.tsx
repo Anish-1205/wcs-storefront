@@ -1,8 +1,12 @@
+import { getHomepageContent } from "@/lib/homepage-content-server";
+import { HomepageSections } from "@/components/home/HomepageSections";
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
-import { getFeaturedProducts, getAllProducts, getCategories } from "@/data/products";
+import { getAllProducts, getCategories } from "@/data/products";
 import { getProductsWithOverrides } from "@/lib/storefront-overrides";
-import { COLLECTIONS } from "@/data/collections";
-import { COLOUR_STORY, DETAIL_STORY, HERO } from "@/lib/site";
+import { getStorefrontCollections } from "@/lib/storefront-collections";
+import { COLOUR_STORY, DETAIL_STORY } from "@/lib/site";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SareeCard } from "@/components/catalog/SareeCard";
@@ -23,28 +27,27 @@ const STEPS = [
 
 export default async function HomePage() {
   const all = await getProductsWithOverrides(getAllProducts());
-  // The hero already showcases one piece; the two product sections below are
-  // deliberately disjoint from it and from each other, so nothing repeats.
-  const heroSlug = HERO.href.split("/").pop();
-  const selection = getFeaturedProducts(5, all)
-    .filter((p) => p.slug !== heroSlug)
-    .slice(0, 4);
-  const shown = new Set([heroSlug, ...selection.map((p) => p.slug)]);
-  // The shelf shows the entire rest of the catalog, not a capped preview —
-  // /catalog remains the "View all" link for filtering/sorting, but the
-  // homepage itself should already surface everything we carry.
-  const more = all.filter((p) => !shown.has(p.slug));
+  const config = await getHomepageContent();
+  const collections = await getStorefrontCollections();
+  const hero = all.find((p) => p.slug === config.heroSlug) ?? all[0];
+  const selection = config.featuredSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
+  const shown = new Set([
+    ...(config.sections.find((s) => s.key === "hero")?.visible ? [hero.slug] : []),
+    ...(config.sections.find((s) => s.key === "selection")?.visible ? selection.map((p) => p.slug) : []),
+  ]);
+  const shelfRank = new Map(config.shelfOrder.map((slug, i) => [slug, i]));
+  const more = all.filter((p) => !shown.has(p.slug)).sort((a, b) => (shelfRank.get(a.slug) ?? Infinity) - (shelfRank.get(b.slug) ?? Infinity));
   const categories = getCategories();
 
   return (
-    <>
-      <HomeHero />
+    <ContentRegion region="page"><HomepageSections config={config}>
+      <HomeHero config={config} product={hero} />
 
       {/* 02 — Colour strip */}
       <section className="border-y border-line bg-warm-cream/50">
         <div className="container-px mx-auto flex max-w-[90rem] flex-wrap items-center justify-center gap-x-8 gap-y-2 py-6 sm:gap-x-10">
           <span className="eyebrow">Browse by colour</span>
-          <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[0.72rem] uppercase tracking-[0.22em] text-deep-brown/70 sm:gap-x-9">
+          <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-base uppercase tracking-[0.08em] text-deep-brown/90 sm:gap-x-9">
             {categories.map((c) => (
               <li key={c.slug}>
                 <Link href={`/catalog/${c.slug}`} className="hover:text-oxblood">
@@ -57,21 +60,21 @@ export default async function HomePage() {
       </section>
 
       {/* 03 — The current selection (asymmetric) */}
-      <section className="container-px mx-auto max-w-[90rem] py-20 lg:py-28">
-        <Reveal className="mb-12 flex items-end justify-between gap-6">
+      <section className="container-px mx-auto max-w-[90rem] py-12 lg:py-28">
+        <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="eyebrow">The current selection</p>
-            <h2 className="display-sm mt-3 text-oxblood">In the room now</h2>
+            <h2 className="display-sm mt-3 text-oxblood">{config.selectionTitle}</h2>
           </div>
           <Link
             href="/catalog"
-            className="link-underline hidden shrink-0 text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70 sm:inline-flex"
+            className="link-underline shrink-0 text-base uppercase tracking-[0.08em] text-deep-brown/90 sm:inline-flex"
           >
             View all
           </Link>
         </Reveal>
 
-        <div className="grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-12">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-12 lg:gap-x-8">
           {selection[0] && (
             <Reveal className="lg:col-span-5 lg:col-start-1">
               <SareeCard product={selection[0]} index={1} priority />
@@ -96,7 +99,7 @@ export default async function HomePage() {
       </section>
 
       {/* 04 — Colour story */}
-      <section className="bg-warm-cream/50 py-20 lg:py-28">
+      <section className="bg-warm-cream/50 py-12 lg:py-28">
         <div className="container-px mx-auto grid max-w-[90rem] items-center gap-10 lg:grid-cols-[minmax(0,40vw)_1fr] lg:gap-16">
           <Reveal settle className="overflow-hidden">
             <PortraitImage
@@ -111,11 +114,9 @@ export default async function HomePage() {
           <Reveal className="lg:pl-4">
             <p className="eyebrow">Colour</p>
             <h2 className="display mt-4 text-oxblood">
-              A spectrum,
-              <br />
-              without compromise.
+              {config.colourTitle}
             </h2>
-            <p className="mt-7 max-w-md text-[0.98rem] leading-relaxed text-muted-foreground">
+            <p className="mt-7 max-w-md text-base leading-relaxed text-muted-foreground">
               Many of our designs come in a full range of colours. If you have
               seen a piece you love in one shade, ask — the same design often
               exists in a dozen more, and we will tell you what is currently on
@@ -123,7 +124,7 @@ export default async function HomePage() {
             </p>
             <Link
               href="/catalog"
-              className="arrow-shift-host mt-8 inline-flex items-center gap-2 border-b border-oxblood pb-1 text-[0.8rem] font-medium uppercase tracking-[0.2em] text-oxblood"
+              className="arrow-shift-host mt-8 inline-flex items-center gap-2 border-b border-oxblood pb-1 text-base font-medium uppercase tracking-[0.2em] text-oxblood"
             >
               Browse by colour
               <span className="arrow-shift">→</span>
@@ -133,16 +134,14 @@ export default async function HomePage() {
       </section>
 
       {/* 05 — Detail */}
-      <section className="container-px mx-auto max-w-[90rem] py-20 lg:py-28">
+      <section className="container-px mx-auto max-w-[90rem] py-12 lg:py-28">
         <div className="grid items-center gap-10 lg:grid-cols-[1fr_minmax(0,42vw)] lg:gap-16">
           <Reveal className="order-2 lg:order-1 lg:pr-8">
             <p className="eyebrow">The details</p>
             <h2 className="display mt-4 text-oxblood">
-              Craft lives
-              <br />
-              in the detail.
+              {config.detailTitle}
             </h2>
-            <p className="mt-7 max-w-md text-[0.98rem] leading-relaxed text-muted-foreground">
+            <p className="mt-7 max-w-md text-base leading-relaxed text-muted-foreground">
               Metallic thread that catches the light, a border read one motif at a
               time, the weight of a real pallu. Every saree is photographed close,
               in the room it was chosen in — no retouching, no colour shifts.
@@ -163,44 +162,44 @@ export default async function HomePage() {
       </section>
 
       {/* 06 — Featured grid */}
-      <section className="bg-warm-cream/50 py-20 lg:py-28">
+      <section className="bg-warm-cream/50 py-12 lg:py-28">
         <div className="container-px mx-auto max-w-[90rem]">
-          <Reveal className="mb-12 flex items-end justify-between gap-6">
+          <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-6">
             <div>
               <p className="eyebrow">More from the room</p>
-              <h2 className="display-sm mt-3 text-oxblood">The rest of the shelf</h2>
+              <h2 className="display-sm mt-3 text-oxblood">{config.shelfTitle}</h2>
             </div>
             <Link
               href="/catalog"
-              className="link-underline hidden shrink-0 text-[0.8rem] uppercase tracking-[0.16em] text-deep-brown/70 sm:inline-flex"
+              className="link-underline shrink-0 text-base uppercase tracking-[0.08em] text-deep-brown/90 sm:inline-flex"
             >
               View all
             </Link>
           </Reveal>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 lg:gap-x-8">
-            {more.map((p, i) => (
-              <Reveal key={p.slug} delay={(i % 3) * 60}>
+          <div data-testid="shelf-grid" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
+            {more.map((p) => (
+              <div key={p.slug} className="min-w-0">
                 <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
-              </Reveal>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* 07 — Private sourcing */}
-      <section className="container-px mx-auto max-w-[90rem] py-20 lg:py-28">
+      <section className="container-px mx-auto max-w-[90rem] py-12 lg:py-28">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">Private sourcing</p>
           <h2 className="display-sm mt-4 text-oxblood">
-            Looking for something particular?
+            {config.sourcingTitle}
           </h2>
-          <p className="mt-6 text-[0.98rem] leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-base leading-relaxed text-muted-foreground">
             Tell us the weave, colour, occasion or budget you have in mind and we
             will help source options through our network of weaving partners.
           </p>
           <WhatsAppLink
             sourcePage="home"
-            className="arrow-shift-host mt-8 inline-flex items-center gap-2 bg-oxblood px-7 py-3.5 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft"
+            className="arrow-shift-host mt-8 inline-flex items-center gap-2 bg-oxblood px-7 py-3.5 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft"
           >
             Enquire on WhatsApp
             <span className="arrow-shift">→</span>
@@ -209,12 +208,12 @@ export default async function HomePage() {
       </section>
 
       {/* 08 — How ordering works */}
-      <section className="border-y border-line bg-warm-cream/50 py-20 lg:py-24">
+      <section className="border-y border-line bg-warm-cream/50 py-12 lg:py-24">
         <div className="container-px mx-auto max-w-[90rem]">
           <Reveal className="mb-3 text-center">
             <p className="eyebrow">Availability, personally confirmed</p>
-            <h2 className="display-sm mt-3 text-oxblood">How ordering works</h2>
-            <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            <h2 className="display-sm mt-3 text-oxblood">{config.orderingTitle}</h2>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
               Selected pieces are sourced on demand. No payment is taken online —
               availability is personally verified before purchase.
             </p>
@@ -223,10 +222,10 @@ export default async function HomePage() {
             {STEPS.map(([n, title, body]) => (
               <Reveal key={n}>
                 <p className="font-serif text-3xl text-antique-gold">{n}</p>
-                <h3 className="mt-3 text-[0.8rem] uppercase tracking-[0.2em] text-deep-brown">
+                <h3 className="mt-3 text-base uppercase tracking-[0.2em] text-deep-brown">
                   {title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 text-base leading-relaxed text-muted-foreground">
                   {body}
                 </p>
               </Reveal>
@@ -236,14 +235,14 @@ export default async function HomePage() {
       </section>
 
       {/* 09 — Ask on WhatsApp */}
-      <section className="container-px mx-auto max-w-[90rem] py-20 lg:py-28">
+      <section className="container-px mx-auto max-w-[90rem] py-12 lg:py-28">
         <Reveal className="grid items-end gap-8 border-t border-oxblood/30 pt-10 lg:grid-cols-[1fr_auto]">
           <div>
             <p className="eyebrow">Reselling or buying for yourself?</p>
             <h2 className="display-sm mt-3 text-oxblood">
-              Every price is on request — just ask
+              {config.contactTitle}
             </h2>
-            <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
               Whether you&apos;re shopping for yourself or sourcing for your
               customers, tell us what you&apos;re after on WhatsApp and we&apos;ll
               confirm price and availability directly.
@@ -251,7 +250,7 @@ export default async function HomePage() {
           </div>
           <WhatsAppLink
             sourcePage="home-reseller"
-            className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-[0.8rem] font-medium uppercase tracking-[0.2em] text-oxblood"
+            className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-base font-medium uppercase tracking-[0.2em] text-oxblood"
           >
             Ask on WhatsApp
             <span className="arrow-shift">→</span>
@@ -259,8 +258,8 @@ export default async function HomePage() {
         </Reveal>
 
         {/* Collections quicklinks */}
-        <div className="mt-16 grid gap-6 sm:grid-cols-3">
-          {COLLECTIONS.map((c) => (
+        <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {collections.map((c) => (
             <Reveal key={c.slug}>
               <Link href={`/collections/${c.slug}`} className="group block">
                 <div className="relative aspect-[4/5] overflow-hidden bg-warm-cream">
@@ -275,12 +274,12 @@ export default async function HomePage() {
                   />
                 </div>
                 <h3 className="mt-3 font-serif text-lg text-deep-brown">{c.title}</h3>
-                <p className="text-sm text-muted-foreground">{c.tagline}</p>
+                <p className="text-base text-muted-foreground">{c.tagline}</p>
               </Link>
             </Reveal>
           ))}
         </div>
       </section>
-    </>
+    </HomepageSections></ContentRegion>
   );
 }

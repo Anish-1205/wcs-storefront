@@ -1,3 +1,5 @@
+
+import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
 import { SITE, SOCIAL_LINKS } from "@/lib/site";
 import { BrandMark } from "@/components/layout/BrandMark";
@@ -10,12 +12,12 @@ export function Footer() {
   const categories = getCategories();
 
   return (
-    <footer className="mt-28 border-t border-line bg-warm-cream/60">
+    <ContentRegion region="Footer" global><footer className="mt-28 border-t border-line bg-warm-cream/60">
       <div className="container-px mx-auto max-w-[90rem] py-16">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
             <BrandMark variant="lockup" className="h-11 sm:h-12" />
-            <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-xs text-base leading-relaxed text-muted-foreground">
               A private digital saree showroom. Pieces sourced through trusted
               weaving partners, with availability personally confirmed before
               purchase.
@@ -24,7 +26,7 @@ export function Footer() {
               href={buildWhatsAppURL()}
               target="_blank"
               rel="noopener noreferrer"
-              className="link-underline mt-6 inline-flex text-[0.8rem] uppercase tracking-[0.16em] text-oxblood"
+              className="link-underline mt-6 inline-flex text-base uppercase tracking-[0.08em] text-oxblood"
             >
               Speak to Us ↗
             </a>
@@ -38,7 +40,7 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={s.label}
-                    className="text-deep-brown/60 transition-colors hover:text-oxblood"
+                    className="text-deep-brown/90 transition-colors hover:text-oxblood"
                   >
                     <SocialIcon label={s.label} />
                   </a>
@@ -49,7 +51,7 @@ export function Footer() {
 
           <div className="md:col-span-2">
             <h4 className="eyebrow">Catalog</h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-4 space-y-2.5 text-base">
               <li>
                 <Link href="/catalog" className="text-deep-brown/80 hover:text-oxblood">
                   All Sarees
@@ -70,7 +72,7 @@ export function Footer() {
 
           <div className="md:col-span-2">
             <h4 className="eyebrow">Collections</h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-4 space-y-2.5 text-base">
               {COLLECTIONS.map((c) => (
                 <li key={c.slug}>
                   <Link
@@ -91,7 +93,7 @@ export function Footer() {
 
           <div className="md:col-span-4">
             <h4 className="eyebrow">New arrivals on WhatsApp</h4>
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="mt-4 text-base text-muted-foreground">
               First look at new weaves and colourways.
             </p>
             <div className="mt-4">
@@ -100,7 +102,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-3 border-t border-line pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex flex-col gap-3 border-t border-line pt-6 text-base text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
             © {new Date().getFullYear()} {SITE.name}
             {SITE.gstin ? ` · GSTIN ${SITE.gstin}` : ""}
@@ -114,7 +116,7 @@ export function Footer() {
           </nav>
         </div>
       </div>
-    </footer>
+    </footer></ContentRegion>
   );
 }
 

@@ -140,6 +140,63 @@
 }
 
 @layer components {
+  /* Public showroom readability; admin density remains independently styled. */
+  .storefront {
+    font-size: 1.125rem;
+    line-height: 1.65;
+    --antique-gold: 32 42% 33%;
+  }
+  .storefront .eyebrow {
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0.1em;
+  }
+  .storefront :is(a, button, input, select, textarea) {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  .storefront :is(button, input, select, textarea) {
+    min-width: 44px;
+  }
+  .storefront :is(input, select, textarea, label) { font-size: 1rem; }
+  .storefront :is(p, li, dd, dt) { line-height: 1.65; }
+  .storefront :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid hsl(var(--oxblood));
+    outline-offset: 4px;
+  }
+  :where(.storefront nav a, .storefront footer a) {
+    display: inline-flex;
+    align-items: center;
+  }
+  .storefront .nav-icon { align-items: center; justify-content: center; }
+  .storefront .saree-card { overflow-wrap: anywhere; }
+  :root[data-theme="dark"] .storefront {
+    --antique-gold: 37 48% 70%;
+    --oxblood: 350 48% 70%;
+    --primary-foreground: 340 10% 6%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .storefront {
+      --antique-gold: 37 48% 70%;
+      --oxblood: 350 48% 70%;
+      --primary-foreground: 340 10% 6%;
+    }
+  }
+  @media (max-width: 767px) {
+    .storefront .reveal { opacity: 1; transform: none; }
+    .storefront footer { padding-bottom: 6rem; }
+  }
+  @media (max-width: 1023px) {
+    .storefront .product-stage > img,
+    .storefront .product-stage > div {
+      height: min(48svh, 24rem);
+      width: 100%;
+      object-fit: contain;
+    }
+    .storefront section > div > .settle > div {
+      max-height: 50svh;
+    }
+  }
   .container-px {
     @apply px-5 sm:px-8 lg:px-14;
   }

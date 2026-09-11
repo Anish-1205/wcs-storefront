@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useState } from "react";
 import { getSource } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
@@ -78,7 +80,7 @@ export function InquiryForm({
     return (
       <div className="rounded-sm border border-gold/30 bg-gold/10 p-6 text-center">
         <p className="font-serif text-lg text-burgundy">Thank you!</p>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-base text-muted-foreground">
           We&apos;ve received your enquiry and will reach out on WhatsApp shortly.
         </p>
       </div>
@@ -86,7 +88,7 @@ export function InquiryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <ContentRegion region="InquiryForm"><form onSubmit={handleSubmit} className="space-y-4">
       {heading && (
         <h3 className="font-serif text-xl text-burgundy">{heading}</h3>
       )}
@@ -144,18 +146,18 @@ export function InquiryForm({
 
       {error && (
         <div className="space-y-2 rounded-sm border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-base text-destructive">{error}</p>
           <WhatsAppLink
             sourcePage="inquiry-error"
             productName={productName ?? undefined}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-burgundy underline hover:text-burgundy/80"
+            className="inline-flex items-center gap-1.5 text-base font-medium text-burgundy underline hover:text-burgundy/80"
           >
             Chat on WhatsApp
           </WhatsAppLink>
         </div>
       )}
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-base leading-relaxed text-muted-foreground">
         By sending this enquiry, you agree that we may contact you about this
         request by phone or WhatsApp. See our{" "}
         <Link href="/privacy" className="underline hover:text-burgundy">
@@ -166,6 +168,6 @@ export function InquiryForm({
       <Button type="submit" disabled={status === "loading"} className="w-full sm:w-auto">
         {status === "loading" ? "Sending…" : "Send Enquiry"}
       </Button>
-    </form>
+    </form></ContentRegion>
   );
 }

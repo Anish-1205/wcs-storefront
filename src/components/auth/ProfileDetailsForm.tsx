@@ -1,5 +1,7 @@
 "use client";
 
+import { ContentRegion } from "@/components/content/ContentRegion";
+
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,9 +73,9 @@ export function ProfileDetailsForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-12">
+    <ContentRegion region="ProfileDetailsForm"><form onSubmit={handleSubmit} className="mt-12">
       <h2 className="eyebrow">Your details</h2>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-base text-muted-foreground">
         Saved to your account and used to pre-fill the enquiry form, so you
         don’t retype them each time. Optional — fill in only what you want
         remembered.
@@ -112,21 +114,21 @@ export function ProfileDetailsForm() {
         <button
           type="submit"
           disabled={status === "saving"}
-          className="flex h-11 items-center justify-center gap-2 bg-oxblood px-8 text-[0.78rem] font-medium uppercase tracking-[0.22em] text-primary-foreground hover:bg-oxblood-soft disabled:opacity-60"
+          className="flex h-11 items-center justify-center gap-2 bg-oxblood px-8 text-base font-medium uppercase tracking-[0.08em] text-primary-foreground hover:bg-oxblood-soft disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save details"}
         </button>
         {status === "saved" && (
-          <span className="text-sm text-antique-gold" role="status">
+          <span className="text-base text-antique-gold" role="status">
             Saved.
           </span>
         )}
         {status === "error" && (
-          <span className="text-sm text-destructive" role="alert">
+          <span className="text-base text-destructive" role="alert">
             {errorMsg ?? "Could not save — try again."}
           </span>
         )}
       </div>
-    </form>
+    </form></ContentRegion>
   );
 }
