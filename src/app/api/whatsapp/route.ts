@@ -8,6 +8,15 @@ import {
 } from "@/lib/webhook-security";
 import { deriveProductName, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
 import { slugify } from "@/lib/utils";
+import { getAiProvider } from "@/lib/ai";
+import {
+  enrichWhatsAppProduct,
+  resolveWhatsAppColorVariants,
+  type CategoryOption,
+  type CollectionOption,
+  type ColorVariantSplit,
+  type ProductEnrichment,
+} from "@/lib/whatsapp-enrichment";
 
 export const runtime = "nodejs";
 
@@ -439,6 +448,8 @@ async function insertProductWithUniqueSlug(
     fabric_type: string | null;
     base_price_min: number | null;
     base_price_max: number | null;
+    category_id: string | null;
+    highlights: string[];
   },
   slugBase: string,
   codeBase: string,
@@ -459,6 +470,8 @@ async function insertProductWithUniqueSlug(
         fabric_type: fields.fabric_type,
         base_price_min: fields.base_price_min,
         base_price_max: fields.base_price_max,
+        category_id: fields.category_id,
+        highlights: fields.highlights,
         stock_type: "supplier",
       })
       .select("id, name, slug, product_code")
@@ -474,10 +487,111 @@ async function insertProductWithUniqueSlug(
 }
 
 /**
+ * Creates the product's variant(s) + variant_images from the batch's queued
+ * media. Without a colour split (or when AI didn't produce a confident one)
+ * this is exactly the original single-"Default"-variant behaviour. With a
+ * split, it creates one product_variants row per colourway — best/default
+ * colour first — mirroring createProductFromGroup's import-pipeline
+ * behaviour: videos (never colour-clustered) and any photo the suggestion
+ * left unassigned join whichever colourway ends up first, rather than being
+ * dropped from the product.
+ */
+async function createVariantsForBatch(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+  pending: PendingMediaItem[],
+  colorSplit: ColorVariantSplit | null,
+): Promise<{ variantIds: string[]; primaryVariantId: string }> {
+  const imageItems = pending.filter((item) => item.kind === "image");
+  const videoItems = pending.filter((item) => item.kind === "video");
+  const distinctColors = colorSplit ? Array.from(new Set(colorSplit.colorByMediaId.values())) : [];
+
+  if (!colorSplit || distinctColors.length < 2) {
+    const { data: variant, error } = await supabase
+      .from("product_variants")
+      .insert({ product_id: productId, color: "Default", status: "available", display_order: 1 })
+      .select("id, product_id")
+      .single<CreatedVariantRow>();
+
+    if (error || !variant) {
+      throw new PipelineStageError("db_write", `Variant insert failed: ${error?.message ?? "unknown error"}`);
+    }
+
+    const firstImageIndex = pending.findIndex((item) => item.kind === "image");
+    const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
+    const imageRows = pending.map((item, index) => ({
+      variant_id: variant.id,
+      image_url: item.url,
+      media_type: item.kind,
+      is_primary: index === primaryIndex,
+      display_order: index + 1,
+    }));
+
+    const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
+    if (imagesError) {
+      throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
+    }
+
+    return { variantIds: [variant.id], primaryVariantId: variant.id };
+  }
+
+  const orderedColors = [
+    ...(colorSplit.bestColor && distinctColors.includes(colorSplit.bestColor) ? [colorSplit.bestColor] : []),
+    ...distinctColors.filter((c) => c !== colorSplit.bestColor),
+  ];
+  const firstColor = orderedColors[0];
+  const variantIds: string[] = [];
+
+  for (let groupIndex = 0; groupIndex < orderedColors.length; groupIndex++) {
+    const color = orderedColors[groupIndex];
+    const groupImages = imageItems.filter((item) => {
+      const assigned = colorSplit.colorByMediaId.get(item.media_id);
+      return assigned ? assigned === color : color === firstColor;
+    });
+    const groupVideos = color === firstColor ? videoItems : [];
+    const groupItems = [...groupImages, ...groupVideos];
+    if (groupItems.length === 0) continue;
+
+    const { data: variant, error } = await supabase
+      .from("product_variants")
+      .insert({ product_id: productId, color, status: "available", display_order: groupIndex })
+      .select("id, product_id")
+      .single<CreatedVariantRow>();
+
+    if (error || !variant) {
+      throw new PipelineStageError("db_write", `Variant insert failed: ${error?.message ?? "unknown error"}`);
+    }
+
+    const imageRows = groupItems.map((item, index) => ({
+      variant_id: variant.id,
+      image_url: item.url,
+      media_type: item.kind,
+      is_primary: index === 0,
+      display_order: index + 1,
+    }));
+
+    const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
+    if (imagesError) {
+      throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
+    }
+
+    variantIds.push(variant.id);
+  }
+
+  if (variantIds.length === 0) {
+    throw new PipelineStageError("db_write", "Colour-variant split produced no groups with any media");
+  }
+
+  return { variantIds, primaryVariantId: variantIds[0] };
+}
+
+/**
  * The trigger step of the new flow: a text-only (or legacy captioned-image)
  * message describing the collection + price. Collects everything queued in
- * the sender's pending batch, creates one product + variant with all of it
- * attached as variant_images, and clears the batch.
+ * the sender's pending batch, auto-fills category/highlights/fabric/
+ * collection tags and colour variants when AI is configured (see
+ * src/lib/whatsapp-enrichment.ts), creates one product with all of it
+ * attached, and clears the batch.
  */
 async function finalizeBatch(params: {
   supabase: ReturnType<typeof createAdminClient>;
@@ -514,55 +628,94 @@ async function finalizeBatch(params: {
   const name = deriveProductName(description);
   const slugBase = slugify(name);
   const codeBase = generateProductSKU(name);
+  const imageItems = pending.filter((item) => item.kind === "image");
+
+  const aiProvider = getAiProvider();
+  let enrichment: ProductEnrichment = {
+    categoryId: null,
+    categoryName: null,
+    highlights: [],
+    fabricType: fabric,
+    collectionIds: [],
+    collectionNames: [],
+  };
+  let colorSplit: ColorVariantSplit | null = null;
+
+  if (aiProvider.isConfigured()) {
+    const [{ data: categoriesData, error: categoriesError }, { data: collectionsData, error: collectionsError }] =
+      await Promise.all([
+        supabase.from("categories").select("id, slug, name"),
+        supabase.from("collections").select("id, name, description"),
+      ]);
+
+    if (categoriesError) {
+      console.warn("whatsapp webhook: categories lookup failed, skipping auto-category", categoriesError.message);
+    }
+    if (collectionsError) {
+      console.warn("whatsapp webhook: collections lookup failed, skipping auto-tagging", collectionsError.message);
+    }
+
+    const categories = (categoriesData ?? []) as CategoryOption[];
+    const collections = (collectionsData ?? []) as CollectionOption[];
+    const imageUrls = imageItems.map((item) => item.url);
+
+    [enrichment, colorSplit] = await Promise.all([
+      enrichWhatsAppProduct({ aiProvider, description, fabricFromCaption: fabric, imageUrls, categories, collections }),
+      resolveWhatsAppColorVariants({
+        aiProvider,
+        description,
+        images: imageItems.map((item) => ({ media_id: item.media_id, url: item.url })),
+      }),
+    ]);
+  }
 
   const createdProduct = await insertProductWithUniqueSlug(
     supabase,
-    { name, description, fabric_type: fabric, base_price_min: price, base_price_max: price },
+    {
+      name,
+      description,
+      fabric_type: enrichment.fabricType,
+      base_price_min: price,
+      base_price_max: price,
+      category_id: enrichment.categoryId,
+      highlights: enrichment.highlights,
+    },
     slugBase,
     codeBase,
   );
 
-  const { data: createdVariant, error: variantError } = await supabase
-    .from("product_variants")
-    .insert({
+  const { variantIds, primaryVariantId } = await createVariantsForBatch(
+    supabase,
+    createdProduct.id,
+    pending,
+    colorSplit,
+  );
+
+  if (enrichment.collectionIds.length > 0) {
+    const collectionRows = enrichment.collectionIds.map((collection_id, index) => ({
+      collection_id,
       product_id: createdProduct.id,
-      color: "Default",
-      status: "available",
-      display_order: 1,
-    })
-    .select("id, product_id")
-    .single<CreatedVariantRow>();
-
-  if (variantError || !createdVariant) {
-    throw new PipelineStageError("db_write", `Variant insert failed: ${variantError?.message ?? "unknown error"}`);
-  }
-
-  const firstImageIndex = pending.findIndex((item) => item.kind === "image");
-  const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
-
-  const imageRows = pending.map((item, index) => ({
-    variant_id: createdVariant.id,
-    image_url: item.url,
-    media_type: item.kind,
-    is_primary: index === primaryIndex,
-    display_order: index + 1,
-  }));
-
-  const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
-  if (imagesError) {
-    throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
+      display_order: index,
+    }));
+    const { error: collectionsInsertError } = await supabase.from("collection_products").insert(collectionRows);
+    if (collectionsInsertError) {
+      throw new PipelineStageError("db_write", `Collection tagging failed: ${collectionsInsertError.message}`);
+    }
   }
 
   const { error: sessionResetError } = await supabase.from("admin_upload_sessions").upsert({
     admin_phone: senderPhone,
     product_id: createdProduct.id,
-    variant_id: createdVariant.id,
+    variant_id: primaryVariantId,
     pending_media: [],
     updated_at: new Date().toISOString(),
   });
   if (sessionResetError) {
     throw new PipelineStageError("db_write", `Session reset failed: ${sessionResetError.message}`);
   }
+
+  const firstImageIndex = pending.findIndex((item) => item.kind === "image");
+  const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
 
   await persistIngestEvent({
     supabase,
@@ -574,12 +727,12 @@ async function finalizeBatch(params: {
     imageUrl: pending[primaryIndex].url,
     rawPayload,
     productId: createdProduct.id,
-    variantId: createdVariant.id,
+    variantId: primaryVariantId,
     mediaId: pending[primaryIndex].media_id,
   });
 
-  const photoCount = pending.filter((item) => item.kind === "image").length;
-  const videoCount = pending.filter((item) => item.kind === "video").length;
+  const photoCount = imageItems.length;
+  const videoCount = pending.length - imageItems.length;
   const mediaSummary = [
     photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : null,
     videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null,
@@ -587,13 +740,23 @@ async function finalizeBatch(params: {
     .filter(Boolean)
     .join(" and ");
 
-  const missingParts = [price == null && "price", !fabric && "fabric"].filter(Boolean).join(" and ");
+  const colourNote = variantIds.length > 1 ? ` across ${variantIds.length} colourways` : "";
+  const tagNote = [
+    enrichment.categoryName ? `Category: ${enrichment.categoryName}.` : null,
+    enrichment.collectionNames.length ? `Collections: ${enrichment.collectionNames.join(", ")}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const missingParts = [price == null && "price", !enrichment.fabricType && "fabric"]
+    .filter(Boolean)
+    .join(" and ");
   const reminder = missingParts ? ` No ${missingParts} yet — add it in the admin panel when you get a chance.` : "";
 
   await replyBestEffort(
     senderPhone,
-    `Created "${createdProduct.name}" (${createdProduct.product_code}) with ${mediaSummary}` +
-      `${price != null ? ` — ₹${price}` : ""}.${reminder} Send more photos/videos then a new description to start another listing.`,
+    `Created "${createdProduct.name}" (${createdProduct.product_code}) with ${mediaSummary}${colourNote}` +
+      `${price != null ? ` — ₹${price}` : ""}.${tagNote ? ` ${tagNote}` : ""}${reminder} Send more photos/videos then a new description to start another listing.`,
     "after finalize",
   );
 }

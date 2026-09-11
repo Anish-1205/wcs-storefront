@@ -52,12 +52,22 @@ straight from your phone — no need to open the admin panel:
    video you sent attached) and you'll get a WhatsApp reply confirming it,
    or explaining what went wrong if something failed — you always get a
    reply either way.
-4. Open the admin panel to add the category, fabric, collections, and
-   publish it when ready.
+4. Open the admin panel to check it over and publish it when ready.
 
-Fabric type isn't picked up from the WhatsApp message — add it in the admin
-panel. If you don't mention a price, the listing is created without one
-("Price on request") and you can add it later.
+**Category, fabric, highlights and collection tags are filled in
+automatically** from your description and photos, whenever confident — the
+WhatsApp reply tells you what got set (e.g. *"Category: Banarasi. Collections:
+Bridal Sarees."*). If a photo set clearly shows more than one colourway, it's
+split into separate colour variants on the product automatically too (the
+reply says *"across N colourways"* when this happens). Anything not
+confident enough is simply left blank for you to fill in — same as fabric or
+price, add it in the admin panel. This uses the same AI as the bulk import
+tool (see [import-pipeline.md](import-pipeline.md)); if the AI key isn't
+configured, everything still works exactly as before, just without the
+auto-fill.
+
+If you don't mention a price, the listing is created without one ("Price on
+request") and you can add it later.
 
 > **Photo tip:** Upload tall (portrait) photos, ideally **1000×1500 pixels** or
 > larger. This looks best on the site and on Pinterest.

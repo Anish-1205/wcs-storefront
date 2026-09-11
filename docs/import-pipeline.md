@@ -103,7 +103,15 @@ run unless the classification is `confirmed`.
 ## AI provider
 
 `src/lib/ai/` is a small provider interface (`suggestProductMetadata`,
-`classifyCollection`) with two implementations:
+`classifyCollection`, `suggestColorVariants`) shared by two callers: this
+import pipeline, and the WhatsApp product-ingestion flow
+(`src/lib/whatsapp-enrichment.ts`, see `docs/admin-guide.md`'s "Adding a
+saree via WhatsApp" section) — which reuses the exact same confidence bar
+(`SUGGESTED_CONFIDENCE_THRESHOLD`) and never-fabricate-facts guardrails to
+auto-fill category/highlights/fabric/collections and split colour variants,
+just applied directly instead of landing as an admin-confirmable draft (a
+deliberate, narrower exception — see the doc comment on
+`enrichWhatsAppProduct`). Two implementations:
 
 - `null-provider.ts` — always returns nothing. This is what runs whenever no
   vendor key is configured, which is the case in local/dev environments by
@@ -128,9 +136,11 @@ run unless the classification is `confirmed`.
   becomes the product description) and maps the four fields onto the draft
   product.
 
-**Not exercised against the live API in this environment** — no
-`ANTHROPIC_API_KEY` is configured here, so `getAiProvider()` always returns
-the null provider in practice. The Anthropic implementation is covered by
+**Not exercised against the live API in local dev/CI** — no
+`ANTHROPIC_API_KEY` is set in this repo checkout, so `getAiProvider()` always
+returns the null provider here. Production has the key configured, so both
+callers (this pipeline and the WhatsApp flow) do run against the real API
+there. The Anthropic implementation is covered by
 unit tests against a mocked `fetch` (`src/__tests__/ai-provider.test.ts`),
 not a real call. Wire a real key and try an import before trusting AI
 suggestions in production.
