@@ -48,6 +48,34 @@ describe("detectVariantColor", () => {
     expect(result).toBeNull();
   });
 
+  it("filters out video URLs before calling the provider (this is what previously caused every request to fail)", async () => {
+    mockAssertAdmin.mockResolvedValue({ user: {}, admin: {} });
+    const suggestColorVariants = vi.fn().mockResolvedValue([
+      { color: "wine", color_hex: "#7b2b3a", asset_client_upload_ids: ["0"], confidence: 0.9, is_best_display: true },
+    ]);
+    mockGetAiProvider.mockReturnValue(fakeProvider({ suggestColorVariants }));
+
+    const result = await detectVariantColor([
+      "https://res.cloudinary.com/demo/image/upload/a.jpg",
+      "https://res.cloudinary.com/demo/video/upload/b.mp4",
+    ]);
+
+    expect(result).toEqual({ color: "wine", color_hex: "#7b2b3a" });
+    const call = suggestColorVariants.mock.calls[0][0];
+    expect(call.images).toHaveLength(1);
+    expect(call.images[0].url).toContain("a.jpg");
+  });
+
+  it("returns null without calling the provider when every URL is a video", async () => {
+    mockAssertAdmin.mockResolvedValue({ user: {}, admin: {} });
+    const provider = fakeProvider();
+    mockGetAiProvider.mockReturnValue(provider);
+
+    const result = await detectVariantColor(["https://res.cloudinary.com/demo/video/upload/b.mp4"]);
+    expect(result).toBeNull();
+    expect(provider.suggestColorVariants).not.toHaveBeenCalled();
+  });
+
   it("returns the single cluster's colour when everything groups together", async () => {
     mockAssertAdmin.mockResolvedValue({ user: {}, admin: {} });
     mockGetAiProvider.mockReturnValue(

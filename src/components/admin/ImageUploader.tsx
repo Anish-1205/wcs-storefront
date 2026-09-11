@@ -2,19 +2,21 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { cld } from "@/lib/cloudinary";
+import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
+import { isVideoMedia, reindexImages, type UploadedImage } from "@/lib/variant-images";
 
-export interface UploadedImage {
-  image_url: string;
-  is_primary: boolean;
-  display_order: number;
-}
+export type { UploadedImage };
 
 // Custom MIME type for the drag payload — scoped so a stray drag from
 // elsewhere on the page (or another browser tab/app) is never mistaken for
 // a cross-variant image move.
 const DRAG_MIME = "application/x-wcs-variant-image";
+
+interface DragPayload {
+  dragId: string;
+  imageIndex: number;
+}
 
 interface Props {
   images: UploadedImage[];
@@ -24,8 +26,22 @@ interface Props {
   dragId: string;
   /** Called when an image dragged out of a DIFFERENT variant's grid is
    * dropped on this one — the parent (VariantManager) owns moving it
-   * between variants, since that touches two variants' image arrays. */
-  onExternalImageDrop: (fromDragId: string, imageIndex: number) => void;
+   * between variants, since that touches two variants' image arrays.
+   * `atIndex` is set when dropped onto a specific thumbnail (insert there)
+   * and omitted when dropped on open grid space (append to the end). */
+  onExternalImageDrop: (fromDragId: string, imageIndex: number, atIndex?: number) => void;
+}
+
+function readDragPayload(e: React.DragEvent): DragPayload | null {
+  const raw = e.dataTransfer.getData(DRAG_MIME);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.dragId === "string" && typeof parsed?.imageIndex === "number") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -34,9 +50,12 @@ interface Props {
  * 2. Uploads the file directly to Cloudinary from the browser.
  * 3. Stores the returned secure_url. The API secret never reaches the client.
  *
- * Also doubles as a drag source/drop target: images are draggable, and
- * dropping one from another variant's grid reassigns it here (used to
- * manually correct AI colour-variant grouping).
+ * Also doubles as a drag source/drop target: images are draggable — dropping
+ * one on a thumbnail elsewhere IN THE SAME grid reorders it there (purely
+ * local, no colour re-detection needed since the photo set doesn't change);
+ * dropping one from ANOTHER variant's grid reassigns it here (used to
+ * manually correct AI colour-variant grouping — the parent re-detects each
+ * affected variant's colour afterwards).
  */
 export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }: Props) {
   const [uploading, setUploading] = useState(false);
@@ -70,6 +89,7 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
           image_url: data.secure_url,
           is_primary: false,
           display_order: 0,
+          media_type: "image",
         });
       }
 
@@ -125,18 +145,39 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
     setDragOver(false);
   }
 
-  function handleDrop(e: React.DragEvent) {
+  /** Dropped on open grid space (not a specific thumbnail) — reorder is a
+   * no-op here (nothing to reorder against), a cross-variant move appends
+   * to the end. */
+  function handleContainerDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    const raw = e.dataTransfer.getData(DRAG_MIME);
-    if (!raw) return;
-    try {
-      const { dragId: fromDragId, imageIndex } = JSON.parse(raw) as { dragId: string; imageIndex: number };
-      if (fromDragId === dragId) return; // dropped back into its own grid — no-op
-      onExternalImageDrop(fromDragId, imageIndex);
-    } catch {
-      // Malformed payload (not ours) — ignore.
+    const payload = readDragPayload(e);
+    if (!payload) return;
+    if (payload.dragId === dragId) return;
+    onExternalImageDrop(payload.dragId, payload.imageIndex);
+  }
+
+  /** Dropped directly on a thumbnail — reorders within this grid if the
+   * drag started here, otherwise asks the parent to insert the moved image
+   * at this position instead of just appending it. */
+  function handleThumbnailDrop(e: React.DragEvent, targetIndex: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const payload = readDragPayload(e);
+    if (!payload) return;
+
+    if (payload.dragId === dragId) {
+      if (payload.imageIndex === targetIndex) return;
+      const next = [...images];
+      const [moved] = next.splice(payload.imageIndex, 1);
+      const insertAt = payload.imageIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      next.splice(insertAt, 0, moved);
+      onChange(reindexImages(next));
+      return;
     }
+
+    onExternalImageDrop(payload.dragId, payload.imageIndex, targetIndex);
   }
 
   return (
@@ -145,43 +186,54 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDrop={handleContainerDrop}
         className={cn(
           "flex flex-wrap gap-3 rounded-sm p-1 transition-colors",
           dragOver && "bg-gold/10 ring-2 ring-gold ring-offset-1",
         )}
       >
-        {images.map((img, i) => (
-          <div
-            key={i}
-            draggable
-            onDragStart={(e) => handleDragStart(e, i)}
-            className="relative h-24 w-20 cursor-grab overflow-hidden rounded-sm border border-border active:cursor-grabbing"
-          >
-            <Image
-              src={cld(img.image_url, "thumbnail")}
-              alt="variant"
-              fill
-              sizes="80px"
-              className="pointer-events-none object-cover"
-            />
-            {img.is_primary && (
-              <span className="absolute left-1 top-1 rounded-sm bg-gold px-1 text-[9px] font-medium text-white">
-                Primary
-              </span>
-            )}
-            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1 py-0.5 text-[10px] text-white">
-              {!img.is_primary && (
-                <button type="button" onClick={() => setPrimary(i)}>
-                  Set primary
-                </button>
+        {images.map((img, i) => {
+          const isVideo = isVideoMedia(img);
+          return (
+            <div
+              key={i}
+              draggable
+              onDragStart={(e) => handleDragStart(e, i)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleThumbnailDrop(e, i)}
+              title={isVideo ? "Video (from WhatsApp)" : undefined}
+              className="relative h-24 w-20 cursor-grab overflow-hidden rounded-sm border border-border active:cursor-grabbing"
+            >
+              <Image
+                src={isVideo ? cldVideoThumbnail(img.image_url) : cld(img.image_url, "thumbnail")}
+                alt={isVideo ? "variant video" : "variant"}
+                fill
+                sizes="80px"
+                className="pointer-events-none object-cover"
+              />
+              {isVideo && (
+                <span className="absolute right-1 top-1 rounded-sm bg-black/60 px-1 text-[9px] font-medium text-white">
+                  Video
+                </span>
               )}
-              <button type="button" onClick={() => remove(i)} className="ml-auto">
-                ✕
-              </button>
+              {img.is_primary && (
+                <span className="absolute left-1 top-1 rounded-sm bg-gold px-1 text-[9px] font-medium text-white">
+                  Primary
+                </span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1 py-0.5 text-[10px] text-white">
+                {!img.is_primary && (
+                  <button type="button" onClick={() => setPrimary(i)}>
+                    Set primary
+                  </button>
+                )}
+                <button type="button" onClick={() => remove(i)} className="ml-auto">
+                  ✕
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {images.length === 0 && (
           <div className="flex h-24 w-20 items-center justify-center rounded-sm border border-dashed border-border text-center text-[10px] leading-tight text-muted-foreground">

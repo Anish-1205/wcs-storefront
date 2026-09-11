@@ -65,6 +65,10 @@ export const variantImageSchema = z.object({
   image_url: imageRefSchema,
   is_primary: z.boolean(),
   display_order: z.number().int().nonnegative(),
+  // Defaults to "image" for the vast majority of rows (admin-uploaded
+  // photos); "video" only ever comes from the WhatsApp ingestion flow,
+  // which is the only path that attaches video to a variant.
+  media_type: z.enum(["image", "video"]).default("image"),
 });
 
 export const variantInputSchema = z.object({

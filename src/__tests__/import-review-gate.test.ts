@@ -140,7 +140,7 @@ describe("import review gate — publishing is blocked until reviewed", () => {
           price_min: null,
           price_max: null,
           display_order: 0,
-          images: [{ image_url: "https://res.cloudinary.com/demo/image/upload/sample.jpg", is_primary: true, display_order: 0 }],
+          images: [{ image_url: "https://res.cloudinary.com/demo/image/upload/sample.jpg", is_primary: true, display_order: 0, media_type: "image" }],
         },
       ],
       collection_ids: [],

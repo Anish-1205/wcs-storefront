@@ -8,6 +8,14 @@ export interface DetectedVariantColor {
   color_hex: string | null;
 }
 
+// Defensive: colour detection is a photo-only concept. A video URL sent to
+// the vision API as an "image" is exactly what produced this pipeline's
+// worst bug so far (every request rejected with a 400, or a validation
+// failure on the response) — the caller (VariantManager) already filters
+// these out before calling this action, but this is a cheap second guard
+// against any future caller forgetting to.
+const VIDEO_URL_RE = /\/video\/upload\/|\.(mp4|mov|webm|m4v)(\?|$)/i;
+
 /**
  * Detects the majority/dominant colour across a variant's current photos —
  * used by the admin product form's manual colour-variant correction
@@ -25,7 +33,8 @@ export interface DetectedVariantColor {
 export async function detectVariantColor(imageUrls: string[]): Promise<DetectedVariantColor | null> {
   await assertAdmin();
 
-  if (imageUrls.length === 0) return null;
+  const photoUrls = imageUrls.filter((url) => !VIDEO_URL_RE.test(url));
+  if (photoUrls.length === 0) return null;
 
   const aiProvider = getAiProvider();
   if (!aiProvider.isConfigured()) return null;
@@ -33,7 +42,7 @@ export async function detectVariantColor(imageUrls: string[]): Promise<DetectedV
   const suggestions = await aiProvider
     .suggestColorVariants({
       adminDescription: null,
-      images: imageUrls.map((url, index) => ({ client_upload_id: String(index), url })),
+      images: photoUrls.map((url, index) => ({ client_upload_id: String(index), url })),
     })
     .catch((error) => {
       console.warn("detectVariantColor: AI provider failed", error instanceof Error ? error.message : error);

@@ -69,6 +69,7 @@ export default async function EditProductPage(
             image_url: img.image_url,
             is_primary: img.is_primary,
             display_order: img.display_order,
+            media_type: img.media_type ?? "image",
           })),
       })),
     collection_ids: (joins ?? []).map(

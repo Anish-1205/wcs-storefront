@@ -594,6 +594,7 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
           image_url: img.image_url,
           is_primary: i === 0 && !v.images.some((x) => x.is_primary) ? true : isPrimary,
           display_order: img.display_order,
+          media_type: img.media_type,
         };
       });
       if (!rows.some((r) => r.is_primary) && rows[0]) rows[0].is_primary = true;
@@ -635,6 +636,7 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
           image_url: img.image_url,
           is_primary: i === 0 && !v.images.some((x) => x.is_primary) ? true : isPrimary,
           display_order: img.display_order,
+          media_type: img.media_type,
         };
       });
       if (!rows.some((r) => r.is_primary) && rows[0]) rows[0].is_primary = true;
@@ -727,6 +729,7 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
         image_url: image.image_url,
         is_primary: image.is_primary,
         display_order: image.display_order,
+        media_type: image.media_type ?? "image",
       }));
       const { error: imageError } = await admin.from("variant_images").insert(imageRows);
       if (imageError) throw new Error(imageError.message);
