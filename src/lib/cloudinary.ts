@@ -51,13 +51,14 @@ export function cldVideoThumbnail(url: string | null | undefined): string {
  * the admin session is verified. The API secret is used here only for SHA-1
  * signing and never leaves the server.
  *
- * `resourceType` selects Cloudinary's upload endpoint (image vs video) — it
- * is a URL path segment, not a signed parameter, so passing it never changes
- * the signature and is safe to omit for existing image-only callers.
+ * `resourceType` selects Cloudinary's upload endpoint (image vs video vs
+ * Cloudinary's own auto-detect-per-file "auto") — it is a URL path segment,
+ * not a signed parameter, so passing it never changes the signature and is
+ * safe to omit for existing image-only callers.
  */
 export async function signUpload(
   params: Record<string, string | number>,
-  resourceType: "image" | "video" = "image",
+  resourceType: "image" | "video" | "auto" = "image",
 ) {
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
   const apiKey = process.env.CLOUDINARY_API_KEY;

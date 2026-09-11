@@ -83,13 +83,16 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
         fd.append("folder", sig.folder);
 
         const res = await fetch(sig.uploadUrl, { method: "POST", body: fd });
-        if (!res.ok) throw new Error("Cloudinary upload failed");
+        if (!res.ok) throw new Error(`Cloudinary upload failed for ${file.name}`);
         const data = await res.json();
         uploaded.push({
           image_url: data.secure_url,
           is_primary: false,
           display_order: 0,
-          media_type: "image",
+          // The signature requests Cloudinary's "auto" endpoint, which
+          // detects image vs video per file — trust its own classification
+          // over the browser-supplied file.type.
+          media_type: data.resource_type === "video" ? "video" : "image",
         });
       }
 
@@ -250,13 +253,13 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
         >
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
             disabled={uploading}
           />
-          {uploading ? "Uploading…" : "Upload images"}
+          {uploading ? "Uploading…" : "Upload images or video"}
         </label>
         {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
       </div>

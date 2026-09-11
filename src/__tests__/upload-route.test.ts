@@ -80,5 +80,10 @@ describe("upload route auth", () => {
       folder: "sarees",
     });
     expect(mockSignUpload).toHaveBeenCalledTimes(1);
+    // "auto" lets Cloudinary classify image vs video per file, so the admin
+    // panel's variant image uploader can accept video too (previously
+    // hardcoded to "image", which rejected any video file with a Cloudinary
+    // upload error).
+    expect(mockSignUpload).toHaveBeenCalledWith(expect.objectContaining({ folder: "sarees" }), "auto");
   });
 });

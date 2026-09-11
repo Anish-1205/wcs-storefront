@@ -41,10 +41,14 @@ export async function POST(req: Request) {
     const timestamp = Math.floor(new Date().getTime() / 1000);
     const folder = process.env.CLOUDINARY_UPLOAD_FOLDER || "sarees";
 
-    const { signature, apiKey, cloudName, uploadUrl } = await signUpload({
-      timestamp,
-      folder,
-    });
+    // "auto" lets Cloudinary detect image vs video per file server-side, so
+    // one signed request covers a batch of either (or both) — the admin
+    // panel's variant image uploader now accepts video too, matching what
+    // the WhatsApp ingestion path already stores as variant_images.media_type.
+    const { signature, apiKey, cloudName, uploadUrl } = await signUpload(
+      { timestamp, folder },
+      "auto",
+    );
 
     return NextResponse.json({
       signature,
