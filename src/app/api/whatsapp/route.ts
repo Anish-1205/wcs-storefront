@@ -248,27 +248,34 @@ async function uploadToCloudinary(params: {
 async function sendWhatsAppReply(to: string, text: string): Promise<void> {
   const accessToken = getWhatsAppToken();
   const phoneNumberId = getWhatsAppPhoneNumberId();
-
-  const response = await fetch(
-    `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to,
-        type: "text",
-        text: {
-          preview_url: false,
-          body: text,
-        },
-      }),
+  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const requestBody = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to,
+    type: "text",
+    text: {
+      preview_url: false,
+      body: text,
     },
+  };
+
+  // Never log accessToken. phoneNumberId/to are not secrets (they identify
+  // WhatsApp accounts/phone numbers, not credentials) — logged in full so
+  // they can be diff'd against Meta's dashboard/App Setup values.
+  console.log(
+    `whatsapp webhook: sending reply — url=${url} to="${to}" (len=${to.length}) ` +
+      `body=${JSON.stringify(requestBody)}`,
   );
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
 
   const responseText = await response.text();
 
