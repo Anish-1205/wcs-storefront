@@ -6,11 +6,14 @@ import {
   MAX_WEBHOOK_BYTES,
   verifyWhatsAppSignature,
 } from "@/lib/webhook-security";
-import { NEW_PRODUCT_CAPTION_HINT, parseProductCaption } from "@/lib/whatsapp-caption";
+import { deriveProductName, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
+import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
 const GRAPH_API_VERSION = "v20.0";
+
+type MediaKind = "image" | "video";
 
 type WhatsAppProfile = {
   name?: string;
@@ -21,7 +24,7 @@ type WhatsAppContact = {
   wa_id?: string;
 };
 
-type WhatsAppImage = {
+type WhatsAppMedia = {
   id?: string;
   mime_type?: string;
   caption?: string;
@@ -37,7 +40,8 @@ type WhatsAppMessage = {
   id?: string;
   timestamp?: string;
   type?: string;
-  image?: WhatsAppImage;
+  image?: WhatsAppMedia;
+  video?: WhatsAppMedia;
   text?: WhatsAppText;
 };
 
@@ -79,8 +83,20 @@ type CloudinaryUploadResponse = {
 };
 
 type AdminUploadSessionRow = {
-  product_id: string;
-  variant_id: string;
+  product_id: string | null;
+  variant_id: string | null;
+};
+
+type PendingMediaItem = {
+  media_id: string;
+  message_id: string;
+  url: string;
+  kind: MediaKind;
+  received_at: string;
+};
+
+type PendingMediaSessionRow = {
+  pending_media: PendingMediaItem[] | null;
 };
 
 type ProductRow = {
@@ -100,6 +116,34 @@ type CreatedVariantRow = {
   id: string;
   product_id: string;
 };
+
+/**
+ * Tags a thrown error with which pipeline stage failed, so the outer catch
+ * can reply on WhatsApp with a plain-language message instead of a raw
+ * error — every failure in this route must reach the sender somehow, never
+ * just a server-side log.
+ */
+class PipelineStageError extends Error {
+  constructor(
+    public readonly stage: keyof typeof FRIENDLY_MESSAGES,
+    message: string,
+  ) {
+    super(message);
+    this.name = "PipelineStageError";
+  }
+}
+
+const FRIENDLY_MESSAGES = {
+  media_download:
+    "We couldn't download a photo/video you sent from WhatsApp. Please resend it.",
+  media_upload:
+    "We couldn't save a photo/video you sent. Please resend it — if it keeps failing, try a smaller file.",
+  db_write:
+    "We hit a problem saving your product. Nothing was lost — please try again, or contact support if it keeps happening.",
+  session_lookup:
+    "Something went wrong looking up your upload session. Please try again.",
+  unknown: "Something went wrong on our end. Please try again, or contact support if it keeps happening.",
+} as const;
 
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -125,18 +169,23 @@ function getWhatsAppVerifyToken(): string {
   return requireEnv("WHATSAPP_VERIFY_TOKEN");
 }
 
-function normalizeCaption(message: WhatsAppMessage): string {
-  return (message.image?.caption ?? message.text?.body ?? "").trim();
+/** The media kind of an incoming message, or null when it carries no media. */
+function messageMediaKind(message: WhatsAppMessage): MediaKind | null {
+  if (message.image?.id) return "image";
+  if (message.video?.id) return "video";
+  return null;
 }
 
-function generateProductSKU(description: string): string {
-  const cleaned = description
-    .toUpperCase()
-    .replace(/[^A-Z0-9\s]/g, " ")
-    .trim()
-    .replace(/\s+/g, "-");
+function messageMediaId(message: WhatsAppMessage): string | undefined {
+  return (message.image?.id ?? message.video?.id)?.trim();
+}
 
-  return cleaned || `SAREE-${Date.now()}`;
+function normalizeCaption(message: WhatsAppMessage): string {
+  return (message.image?.caption ?? message.video?.caption ?? message.text?.body ?? "").trim();
+}
+
+function isUniqueViolation(error: { code?: string } | null): boolean {
+  return error?.code === "23505";
 }
 
 function parseMessageTimestamp(timestamp?: string): string {
@@ -158,38 +207,62 @@ function extractFirstMessage(payload: WhatsAppWebhookPayload): {
   return { message, contactName, rawEvent: changeValue };
 }
 
-async function downloadImageFromMeta(mediaId: string): Promise<{ buffer: Buffer; mimeType: string }> {
+async function downloadMediaFromMeta(
+  mediaId: string,
+  kind: MediaKind,
+): Promise<{ buffer: Buffer; mimeType: string }> {
   const accessToken = getWhatsAppToken();
 
-  const metadataResponse = await fetch(
-    `https://graph.facebook.com/${GRAPH_API_VERSION}/${mediaId}` +
-      "?fields=url,mime_type,sha256,file_size",
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
+  let metadataResponse: Response;
+  try {
+    metadataResponse = await fetch(
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${mediaId}` +
+        "?fields=url,mime_type,sha256,file_size",
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+  } catch (error) {
+    throw new PipelineStageError(
+      "media_download",
+      `Meta media lookup errored: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 
   if (!metadataResponse.ok) {
     const errorText = await metadataResponse.text();
-    throw new Error(`Meta media lookup failed (${metadataResponse.status}): ${errorText}`);
+    throw new PipelineStageError(
+      "media_download",
+      `Meta media lookup failed (${metadataResponse.status}): ${errorText}`,
+    );
   }
 
   const media = (await metadataResponse.json()) as MetaMediaResponse;
   if (!media.url) {
-    throw new Error("Meta did not return a downloadable media URL");
+    throw new PipelineStageError("media_download", "Meta did not return a downloadable media URL");
   }
 
-  const binaryResponse = await fetch(media.url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  let binaryResponse: Response;
+  try {
+    binaryResponse = await fetch(media.url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch (error) {
+    throw new PipelineStageError(
+      "media_download",
+      `Meta media download errored: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 
   if (!binaryResponse.ok) {
     const errorText = await binaryResponse.text();
-    throw new Error(`Meta image download failed (${binaryResponse.status}): ${errorText}`);
+    throw new PipelineStageError(
+      "media_download",
+      `Meta media download failed (${binaryResponse.status}): ${errorText}`,
+    );
   }
 
   const arrayBuffer = await binaryResponse.arrayBuffer();
-  const mimeType = binaryResponse.headers.get("content-type") ?? media.mime_type ?? "image/jpeg";
+  const fallbackMime = kind === "video" ? "video/mp4" : "image/jpeg";
+  const mimeType = binaryResponse.headers.get("content-type") ?? media.mime_type ?? fallbackMime;
 
   return {
     buffer: Buffer.from(arrayBuffer),
@@ -201,42 +274,58 @@ async function uploadToCloudinary(params: {
   buffer: Buffer;
   mimeType?: string;
   folder: string;
+  kind: MediaKind;
 }): Promise<{ secureUrl: string; publicId: string | null }> {
   const cloudName = getCloudName();
   const apiKey = requireEnv("CLOUDINARY_API_KEY");
   requireEnv("CLOUDINARY_API_SECRET");
 
+  if (!cloudName) {
+    throw new PipelineStageError("media_upload", "Missing Cloudinary cloud name environment variable");
+  }
+
   const payloadBuffer = Buffer.isBuffer(params.buffer) ? params.buffer : Buffer.from(params.buffer);
+  const fallbackMime = params.kind === "video" ? "video/mp4" : "image/jpeg";
   const blob = new Blob([new Uint8Array(payloadBuffer)], {
-    type: params.mimeType || "image/jpeg",
+    type: params.mimeType || fallbackMime,
   });
   const timestamp = Math.floor(Date.now() / 1000);
-  const signed = await signUpload({ timestamp, folder: params.folder });
+
+  let signed: Awaited<ReturnType<typeof signUpload>>;
+  try {
+    signed = await signUpload({ timestamp, folder: params.folder }, params.kind);
+  } catch (error) {
+    throw new PipelineStageError(
+      "media_upload",
+      `Cloudinary signing failed: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 
   const formData = new FormData();
-  formData.append("file", blob, "whatsapp-upload.jpg");
+  formData.append("file", blob, params.kind === "video" ? "whatsapp-upload.mp4" : "whatsapp-upload.jpg");
   formData.append("api_key", apiKey);
   formData.append("timestamp", String(timestamp));
   formData.append("signature", signed.signature);
   formData.append("folder", params.folder);
 
-  const uploadResponse = await fetch(signed.uploadUrl, {
-    method: "POST",
-    body: formData,
-  });
+  let uploadResponse: Response;
+  try {
+    uploadResponse = await fetch(signed.uploadUrl, { method: "POST", body: formData });
+  } catch (error) {
+    throw new PipelineStageError(
+      "media_upload",
+      `Cloudinary upload errored: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text();
-    throw new Error(`Cloudinary upload failed (${uploadResponse.status}): ${errorText}`);
+    throw new PipelineStageError("media_upload", `Cloudinary upload failed (${uploadResponse.status}): ${errorText}`);
   }
 
   const uploaded = (await uploadResponse.json()) as CloudinaryUploadResponse;
   if (!uploaded.secure_url) {
-    throw new Error("Cloudinary response did not include secure_url");
-  }
-
-  if (!cloudName) {
-    throw new Error("Missing Cloudinary cloud name environment variable");
+    throw new PipelineStageError("media_upload", "Cloudinary response did not include secure_url");
   }
 
   return {
@@ -286,6 +375,12 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
   console.log(`whatsapp webhook: reply sent to ${to} (${response.status}): ${responseText}`);
 }
 
+async function replyBestEffort(to: string, text: string, context: string): Promise<void> {
+  await sendWhatsAppReply(to, text).catch((error) => {
+    console.error(`whatsapp webhook: reply failed (${context})`, (error as Error).message);
+  });
+}
+
 async function persistIngestEvent(params: {
   supabase: ReturnType<typeof createAdminClient>;
   messageId: string;
@@ -313,8 +408,194 @@ async function persistIngestEvent(params: {
   });
 
   if (error) {
-    throw new Error(`DB ingest insert failed: ${error.message}`);
+    throw new PipelineStageError("db_write", `DB ingest insert failed: ${error.message}`);
   }
+}
+
+/** Appends one uncaptioned media item to the sender's pending batch (atomic
+ * DB-side append — see append_whatsapp_pending_media in 016_whatsapp_batch_ingestion.sql). */
+async function appendPendingMedia(
+  supabase: ReturnType<typeof createAdminClient>,
+  adminPhone: string,
+  item: PendingMediaItem,
+): Promise<void> {
+  const { error } = await supabase.rpc("append_whatsapp_pending_media", {
+    p_admin_phone: adminPhone,
+    p_item: item,
+  });
+
+  if (error) {
+    throw new PipelineStageError("db_write", `Pending media append failed: ${error.message}`);
+  }
+}
+
+/** Inserts a product with a unique slug/product_code, retrying with -2, -3...
+ * suffixes on a unique-constraint collision instead of failing the request. */
+async function insertProductWithUniqueSlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  fields: {
+    name: string;
+    description: string;
+    fabric_type: string | null;
+    base_price_min: number | null;
+    base_price_max: number | null;
+  },
+  slugBase: string,
+  codeBase: string,
+): Promise<CreatedProductRow> {
+  const MAX_ATTEMPTS = 25;
+  let lastErrorMessage = "unknown error";
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name: fields.name,
+        slug: `${slugBase}${suffix}`,
+        product_code: `${codeBase}${suffix}`,
+        status: "draft",
+        description: fields.description,
+        fabric_type: fields.fabric_type,
+        base_price_min: fields.base_price_min,
+        base_price_max: fields.base_price_max,
+        stock_type: "supplier",
+      })
+      .select("id, name, slug, product_code")
+      .single<CreatedProductRow>();
+
+    if (!error && data) return data;
+
+    lastErrorMessage = error?.message ?? "unknown error";
+    if (!isUniqueViolation(error)) break;
+  }
+
+  throw new PipelineStageError("db_write", `Product insert failed: ${lastErrorMessage}`);
+}
+
+/**
+ * The trigger step of the new flow: a text-only (or legacy captioned-image)
+ * message describing the collection + price. Collects everything queued in
+ * the sender's pending batch, creates one product + variant with all of it
+ * attached as variant_images, and clears the batch.
+ */
+async function finalizeBatch(params: {
+  supabase: ReturnType<typeof createAdminClient>;
+  senderPhone: string;
+  contactName: string | null;
+  text: string;
+  messageId: string;
+  messageTimestamp: string;
+  rawPayload: WhatsAppWebhookPayload;
+}): Promise<void> {
+  const { supabase, senderPhone, contactName, text, messageId, messageTimestamp, rawPayload } = params;
+
+  const { data: session, error: sessionError } = await supabase
+    .from("admin_upload_sessions")
+    .select("pending_media")
+    .eq("admin_phone", senderPhone)
+    .maybeSingle<PendingMediaSessionRow>();
+
+  if (sessionError) {
+    throw new PipelineStageError("session_lookup", `Pending media lookup failed: ${sessionError.message}`);
+  }
+
+  const pending = session?.pending_media ?? [];
+  if (pending.length === 0) {
+    await replyBestEffort(
+      senderPhone,
+      "No photos or videos received yet. Please forward the photos/videos first, then send one message with the description and price.",
+      "no pending media",
+    );
+    return;
+  }
+
+  const { description, price, fabric } = parseCollectionMessage(text);
+  const name = deriveProductName(description);
+  const slugBase = slugify(name);
+  const codeBase = generateProductSKU(name);
+
+  const createdProduct = await insertProductWithUniqueSlug(
+    supabase,
+    { name, description, fabric_type: fabric, base_price_min: price, base_price_max: price },
+    slugBase,
+    codeBase,
+  );
+
+  const { data: createdVariant, error: variantError } = await supabase
+    .from("product_variants")
+    .insert({
+      product_id: createdProduct.id,
+      color: "Default",
+      status: "available",
+      display_order: 1,
+    })
+    .select("id, product_id")
+    .single<CreatedVariantRow>();
+
+  if (variantError || !createdVariant) {
+    throw new PipelineStageError("db_write", `Variant insert failed: ${variantError?.message ?? "unknown error"}`);
+  }
+
+  const firstImageIndex = pending.findIndex((item) => item.kind === "image");
+  const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
+
+  const imageRows = pending.map((item, index) => ({
+    variant_id: createdVariant.id,
+    image_url: item.url,
+    media_type: item.kind,
+    is_primary: index === primaryIndex,
+    display_order: index + 1,
+  }));
+
+  const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
+  if (imagesError) {
+    throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
+  }
+
+  const { error: sessionResetError } = await supabase.from("admin_upload_sessions").upsert({
+    admin_phone: senderPhone,
+    product_id: createdProduct.id,
+    variant_id: createdVariant.id,
+    pending_media: [],
+    updated_at: new Date().toISOString(),
+  });
+  if (sessionResetError) {
+    throw new PipelineStageError("db_write", `Session reset failed: ${sessionResetError.message}`);
+  }
+
+  await persistIngestEvent({
+    supabase,
+    messageId,
+    senderPhone,
+    senderName: contactName,
+    messageTimestamp,
+    caption: text,
+    imageUrl: pending[primaryIndex].url,
+    rawPayload,
+    productId: createdProduct.id,
+    variantId: createdVariant.id,
+    mediaId: pending[primaryIndex].media_id,
+  });
+
+  const photoCount = pending.filter((item) => item.kind === "image").length;
+  const videoCount = pending.filter((item) => item.kind === "video").length;
+  const mediaSummary = [
+    photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : null,
+    videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+
+  const missingParts = [price == null && "price", !fabric && "fabric"].filter(Boolean).join(" and ");
+  const reminder = missingParts ? ` No ${missingParts} yet — add it in the admin panel when you get a chance.` : "";
+
+  await replyBestEffort(
+    senderPhone,
+    `Created "${createdProduct.name}" (${createdProduct.product_code}) with ${mediaSummary}` +
+      `${price != null ? ` — ₹${price}` : ""}.${reminder} Send more photos/videos then a new description to start another listing.`,
+    "after finalize",
+  );
 }
 
 export async function GET(req: Request) {
@@ -333,9 +614,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let payload: WhatsAppWebhookPayload;
   let senderPhone: string | null = null;
-  let productId: string | null = null;
-  let variantId: string | null = null;
-  let savedImageUrl = "";
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_WEBHOOK_BYTES) {
@@ -365,17 +643,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  const { message, contactName, rawEvent } = extractFirstMessage(payload);
+  const { message, contactName } = extractFirstMessage(payload);
 
   if (payload.object !== "whatsapp_business_account" || !message) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
   senderPhone = message.from?.trim() ?? null;
-  const mediaId = message.image?.id?.trim();
-  const caption = normalizeCaption(message);
-
-  if (!senderPhone || !mediaId) {
+  if (!senderPhone) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
@@ -384,7 +659,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  const messageId = message.id ?? `${senderPhone}-${mediaId}-${message.timestamp ?? Date.now()}`;
+  const mediaKind = messageMediaKind(message);
+  const mediaId = messageMediaId(message);
+  const textBody = message.text?.body?.trim();
+
+  // Nothing this route handles (sticker, location, reaction, status, etc.).
+  if (!mediaKind && !mediaId && !textBody) {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  const messageId = message.id ?? `${senderPhone}-${mediaId ?? "text"}-${message.timestamp ?? Date.now()}`;
   const messageTimestamp = parseMessageTimestamp(message.timestamp);
   const supabase = createAdminClient();
 
@@ -403,208 +687,165 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const isNumberCaption = /^\d+$/.test(caption);
+    // ── Media message (image or video) ──────────────────────────────
+    if (mediaKind && mediaId) {
+      const caption = normalizeCaption(message);
+      const isNumberCaption = /^\d+$/.test(caption);
 
-    let folder = "whatsapp";
+      if (isNumberCaption) {
+        // Legacy path: numbered captions append a photo to an already-active
+        // (already-created) product's session.
+        const displayOrder = Number.parseInt(caption, 10);
 
-    if (isNumberCaption) {
-      const displayOrder = Number.parseInt(caption, 10);
+        const { data: session, error: sessionError } = await supabase
+          .from("admin_upload_sessions")
+          .select("product_id, variant_id")
+          .eq("admin_phone", senderPhone)
+          .maybeSingle<AdminUploadSessionRow>();
 
-      const { data: session, error: sessionError } = await supabase
-        .from("admin_upload_sessions")
-        .select("product_id, variant_id")
-        .eq("admin_phone", senderPhone)
-        .maybeSingle<AdminUploadSessionRow>();
+        if (sessionError) {
+          throw new PipelineStageError("session_lookup", `Active session lookup failed: ${sessionError.message}`);
+        }
 
-      if (sessionError) {
-        throw new Error(`Active session lookup failed: ${sessionError.message}`);
-      }
+        if (!session?.product_id || !session?.variant_id) {
+          await replyBestEffort(
+            senderPhone,
+            "No active product session found. Send an image with a text description first.",
+            "missing session",
+          );
+          return NextResponse.json({ ok: true }, { status: 200 });
+        }
 
-      if (!session) {
-        await sendWhatsAppReply(
-          senderPhone,
-          "No active product session found. Send an image with a text description first.",
-        ).catch((error) => {
-          console.error("whatsapp webhook: reply failed for missing session", (error as Error).message);
+        const productId = session.product_id;
+        const variantId = session.variant_id;
+
+        const { data: product, error: productError } = await supabase
+          .from("products")
+          .select("id, product_code, slug")
+          .eq("id", productId)
+          .maybeSingle<ProductRow>();
+
+        if (productError) {
+          throw new PipelineStageError("db_write", `Product lookup failed: ${productError.message}`);
+        }
+
+        const folder = product?.product_code || product?.slug || productId;
+
+        const { buffer, mimeType } = await downloadMediaFromMeta(mediaId, mediaKind);
+        const uploaded = await uploadToCloudinary({ buffer, mimeType, folder, kind: mediaKind });
+
+        const { error: imageError } = await supabase.from("variant_images").insert({
+          variant_id: variantId,
+          image_url: uploaded.secureUrl,
+          media_type: mediaKind,
+          is_primary: false,
+          display_order: displayOrder,
         });
-        return NextResponse.json({ ok: true }, { status: 200 });
-      }
 
-      productId = session.product_id;
-      variantId = session.variant_id;
+        if (imageError) {
+          throw new PipelineStageError("db_write", `variant_images insert failed: ${imageError.message}`);
+        }
 
-      const { data: product, error: productError } = await supabase
-        .from("products")
-        .select("id, product_code, slug")
-        .eq("id", productId)
-        .maybeSingle<ProductRow>();
-
-      if (productError) {
-        throw new Error(`Product lookup failed: ${productError.message}`);
-      }
-
-      folder = product?.product_code || product?.slug || productId;
-
-      const { buffer, mimeType } = await downloadImageFromMeta(mediaId);
-      const uploaded = await uploadToCloudinary({ buffer, mimeType, folder });
-      savedImageUrl = uploaded.secureUrl;
-
-      const { error: imageError } = await supabase.from("variant_images").insert({
-        variant_id: variantId,
-        image_url: uploaded.secureUrl,
-        is_primary: false,
-        display_order: displayOrder,
-      });
-
-      if (imageError) {
-        throw new Error(`variant_images insert failed: ${imageError.message}`);
-      }
-
-      const { error: touchSessionError } = await supabase
-        .from("admin_upload_sessions")
-        .upsert({
+        const { error: touchSessionError } = await supabase.from("admin_upload_sessions").upsert({
           admin_phone: senderPhone,
           product_id: productId,
           variant_id: variantId,
           updated_at: new Date().toISOString(),
         });
 
-      if (touchSessionError) {
-        throw new Error(`admin_upload_sessions upsert failed: ${touchSessionError.message}`);
+        if (touchSessionError) {
+          throw new PipelineStageError("db_write", `admin_upload_sessions upsert failed: ${touchSessionError.message}`);
+        }
+
+        await persistIngestEvent({
+          supabase,
+          messageId,
+          senderPhone,
+          senderName: contactName,
+          messageTimestamp,
+          caption,
+          imageUrl: uploaded.secureUrl,
+          rawPayload: payload,
+          productId,
+          variantId,
+          mediaId,
+        });
+
+        await replyBestEffort(
+          senderPhone,
+          `Saved photo ${displayOrder} for ${folder}. Send the next photo as a number, or send a new description to start a new listing.`,
+          "after numbered photo",
+        );
+
+        return NextResponse.json({ ok: true }, { status: 200 });
       }
 
-      await persistIngestEvent({
+      // New flow (and legacy single-caption flow): queue this media into the
+      // sender's pending batch first.
+      const { buffer, mimeType } = await downloadMediaFromMeta(mediaId, mediaKind);
+      const uploaded = await uploadToCloudinary({ buffer, mimeType, folder: "whatsapp/pending", kind: mediaKind });
+
+      await appendPendingMedia(supabase, senderPhone, {
+        media_id: mediaId,
+        message_id: messageId,
+        url: uploaded.secureUrl,
+        kind: mediaKind,
+        received_at: messageTimestamp,
+      });
+
+      if (!caption) {
+        // Uncaptioned media: silently accumulate, no reply, no product yet.
+        await persistIngestEvent({
+          supabase,
+          messageId,
+          senderPhone,
+          senderName: contactName,
+          messageTimestamp,
+          caption: "",
+          imageUrl: uploaded.secureUrl,
+          rawPayload: payload,
+          productId: null,
+          variantId: null,
+          mediaId,
+        });
+        return NextResponse.json({ ok: true }, { status: 200 });
+      }
+
+      // A caption on the media doubles as the finalizing description (keeps
+      // the old single-image-with-caption flow working).
+      await finalizeBatch({
         supabase,
+        senderPhone,
+        contactName,
+        text: caption,
         messageId,
-        senderPhone,
-        senderName: contactName,
         messageTimestamp,
-        caption,
-        imageUrl: uploaded.secureUrl,
         rawPayload: payload,
-        productId,
-        variantId,
-        mediaId,
       });
 
-      await sendWhatsAppReply(
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    // ── Text-only message: the finalizing trigger ───────────────────
+    if (textBody) {
+      await finalizeBatch({
+        supabase,
         senderPhone,
-        `Saved photo ${displayOrder} for ${folder}. Send the next photo as a number, or send a new description to start a new listing.`,
-      ).catch((error) => {
-        console.error("whatsapp webhook: reply failed after scenario a", (error as Error).message);
+        contactName,
+        text: textBody,
+        messageId,
+        messageTimestamp,
+        rawPayload: payload,
       });
-
-      return NextResponse.json({ ok: true }, { status: 200 });
     }
-
-    if (!caption) {
-      return NextResponse.json({ ok: true }, { status: 200 });
-    }
-
-    const { description, price, fabric } = parseProductCaption(caption);
-    const sku = generateProductSKU(description);
-    folder = sku;
-
-    const { buffer, mimeType } = await downloadImageFromMeta(mediaId);
-    const uploaded = await uploadToCloudinary({ buffer, mimeType, folder });
-    savedImageUrl = uploaded.secureUrl;
-
-    const { data: createdProduct, error: productError } = await supabase
-      .from("products")
-      .insert({
-        name: description,
-        slug: sku.toLowerCase(),
-        product_code: sku,
-        status: "draft",
-        description,
-        fabric_type: fabric,
-        base_price_min: price,
-        base_price_max: price,
-        stock_type: "supplier",
-      })
-      .select("id, name, slug, product_code")
-      .single<CreatedProductRow>();
-
-    if (productError || !createdProduct) {
-      throw new Error(`Product insert failed: ${productError?.message ?? "unknown error"}`);
-    }
-
-    productId = createdProduct.id;
-
-    const { data: createdVariant, error: variantError } = await supabase
-      .from("product_variants")
-      .insert({
-        product_id: createdProduct.id,
-        color: "Default",
-        status: "available",
-        display_order: 1,
-      })
-      .select("id, product_id")
-      .single<CreatedVariantRow>();
-
-    if (variantError || !createdVariant) {
-      throw new Error(`Variant insert failed: ${variantError?.message ?? "unknown error"}`);
-    }
-
-    variantId = createdVariant.id;
-
-    const { error: imageError } = await supabase.from("variant_images").insert({
-      variant_id: createdVariant.id,
-      image_url: uploaded.secureUrl,
-      is_primary: true,
-      display_order: 1,
-    });
-
-    if (imageError) {
-      throw new Error(`Primary image insert failed: ${imageError.message}`);
-    }
-
-    const { error: sessionError } = await supabase.from("admin_upload_sessions").upsert({
-      admin_phone: senderPhone,
-      product_id: createdProduct.id,
-      variant_id: createdVariant.id,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (sessionError) {
-      throw new Error(`Session upsert failed: ${sessionError.message}`);
-    }
-
-    await persistIngestEvent({
-      supabase,
-      messageId,
-      senderPhone,
-      senderName: contactName,
-      messageTimestamp,
-      caption,
-      imageUrl: uploaded.secureUrl,
-      rawPayload: payload,
-      productId,
-      variantId,
-      mediaId,
-    });
-
-    const missingParts = [price == null && "price", !fabric && "fabric"].filter(Boolean).join(" and ");
-    const confirmation = `Created SKU ${sku}${price != null ? ` — ₹${price}` : ""}${fabric ? `, ${fabric}` : ""}.`;
-    const reminder = missingParts
-      ? ` No ${missingParts} yet — reply here to add it, or next time caption like: ${NEW_PRODUCT_CAPTION_HINT}`
-      : "";
-
-    await sendWhatsAppReply(
-      senderPhone,
-      `${confirmation}${reminder} Send the next photos as simple numbers like 2, 3, 4.`,
-    ).catch((error) => {
-      console.error("whatsapp webhook: reply failed after scenario b", (error as Error).message);
-    });
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     console.error("whatsapp webhook: processing failed", error instanceof Error ? error.message : error);
 
-    if (senderPhone && savedImageUrl && productId && variantId) {
-      await sendWhatsAppReply(senderPhone, "We received the image, but saving it failed. Please try again.").catch(() => {
-        void 0;
-      });
+    if (senderPhone) {
+      const stage = error instanceof PipelineStageError ? error.stage : "unknown";
+      await replyBestEffort(senderPhone, FRIENDLY_MESSAGES[stage], "on failure");
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });

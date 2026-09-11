@@ -98,6 +98,9 @@ export interface VariantImage {
   image_url: string;
   is_primary: boolean;
   display_order: number;
+  /** 'video' for a WhatsApp-ingested video asset stored via image_url;
+   * defaults to 'image' in the DB, so existing rows/readers are unaffected. */
+  media_type?: "image" | "video";
 }
 
 export interface Collection {

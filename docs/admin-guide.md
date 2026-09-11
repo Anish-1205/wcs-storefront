@@ -38,6 +38,27 @@ needed — everything is done through the admin panel.
 6. Tick **Feature on homepage** to show it in the homepage highlights.
 7. Click **Save product**. Changes appear on the live site within seconds.
 
+## Adding a saree via WhatsApp
+
+If the admin WhatsApp number is connected, you can create a draft product
+straight from your phone — no need to open the admin panel:
+
+1. **Forward the photos and/or videos first**, in any order, with no caption
+   on any of them.
+2. **Then send one message** describing the saree and the price, e.g.
+   *"Exquisite Kanjivaram-style Tissue Benarasi sarees, rich zari border...
+   4900"*.
+3. That message creates the product (as a **draft**, with all the photos/
+   video you sent attached) and you'll get a WhatsApp reply confirming it,
+   or explaining what went wrong if something failed — you always get a
+   reply either way.
+4. Open the admin panel to add the category, fabric, collections, and
+   publish it when ready.
+
+Fabric type isn't picked up from the WhatsApp message — add it in the admin
+panel. If you don't mention a price, the listing is created without one
+("Price on request") and you can add it later.
+
 > **Photo tip:** Upload tall (portrait) photos, ideally **1000×1500 pixels** or
 > larger. This looks best on the site and on Pinterest.
 
