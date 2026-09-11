@@ -102,11 +102,64 @@ Make CI + E2E required status checks on the `main` branch protection rule.
    | `ADMIN_EMAILS` | comma-separated admin email allowlist |
    | `UPSTASH_REDIS_REST_URL` | server-only rate limiting |
    | `UPSTASH_REDIS_REST_TOKEN` | server-only rate limiting |
-   | `WHATSAPP_APP_SECRET` | required when admin image ingestion is enabled |
-   | `WHATSAPP_ADMIN_NUMBERS` | comma-separated phone allowlist for ingestion |
+   | `WHATSAPP_ACCESS_TOKEN` | Meta system-user access token, WhatsApp ingestion only |
+   | `WHATSAPP_PHONE_NUMBER_ID` | the business number's Phone Number ID from Meta |
+   | `WHATSAPP_VERIFY_TOKEN` | any string you invent — must match what you enter in the Meta webhook config |
+   | `WHATSAPP_APP_SECRET` | Meta app secret, required when admin image ingestion is enabled |
+   | `WHATSAPP_ADMIN_NUMBERS` | comma-separated phone allowlist for ingestion (digits only, e.g. `919876543210`) |
+
+   These five are all-or-nothing (`npm run check:env` fails if only some are
+   set) and only needed if you're using the WhatsApp photo-upload flow below —
+   the storefront's own "Ask on WhatsApp" buttons only need
+   `NEXT_PUBLIC_WHATSAPP_NUMBER`.
 
 4. Run `npm run check:env` locally or in CI before deploying.
 5. Deploy. Vercel builds and serves on a global CDN with automatic SSL.
+
+## 4a. WhatsApp product-upload flow (optional)
+
+Lets an allowlisted phone (e.g. the owner's) create a draft product by simply
+sending a photo to the business number, and add more photos to it afterwards
+— no admin login needed. See `src/app/api/whatsapp/route.ts` for the
+implementation (a separate, simpler path from the `/admin/import` bulk
+pipeline in `docs/import-pipeline.md`); this is the one-time setup:
+
+1. In [developers.facebook.com](https://developers.facebook.com), create/open
+   a Meta app with the **WhatsApp** product added, using your WhatsApp
+   Business Account.
+2. Note the **Phone Number ID** (WhatsApp → API Setup) →
+   `WHATSAPP_PHONE_NUMBER_ID`.
+3. Generate a permanent access token (System Users, with `whatsapp_business_messaging`
+   permission) → `WHATSAPP_ACCESS_TOKEN`.
+4. Invent any string for `WHATSAPP_VERIFY_TOKEN` (just a shared secret).
+5. WhatsApp → Configuration → Webhook: callback URL
+   `https://<your-domain>/api/whatsapp`, verify token = the value from step 4,
+   subscribe to the **messages** field. Meta calls the webhook's `GET` to
+   verify it — it must succeed before the subscription saves.
+6. Copy the app's **App Secret** (App Settings → Basic) → `WHATSAPP_APP_SECRET`
+   — every incoming webhook call is HMAC-verified against this.
+7. Set `WHATSAPP_ADMIN_NUMBERS` to the phone number(s) allowed to create
+   products this way, digits only, comma-separated (e.g. the owner's/mom's
+   WhatsApp number). Anyone else's messages are silently ignored.
+8. Redeploy with all five vars set.
+
+**How to use it (send a photo to the business number):**
+
+- **First photo of a new saree** — caption it
+  `description | price | fabric`, e.g.
+  `Red silk saree with gold border | 2500 | Silk`. Price and fabric are
+  optional (a bare description still creates the product — WhatsApp replies
+  saying what's missing so you can add it in admin later).
+- **More photos of the same saree** — caption each with just a number:
+  `2`, `3`, `4`, in the order they should appear.
+- Every product created this way is a `draft` — an admin reviews and
+  publishes it from `/admin/products` like any other (see caveat below).
+
+**Known limit:** this creates a draft row in the admin database
+(`products`/`product_variants`), the same one the import pipeline uses — it
+does **not** put the saree on the live site by itself, since the storefront
+is file-driven (see `docs/storefront-catalogue.md`). Treat it as capture, not
+publish, until that gap is closed.
 
 ## 5. Custom domain
 

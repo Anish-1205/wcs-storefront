@@ -6,6 +6,7 @@ import {
   MAX_WEBHOOK_BYTES,
   verifyWhatsAppSignature,
 } from "@/lib/webhook-security";
+import { NEW_PRODUCT_CAPTION_HINT, parseProductCaption } from "@/lib/whatsapp-caption";
 
 export const runtime = "nodejs";
 
@@ -490,7 +491,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const sku = generateProductSKU(caption);
+    const { description, price, fabric } = parseProductCaption(caption);
+    const sku = generateProductSKU(description);
     folder = sku;
 
     const { buffer, mimeType } = await downloadImageFromMeta(mediaId);
@@ -500,11 +502,14 @@ export async function POST(req: Request) {
     const { data: createdProduct, error: productError } = await supabase
       .from("products")
       .insert({
-        name: caption,
+        name: description,
         slug: sku.toLowerCase(),
         product_code: sku,
         status: "draft",
-        description: caption,
+        description,
+        fabric_type: fabric,
+        base_price_min: price,
+        base_price_max: price,
         stock_type: "supplier",
       })
       .select("id, name, slug, product_code")
@@ -569,9 +574,15 @@ export async function POST(req: Request) {
       mediaId,
     });
 
+    const missingParts = [price == null && "price", !fabric && "fabric"].filter(Boolean).join(" and ");
+    const confirmation = `Created SKU ${sku}${price != null ? ` — ₹${price}` : ""}${fabric ? `, ${fabric}` : ""}.`;
+    const reminder = missingParts
+      ? ` No ${missingParts} yet — reply here to add it, or next time caption like: ${NEW_PRODUCT_CAPTION_HINT}`
+      : "";
+
     await sendWhatsAppReply(
       senderPhone,
-      `Created SKU ${sku}. Send the next photos as simple numbers like 2, 3, 4.`,
+      `${confirmation}${reminder} Send the next photos as simple numbers like 2, 3, 4.`,
     ).catch((error) => {
       console.error("whatsapp webhook: reply failed after scenario b", (error as Error).message);
     });

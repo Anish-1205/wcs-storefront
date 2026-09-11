@@ -8,6 +8,7 @@ vi.mock("@/lib/supabase/server", () => ({ createAdminClient: mockCreateAdminClie
 vi.mock("@/lib/cloudinary", () => ({ signUpload: mockSignUpload }));
 
 import { POST } from "@/app/api/whatsapp/route";
+import { parseProductCaption } from "@/lib/whatsapp-caption";
 
 const APP_SECRET = "secret";
 const ADMIN_NUMBER = "919876543210";
@@ -93,6 +94,40 @@ function mockFetchSequence(responses: Array<{ ok: boolean; json?: unknown; text?
     }),
   );
 }
+
+describe("parseProductCaption", () => {
+  it("splits description | price | fabric and cleans the price", () => {
+    expect(parseProductCaption("Red silk saree with gold border | 2500 | Silk")).toEqual({
+      description: "Red silk saree with gold border",
+      price: 2500,
+      fabric: "Silk",
+    });
+  });
+
+  it("strips currency symbols and commas from the price", () => {
+    expect(parseProductCaption("Green saree | ₹1,999 | Cotton").price).toBe(1999);
+  });
+
+  it("falls back to the whole caption as description when there is no separator", () => {
+    expect(parseProductCaption("Kanjivaram Red")).toEqual({
+      description: "Kanjivaram Red",
+      price: null,
+      fabric: null,
+    });
+  });
+
+  it("treats a missing or non-numeric price as null without dropping the fabric", () => {
+    expect(parseProductCaption("Blue saree | | Georgette")).toEqual({
+      description: "Blue saree",
+      price: null,
+      fabric: "Georgette",
+    });
+  });
+
+  it("rejects a zero price", () => {
+    expect(parseProductCaption("Saree | 0 | Silk").price).toBeNull();
+  });
+});
 
 describe("WhatsApp route boundary", () => {
   afterEach(() => {
