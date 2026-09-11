@@ -86,11 +86,6 @@ export function Footer() {
                   Our Story
                 </Link>
               </li>
-              <li>
-                <Link href="/wholesale" className="text-deep-brown/80 hover:text-oxblood">
-                  Wholesale
-                </Link>
-              </li>
             </ul>
           </div>
 

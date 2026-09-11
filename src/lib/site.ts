@@ -59,7 +59,6 @@ export const NAV_LINKS = [
   // of this flag.
   { href: "/guides", label: "Guides", xlOnly: true },
   { href: "/about", label: "Our Story" },
-  { href: "/wholesale", label: "Wholesale" },
   { href: "/contact", label: "Contact" },
 ];
 

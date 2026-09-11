@@ -20,6 +20,12 @@ const nextConfig = {
       },
     ],
   },
+  // The /wholesale page was removed (Sept 2026) — "Ask on WhatsApp" is now the
+  // one consistent CTA for resellers and retail customers alike. Redirect any
+  // bookmarked/shared links instead of 404ing.
+  async redirects() {
+    return [{ source: "/wholesale", destination: "/contact", permanent: false }];
+  },
   // Static, request-independent security headers. The Content-Security-Policy
   // itself is set per-request in middleware.ts (it needs a fresh nonce), not here.
   async headers() {

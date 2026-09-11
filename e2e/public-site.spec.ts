@@ -14,7 +14,7 @@ test("navbar brand mark links home and is the only banner home link", async ({ p
 });
 
 test("public conversion routes render", async ({ page }) => {
-  for (const path of ["/", "/catalog", "/about", "/wholesale", "/contact", "/privacy", "/terms", "/shipping-returns"]) {
+  for (const path of ["/", "/catalog", "/about", "/contact", "/privacy", "/terms", "/shipping-returns"]) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(200);
     await expect(page.locator("h1").first(), path).toBeVisible();
@@ -35,7 +35,7 @@ test("mobile homepage has no horizontal overflow and one floating WhatsApp contr
   const menu = page.getByRole("button", { name: "Open menu" });
   await expect(menu).toBeVisible();
   await menu.click();
-  await expect(page.getByRole("banner").getByRole("link", { name: "Wholesale", exact: true })).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Contact", exact: true })).toBeVisible();
 });
 
 test("catalog colour + availability filters update the URL", async ({ page }) => {

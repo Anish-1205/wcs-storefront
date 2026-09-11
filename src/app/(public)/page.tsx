@@ -232,27 +232,27 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 09 — Wholesale */}
+      {/* 09 — Ask on WhatsApp */}
       <section className="container-px mx-auto max-w-[90rem] py-20 lg:py-28">
         <Reveal className="grid items-end gap-8 border-t border-oxblood/30 pt-10 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="eyebrow">Wholesale</p>
+            <p className="eyebrow">Reselling or buying for yourself?</p>
             <h2 className="display-sm mt-3 text-oxblood">
-              For boutiques, retailers &amp; resellers
+              Every price is on request — just ask
             </h2>
             <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">
-              Bulk pricing, curated assortments and repeat sourcing on the weaves
-              your customers ask for. Tell us your city and the categories you
-              carry.
+              Whether you&apos;re shopping for yourself or sourcing for your
+              customers, tell us what you&apos;re after on WhatsApp and we&apos;ll
+              confirm price and availability directly.
             </p>
           </div>
-          <Link
-            href="/wholesale"
+          <WhatsAppLink
+            sourcePage="home-reseller"
             className="arrow-shift-host inline-flex items-center gap-2 border-b border-oxblood pb-1 text-[0.8rem] font-medium uppercase tracking-[0.2em] text-oxblood"
           >
-            Wholesale enquiry
+            Ask on WhatsApp
             <span className="arrow-shift">→</span>
-          </Link>
+          </WhatsAppLink>
         </Reveal>
 
         {/* Collections quicklinks */}

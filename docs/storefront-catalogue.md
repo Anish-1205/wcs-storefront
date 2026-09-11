@@ -443,7 +443,10 @@ Run `013_product_source.sql`, `014_import_color_variants.sql` and
 
 Public storefront: `/`, `/catalog`, `/catalog/[category]` (colour),
 `/collections`, `/collections/[slug]`, `/sarees/[slug]`, `/cart`, `/enquiry`,
-`/enquiry/sent`, `/search`, `/contact`, `/wholesale`, `/about`, legal pages.
+`/enquiry/sent`, `/search`, `/contact`, `/about`, legal pages. `/wholesale` was
+removed (Sept 2026, redirects to `/contact`) — "Ask on WhatsApp" is the one
+consistent CTA for resellers and retail customers, prices are per-piece /
+negotiable rather than a separate wholesale program.
 Auth: `/signin`, `/signup`, `/account`, `/forgot-password`, `/reset-password`,
 `/auth/callback` (handler).
 

@@ -43,7 +43,7 @@ Full instructions: [`docs/setup.md`](docs/setup.md).
 ```
 src/
   app/
-    (public)/        Public site: home, catalog, collections, product, about, wholesale, contact
+    (public)/        Public site: home, catalog, collections, product, about, contact
     admin/           Admin: login + (dashboard) group (products, inquiries, subscribers)
     api/             inquiries, upload (signed Cloudinary), revalidate
     sitemap.ts, robots.ts
