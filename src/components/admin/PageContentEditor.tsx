@@ -1,22 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { EDITABLE_PAGES, type ContentField, type PageContentMap, type PageOverrides } from "@/lib/page-content";
-import { savePageContent } from "@/app/admin/page-content-actions";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  EDITABLE_PAGES, REGION_LABELS, fieldHint, regionLabel, regionOf,
+  type ContentField, type PageContentMap, type PageOverrides,
+} from "@/lib/page-content";
+import { publishPageContent, restorePageVersion, savePageDraft } from "@/app/admin/page-content-actions";
+import { ContentFieldCard, HistoryPanel, SaveBar, type SaveState } from "@/components/admin/page-editor-parts";
 
-export function PageContentEditor({ initial, available }: { initial: PageContentMap; available: boolean }) {
+const REGION_ORDER = Object.keys(REGION_LABELS);
+const FILTERS = [["all", "Everything"], ["text", "Just words"], ["image", "Just pictures"], ["section", "Show or hide parts"]] as const;
+
+export function PageContentEditor({ initial, drafts, versions, available }: {
+  initial: PageContentMap;
+  drafts: PageContentMap;
+  versions: Record<string, { id: string; created_at: string }[]>;
+  available: boolean;
+}) {
   const [page, setPage] = useState("/");
-  const [draft, setDraft] = useState(initial);
-  const [saved, setSaved] = useState(initial);
+  const [draft, setDraft] = useState<PageContentMap>(() => ({ ...initial, ...drafts }));
+  const [published, setPublished] = useState(initial);
   const [regions, setRegions] = useState<Record<string, ContentField[]>>({});
   const [filter, setFilter] = useState("");
-  const [kind, setKind] = useState("text");
-  const [dirty, setDirty] = useState<string[]>([]);
+  const [only, setOnly] = useState<(typeof FILTERS)[number][0]>("all");
+  // A draft saved on an earlier visit is already "not on the website yet".
+  const [dirty, setDirty] = useState<string[]>(() =>
+    Object.keys(drafts).filter((scope) => JSON.stringify(drafts[scope]) !== JSON.stringify(initial[scope] ?? {})));
+  const [state, setState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"edit" | "preview">("edit");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const frame = useRef<HTMLIFrameElement>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+
   function preview(content: PageContentMap) {
     frame.current?.contentWindow?.postMessage({ type: "content-preview", content }, location.origin);
   }
@@ -33,79 +50,178 @@ export function PageContentEditor({ initial, available }: { initial: PageContent
     return () => window.removeEventListener("message", receive);
   }, []);
   useEffect(() => { preview(draft); }, [draft]);
-  const fields = Object.values(regions).flat().filter((field) => (field.scope === page || field.scope === "global") && field.kind === kind && `${field.label} ${field.key}`.toLowerCase().includes(filter.toLowerCase()));
+
+  // Fields arrive per rendered region; group them into the cards a person recognises.
+  const groups = useMemo(() => {
+    const needle = filter.trim().toLowerCase();
+    const matching = Object.values(regions).flat().filter((field) =>
+      (field.scope === page || field.scope === "global")
+      && (only === "all" || field.kind === only)
+      && (!needle || `${field.label} ${String(field.value)}`.toLowerCase().includes(needle)));
+    const byRegion = new Map<string, ContentField[]>();
+    for (const field of matching) {
+      const id = `${field.scope}:${regionOf(field.key)}`;
+      byRegion.set(id, [...(byRegion.get(id) ?? []), field]);
+    }
+    const rank = (region: string) => {
+      const index = REGION_ORDER.indexOf(region);
+      return index === -1 ? REGION_ORDER.length : index;
+    };
+    return [...byRegion.entries()].sort(([a], [b]) => {
+      const [scopeA, regionA] = a.split(":");
+      const [scopeB, regionB] = b.split(":");
+      if (scopeA !== scopeB) return scopeA === "global" ? 1 : -1;
+      return rank(regionA) - rank(regionB);
+    });
+  }, [regions, page, only, filter]);
+
+  const pageName = EDITABLE_PAGES.find(([path]) => path === page)?.[1] ?? page;
+  const unsaved = dirty.length > 0;
+
   function change(field: ContentField, value: string | boolean) {
     setDraft((old) => ({ ...old, [field.scope]: { ...old[field.scope], [field.key]: { kind: field.kind, value } as PageOverrides[string] } }));
     setDirty((old) => [...new Set([...old, field.scope])]);
-    setMessage("Unsaved changes — the preview shows your edits.");
+    setState("idle");
+    setMessage("");
   }
   function reset(field: ContentField) {
     setDraft((old) => { const values = { ...old[field.scope] }; delete values[field.key]; return { ...old, [field.scope]: values }; });
     setDirty((old) => [...new Set([...old, field.scope])]);
+    setState("idle");
   }
-  async function save() {
-    setBusy(true); setMessage("");
+  async function write(action: typeof savePageDraft, live: boolean) {
+    setState("busy"); setMessage("");
     try {
       for (const scope of dirty) {
-        const result = await savePageContent(scope, draft[scope] ?? {});
+        const result = await action(scope, draft[scope] ?? {});
         if (!result.ok) throw new Error(result.error);
-        setSaved((old) => ({ ...old, [scope]: draft[scope] ?? {} }));
+        if (live) setPublished((old) => ({ ...old, [scope]: draft[scope] ?? {} }));
         setDirty((old) => old.filter((value) => value !== scope));
       }
-      setMessage("Saved. Your changes are now published.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save"); }
-    finally { setBusy(false); }
+      setState("done");
+      setMessage(live
+        ? "Done — your changes are on the website now. Open the real page in a new tab to see them."
+        : "Saved for later. Only you can see these changes; visitors still see the previous version.");
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof Error ? error.message : "Could not save. Please try again.");
+    }
   }
-  async function upload(field: ContentField, file?: File) {
-    if (!file) return;
-    setBusy(true);
+  async function restore(versionId: string) {
+    setState("busy"); setMessage("");
     try {
-      const signature = await fetch("/api/upload", { method: "POST" });
-      if (!signature.ok) throw new Error("Could not prepare upload");
-      const sig = await signature.json();
-      const form = new FormData();
-      form.append("file", file); form.append("api_key", sig.apiKey); form.append("timestamp", String(sig.timestamp));
-      form.append("signature", sig.signature); form.append("folder", sig.folder);
-      const response = await fetch(sig.uploadUrl, { method: "POST", body: form });
-      if (!response.ok) throw new Error("Image upload failed");
-      const image = await response.json();
-      change(field, image.secure_url);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Upload failed"); }
-    finally { setBusy(false); }
+      const result = await restorePageVersion(page, versionId);
+      if (!result.ok) throw new Error(result.error);
+      const content = (result as { content?: PageOverrides }).content ?? {};
+      setDraft((old) => ({ ...old, [page]: content }));
+      setPublished((old) => ({ ...old, [page]: content }));
+      setDirty((old) => old.filter((scope) => scope !== page));
+      setState("done");
+      setMessage("That earlier version is back on the website.");
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof Error ? error.message : "Could not go back to that version.");
+    }
   }
-  return <section className="mt-10 space-y-5" aria-labelledby="page-editor-title">
-    <h2 id="page-editor-title" className="font-serif text-2xl">Edit a public page</h2>
-    <p className="max-w-3xl text-base text-muted-foreground">Choose a page, edit its text or images, and check the preview. Header and footer edits apply across the site. Product photographs and details can also be managed in Products. Save publishes your changes.</p>
-    {!available && <p role="alert" className="rounded-sm border border-destructive p-4">Page saving is not ready: apply database migration 017. You can explore and preview edits below.</p>}
-    <div className="flex flex-wrap items-end gap-4">
-      <label className="grid gap-2">Page<select className="min-h-11 max-w-full border bg-background p-2" value={page} onChange={(e) => { setPage(e.target.value); setRegions({}); }}>
-        {EDITABLE_PAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
-      </select></label>
-      <button type="button" disabled={!available || busy || !dirty.length} onClick={save} className="min-h-11 bg-primary px-5 py-2 font-medium text-primary-foreground disabled:opacity-50">{busy ? "Working…" : "Save and publish"}</button>
-      <button type="button" disabled={busy} onClick={() => { setDraft(saved); setDirty([]); setMessage("Unsaved edits discarded."); }} className="min-h-11 border px-4">Discard unsaved edits</button>
-      <a href={page} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline">Open live page ↗</a>
+  function undo() {
+    setDraft((old) => ({ ...old, ...Object.fromEntries(dirty.map((scope) => [scope, published[scope] ?? {}])) }));
+    setDirty([]);
+    setState("idle");
+    setMessage("Your unsaved changes were thrown away. This page is back to what is on the website.");
+  }
+
+  return <section className="mt-12 space-y-5 pb-24 xl:pb-0" aria-labelledby="page-editor-title">
+    <div className="space-y-2">
+      <h2 id="page-editor-title" className="font-serif text-2xl">Change the words and pictures on a page</h2>
+      <p className="max-w-3xl text-base text-muted-foreground">
+        Pick a page, then change anything you like. The preview beside the form shows the page exactly as visitors
+        will see it, updating as you type. Nothing reaches the website until you choose <strong>Make it live</strong>,
+        and you can always put an earlier version back.
+      </p>
     </div>
-    <p role="status" className="text-base">{message}</p>
-    <div className="grid gap-6 xl:grid-cols-2">
-      <div className="min-w-0">
-        <div className="mb-4 flex flex-wrap gap-3">
-          <label className="sr-only" htmlFor="content-kind">Content type</label>
-          <select id="content-kind" className="min-h-11 border bg-background p-2" value={kind} onChange={(e) => setKind(e.target.value)}><option value="text">Text</option><option value="image">Images</option><option value="section">Sections</option></select>
-          <input aria-label="Find content" placeholder="Find text or an image…" className="min-h-11 min-w-0 flex-1 border bg-background px-3" value={filter} onChange={(e) => setFilter(e.target.value)} />
+    {!available && <p role="alert" className="rounded-sm border border-destructive p-4 text-base">
+      Saving is switched off until the website database is set up (migrations 017 and 018). You can still look around
+      and try changes here safely — nothing will be kept, and the website is not affected.
+    </p>}
+
+    <div className="flex flex-wrap items-end gap-4 rounded-sm border bg-card p-4">
+      <label className="grid min-w-0 flex-1 gap-2 text-base font-medium" htmlFor="page-picker">
+        Which page do you want to change?
+        <select id="page-picker" className="min-h-11 w-full max-w-md rounded-sm border bg-background p-2 text-base font-normal"
+          value={page} onChange={(e) => { setPage(e.target.value); setRegions({}); setState("idle"); setMessage(""); }}>
+          {EDITABLE_PAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
+        </select>
+      </label>
+      <a href={page} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-base underline">
+        See the real page in a new tab ↗
+      </a>
+    </div>
+
+    <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
+      <div className={`min-w-0 space-y-4 ${view === "preview" ? "hidden xl:block" : ""}`}>
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map(([value, label]) =>
+            <button key={value} type="button" onClick={() => setOnly(value)} aria-pressed={only === value}
+              className={`min-h-11 rounded-sm border px-4 text-base ${only === value ? "bg-primary text-primary-foreground" : "bg-background"}`}>
+              {label}
+            </button>)}
         </div>
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
-          {page === "/" && kind === "section" && <p>Use “Homepage layout and product placement” above to show, hide or reorder homepage sections. This keeps the shelf complete when featured sections are hidden.</p>}
-          {fields.length === 0 && <p className="text-muted-foreground">No matching fields. Wait for the preview to load, or choose another content type. Conditional content appears when shown in the preview.</p>}
-          {fields.map((field) => <div key={`${field.scope}:${field.key}`} className="space-y-2 rounded-sm border bg-card p-4">
-            <label className="block text-sm font-medium" htmlFor={field.key}>{field.label.slice(0, 140)} {field.scope === "global" && <span className="text-muted-foreground">(sitewide)</span>}</label>
-            {field.kind === "section" ? <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={Boolean(draft[field.scope]?.[field.key]?.value ?? field.value)} onChange={(e) => change(field, e.target.checked)} />Show this section</label>
-              : <textarea id={field.key} rows={field.kind === "image" ? 2 : 3} className="w-full border bg-background p-3 text-base" value={String(draft[field.scope]?.[field.key]?.value ?? field.value)} onChange={(e) => change(field, e.target.value)} />}
-            {field.kind === "image" && <label className="block">Upload replacement<input type="file" accept="image/*" disabled={busy} className="mt-2 block max-w-full text-sm" onChange={(e) => upload(field, e.target.files?.[0])} /></label>}
-            <button type="button" className="min-h-11 text-sm underline" onClick={() => reset(field)}>Restore original</button>
-          </div>)}
-        </div>
+        <input aria-label="Search this page for the words you want to change" placeholder="Search for the words you want to change…"
+          className="min-h-11 w-full rounded-sm border bg-background px-3 text-base"
+          value={filter} onChange={(e) => setFilter(e.target.value)} />
+
+        {page === "/" && (only === "all" || only === "section") &&
+          <p className="rounded-sm border bg-secondary/40 p-4 text-base">
+            To show, hide or reorder the big blocks on the homepage, use <strong>How your homepage is arranged</strong> higher up this screen.
+          </p>}
+        {groups.length === 0 && <p className="rounded-sm border border-dashed p-6 text-base text-muted-foreground">
+          Nothing to show yet. The preview is still loading, or nothing here matches your search. Parts that only appear
+          sometimes — like the enquiry list panel — become editable once they show up in the preview.
+        </p>}
+
+        {groups.map(([id, fields]) => {
+          const [scope, region] = id.split(":");
+          const { label, hint } = regionLabel(region);
+          return <details key={id} open={open[id] ?? groups.length <= 2}
+            onToggle={(e) => setOpen((old) => ({ ...old, [id]: e.currentTarget.open }))}
+            className="rounded-sm border bg-card">
+            <summary className="flex cursor-pointer flex-wrap items-center gap-2 p-4 text-lg font-medium">
+              <span>{label}</span>
+              {scope === "global" && <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-normal">Appears on every page</span>}
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
+                {fields.length} {fields.length === 1 ? "thing" : "things"} you can change
+              </span>
+            </summary>
+            <div className="space-y-4 border-t p-4">
+              <p className="text-base text-muted-foreground">{hint}</p>
+              {fields.map((field) => <ContentFieldCard key={`${field.scope}:${field.key}`} field={field}
+                value={draft[field.scope]?.[field.key]?.value}
+                hint={fieldHint(field)} busy={state === "busy"}
+                onChange={(value) => change(field, value)} onReset={() => reset(field)}
+                onError={(text) => { setState("error"); setMessage(text); }} />)}
+            </div>
+          </details>;
+        })}
       </div>
-      <iframe ref={frame} title="Page editing preview" src={`${page}?contentEditor=1`} className="h-[75vh] w-full rounded-sm border bg-background" />
+
+      <div className={`min-w-0 ${view === "edit" ? "hidden xl:block" : ""} xl:sticky xl:top-4`}>
+        <p className="mb-2 text-base font-medium">Preview — how “{pageName}” looks with your changes</p>
+        <iframe ref={frame} title="Live preview of the page you are editing" src={`${page}?contentEditor=1`}
+          className="h-[60vh] w-full rounded-sm border bg-background xl:h-[78vh]" />
+        <p className="mt-2 text-sm text-muted-foreground">This updates as you type, and includes changes you have not made live yet.</p>
+      </div>
+    </div>
+
+    <SaveBar state={state} message={message} unsaved={unsaved} available={available} pageName={pageName}
+      onSaveDraft={() => write(savePageDraft, false)} onPublish={() => write(publishPageContent, true)} onUndo={undo} />
+    <HistoryPanel versions={versions[page] ?? []} busy={state === "busy"} available={available} onRestore={restore} />
+
+    <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t bg-card p-2 shadow-lg xl:hidden" role="tablist"
+      aria-label="Switch between making changes and the preview">
+      <button type="button" role="tab" aria-selected={view === "edit"} onClick={() => setView("edit")}
+        className={`min-h-12 flex-1 rounded-sm border text-base ${view === "edit" ? "bg-primary text-primary-foreground" : ""}`}>Make changes</button>
+      <button type="button" role="tab" aria-selected={view === "preview"} onClick={() => setView("preview")}
+        className={`min-h-12 flex-1 rounded-sm border text-base ${view === "preview" ? "bg-primary text-primary-foreground" : ""}`}>See preview</button>
     </div>
   </section>;
 }

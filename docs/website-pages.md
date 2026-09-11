@@ -2,31 +2,46 @@
 
 ## Enable publishing
 
-1. Apply any outstanding database migrations in order. On a project already at migration 016, run [017_storefront_page_content.sql](../supabase/migrations/017_storefront_page_content.sql) once in the Supabase SQL Editor.
+1. Apply any outstanding database migrations in order. On a project already at migration 016, run [017_storefront_page_content.sql](../supabase/migrations/017_storefront_page_content.sql) and then [018_page_content_drafts.sql](../supabase/migrations/018_page_content_drafts.sql) once in the Supabase SQL Editor.
 2. Deploy this revision with the existing Supabase and Cloudinary environment variables.
 3. Sign in at `/admin` and open **Website pages** (`/admin/pages`).
-4. Make a small text change, check the preview, and select **Save and publish**. Verify the public page in a separate tab. Use **Restore original** and save to undo the change.
+4. Make a small text change, check the preview beside the form, and select **Make it live on the website**. Verify the public page in a separate tab. **Go back to an earlier version** restores the previous published copy.
 
-Migration 017 creates a published-content table with public read access and no public write policy. Writes use the server-only service-role client after `assertAdmin` verifies the session and email allowlist. No new environment variables are required. If the table is unavailable, the editor disables publishing and public pages retain their authored defaults.
+Migration 018 adds a `draft_content` column (saved work that is not published) and a `storefront_page_content_versions` table holding the last 10 published versions per page. Drafts and version history are admin-only: public roles hold column-level `select` on `page`, `content` and `updated_at`, and no grant at all on the versions table. Migration 017 creates the published-content table with public read access and no public write policy. Writes use the server-only service-role client after `assertAdmin` verifies the session and email allowlist. No new environment variables are required. If the table is unavailable, the editor disables publishing and public pages retain their authored defaults.
 
-The migration has been prepared but was **not applied to the remote database** during implementation. Live publishing still needs the setup and smoke check above. Supabase API credentials alone cannot apply SQL migrations.
+Migrations 017 and 018 have been prepared but were **not applied to the remote database** during implementation. Live publishing still needs the setup and smoke check above. Supabase API credentials alone cannot apply SQL migrations.
 
 ## Everyday editing
 
 ### Public text, images and sections
 
-- Choose a page, then choose **Text**, **Images**, or **Sections**. Use the search field to find specific copy.
-- Edit text, image descriptions, or an image URL; alternatively upload a replacement image. The embedded preview shows unsaved changes.
-- Header, footer and branding fields marked **sitewide** apply across pages. Other edits apply to the selected route.
-- Use section visibility controls to show or hide existing sections. Homepage sections have dedicated controls described below.
-- **Save and publish** publishes the changed scopes. **Discard unsaved edits** returns to the last saved values. **Restore original** removes a field override after saving.
-- Conditional content, such as an open cart drawer, becomes editable when it appears in the preview.
+The editor is written for a non-technical owner: every control is labelled in ordinary words, and no code identifiers (region names, field keys, slugs) appear in the interface.
 
-The editor changes visible content within the existing design. Routes, SEO metadata, application behavior, and custom HTML/CSS/scripts remain code-managed. Text is escaped, not interpreted as HTML. Image URLs must use local `/media/` or `/brand/` assets, or the configured Cloudinary account.
+- Choose a page from **Which page do you want to change?**. Page names are plain ("All sarees", "Enquiry list", "Saree page: …").
+- Editable items are grouped into expandable cards named after what a visitor sees — "Homepage banner", "Top menu bar", "Page footer", "Enquiry form" — instead of one flat list. Cards fed by `ContentRegion` names map through `REGION_LABELS` in [src/lib/page-content.ts](../src/lib/page-content.ts); add an entry there when a new region is introduced, or its raw component name is shown as a fallback.
+- Filter chips (**Everything / Just words / Just pictures / Show or hide parts**) and a search box narrow the list.
+- Every field carries an inline hint describing what it does and roughly how long it should be (`fieldHint`), plus a live character count.
+- Pictures use a drop zone: drag a photo onto it, or click to pick one. The thumbnail updates as soon as the upload finishes. Non-image files are refused with a plain message.
+- Show/hide controls are labelled switches reading "This part is showing on your website" or "This part is hidden from visitors", with a matching Show it / Hide it action.
+- The preview sits beside the form on wide screens and updates as you type. Below 1280px the screen switches to **Make changes** / **See preview** tabs fixed to the bottom of the viewport, so the editor is usable on a phone or tablet.
+
+### Saving, publishing and undo
+
+Three distinct actions, each explained in the interface:
+
+| Control | Effect |
+| --- | --- |
+| **Make it live on the website** | Publishes the current content. Snapshots the previously published version, writes `content` and `draft_content`, and invalidates the public caches. |
+| **Save for later, don’t publish yet** | Writes `draft_content` only. Visitors keep seeing the published version and no cache tag is invalidated. The draft reloads into the editor next visit. |
+| **Undo my changes** | Discards edits made since the last save, in the browser only. |
+| **Put the original back** (per field) | Removes that one override so the authored default returns. |
+| **Go back to an earlier version** | Lists the last 10 published versions with timestamps and restores one after a confirmation step. The version being replaced is itself snapshotted first, so a restore is also reversible. |
+
+`savePageDraft`, `publishPageContent` and `restorePageVersion` in [src/app/admin/page-content-actions.ts](../src/app/admin/page-content-actions.ts) all run behind `assertAdmin` and validate with the same Zod schemas as before. Only publish and restore call `revalidateTag("storefront-pages")`.
 
 ### Homepage layout
 
-Expand **Homepage layout and product placement** to choose the welcome saree, up to four featured sarees, section visibility/order, and shelf order. The welcome saree cannot also occupy a featured position. Hiding welcome or featured sections returns their products to the shelf, so those pieces remain discoverable. Publish the layout, then reload the general preview to see its new structure.
+**How your homepage is arranged** groups its controls into cards — welcome banner, the sarees you are showing off, the order of the page, homepage wording, and the order of the rest of the shelf — with saree thumbnails next to every picker and the same switch styling for visibility. Use it to choose the welcome saree, up to four featured sarees, section visibility/order, homepage headings, and shelf order. The welcome saree cannot also occupy a featured position. Hiding welcome or featured sections returns their products to the shelf, so those pieces remain discoverable. Homepage layout is resolved on the server, so the embedded preview shows the new structure after **Make it live**, not while arranging; the thumbnails and ordered list in the editor itself stand in for it meanwhile. Wording, pictures and per-field previews on the homepage behave like any other page.
 
 ### Product and collection content
 
@@ -44,7 +59,7 @@ Authored videos remain available, with saved uploaded videos added to the galler
 
 | Cache tag | Content | Invalidated by |
 | --- | --- | --- |
-| `storefront-pages` | Page text/images/visibility and homepage layout | Page editor save |
+| `storefront-pages` | Page text/images/visibility and homepage layout | Publishing or restoring a version in the page editor. Saving a draft deliberately does not invalidate it. |
 | `storefront-media` | Mirrored product copy, primary photos and uploaded videos | Product save/status changes and catalog sync |
 | `storefront-collections` | Existing collection copy and membership | Collection/catalog actions and sync |
 | `storefront-availability` | Public availability signals | Storefront Signals save |
@@ -61,11 +76,11 @@ Video URLs are converted to still-image posters wherever an image thumbnail is r
 
 ## Verification for this revision
 
-- Production build and TypeScript checks passed.
-- Lint passed with the existing `ImportUploader.tsx` effect-cleanup warning.
-- 184 unit tests passed, including primary-image persistence/invalidation, video poster handling, page validation, admin authorization, escaped server rendering, and failed-save behavior.
-- 12 browser tests passed against the production build. Coverage includes editor preview text/image/section changes, video thumbnails/playback selection, public navigation, and shelf completeness/no overflow at 320, 390, 768 and 1280px. All 13 default remaining shelf products were present.
-- Save actions were tested with mocked database writes. An authenticated live admin save against migration 017 has not been verified.
+- TypeScript and lint passed (lint keeps only the pre-existing `ImportUploader.tsx` effect-cleanup warning).
+- 188 unit tests passed, including new coverage that a saved draft never invalidates the public cache, that publishing snapshots the previous version, that restoring an earlier version republishes it, that a missing version and an invented page path are refused, and that failed writes report failure without invalidating.
+- Production build passed.
+- Live admin saves against migrations 017/018 have **not** been exercised against a real database; the actions are covered with mocked Postgrest clients only. Run the smoke check under "Enable publishing" after applying the migrations.
+- The Playwright editor spec covers the preview protocol, which is unchanged; the rebuilt admin interface itself has no browser test yet.
 
 Re-run relevant checks with:
 
