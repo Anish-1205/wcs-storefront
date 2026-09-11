@@ -30,7 +30,10 @@ export default async function HomePage() {
     .filter((p) => p.slug !== heroSlug)
     .slice(0, 4);
   const shown = new Set([heroSlug, ...selection.map((p) => p.slug)]);
-  const more = all.filter((p) => !shown.has(p.slug)).slice(0, 6);
+  // The shelf shows the entire rest of the catalog, not a capped preview —
+  // /catalog remains the "View all" link for filtering/sorting, but the
+  // homepage itself should already surface everything we carry.
+  const more = all.filter((p) => !shown.has(p.slug));
   const categories = getCategories();
 
   return (
