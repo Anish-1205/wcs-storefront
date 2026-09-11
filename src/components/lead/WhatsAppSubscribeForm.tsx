@@ -16,8 +16,9 @@ interface Props {
 }
 
 /**
- * Captures name + phone and inserts directly into whatsapp_subscribers via the
- * Supabase browser client (RLS permits public INSERT). No API route needed.
+ * Captures name + phone and posts to /api/subscribe, which validates, applies
+ * the rate limit and writes server-side. The browser has no direct write path
+ * to whatsapp_subscribers — that table is service-role only under RLS.
  */
 export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
   const [name, setName] = useState("");
@@ -25,9 +26,13 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    // Read before the first await — currentTarget is nulled once React
+    // returns from the synchronous part of the handler.
+    const honeypot = String(new FormData(e.currentTarget).get("website") ?? "");
 
     const leadSource = getSource();
     const parsed = subscriberSchema.safeParse({ name, phone, source: leadSource });
@@ -41,7 +46,12 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
     const res = await fetch("/api/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: parsed.data.phone, name: parsed.data.name, source: parsed.data.source }),
+      body: JSON.stringify({
+        phone: parsed.data.phone,
+        name: parsed.data.name,
+        source: parsed.data.source,
+        website: honeypot,
+      }),
     });
 
     if (!res.ok) {
@@ -66,6 +76,15 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
 
   return (
     <ContentRegion region="WhatsAppSubscribeForm" global><form onSubmit={handleSubmit} className="space-y-2">
+      {/* Honeypot — hidden from humans, tempting to bots */}
+      <input
+        type="text"
+        name="website"
+        className="hidden"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+      />
       <Input
         type="text"
         placeholder="Your name"

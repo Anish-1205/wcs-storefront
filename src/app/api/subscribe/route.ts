@@ -33,6 +33,11 @@ export async function POST(req: Request) {
 
   const data = parsed.data;
 
+  // Honeypot: a filled "website" field means a bot. Pretend success, store nothing.
+  if (data.website) {
+    return NextResponse.json({ ok: true });
+  }
+
   if (!serviceRoleKey) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }

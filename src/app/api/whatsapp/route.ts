@@ -189,6 +189,12 @@ function messageMediaId(message: WhatsAppMessage): string | undefined {
   return (message.image?.id ?? message.video?.id)?.trim();
 }
 
+/** "…7890" — enough to correlate a log line with a sender, not enough to be PII. */
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits.length <= 4 ? "…" : `…${digits.slice(-4)}`;
+}
+
 function normalizeCaption(message: WhatsAppMessage): string {
   return (message.image?.caption ?? message.video?.caption ?? message.text?.body ?? "").trim();
 }
@@ -358,12 +364,15 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
     },
   };
 
-  // Never log accessToken. phoneNumberId/to are not secrets (they identify
-  // WhatsApp accounts/phone numbers, not credentials) — logged in full so
-  // they can be diff'd against Meta's dashboard/App Setup values.
+  // Never log accessToken, the recipient's full number, or the message body:
+  // logs are retained and exported far more widely than the database this
+  // data otherwise lives in. phoneNumberId identifies our own WhatsApp
+  // account (not a credential) and is logged in full so it can be diff'd
+  // against Meta's dashboard; the recipient is masked to its last 4 digits,
+  // which is enough to correlate a delivery with a sender during triage.
   console.log(
-    `whatsapp webhook: sending reply — url=${url} to="${to}" (len=${to.length}) ` +
-      `body=${JSON.stringify(requestBody)}`,
+    `whatsapp webhook: sending reply — url=${url} to=${maskPhone(to)} ` +
+      `(len=${to.length}) bodyChars=${text.length}`,
   );
 
   const response = await fetch(url, {
@@ -381,7 +390,8 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
     throw new Error(`WhatsApp reply failed (${response.status}): ${responseText}`);
   }
 
-  console.log(`whatsapp webhook: reply sent to ${to} (${response.status}): ${responseText}`);
+  // Meta echoes the recipient's wa_id in the success body — log only the status.
+  console.log(`whatsapp webhook: reply sent to ${maskPhone(to)} (${response.status})`);
 }
 
 async function replyBestEffort(to: string, text: string, context: string): Promise<void> {

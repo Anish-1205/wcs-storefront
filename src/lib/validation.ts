@@ -40,11 +40,14 @@ export const inquirySchema = z.object({
 
 export type InquiryInput = z.infer<typeof inquirySchema>;
 
-/** WhatsApp subscriber opt-in. */
+/** WhatsApp subscriber opt-in. Includes honeypot field. */
 export const subscriberSchema = z.object({
   name: z.string().min(2, "Please enter your name").max(100),
   phone: z.string().regex(phoneRegex, "Please enter a valid phone number"),
   source: z.enum([...VALID_SOURCES, "unknown"]).default("unknown"),
+  // Honeypot — must be empty for a real human. Same field name and handling
+  // as inquirySchema above.
+  website: z.string().max(500).optional().or(z.literal("")),
 });
 
 export type SubscriberInput = z.infer<typeof subscriberSchema>;
