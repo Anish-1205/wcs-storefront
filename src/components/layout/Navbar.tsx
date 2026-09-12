@@ -57,7 +57,11 @@ export function Navbar() {
               className={cn(
                 "link-underline whitespace-nowrap text-base uppercase tracking-[0.12em] transition-colors hover:text-oxblood lg:text-base lg:tracking-[0.08em]",
                 isActive(l.href) ? "text-oxblood" : "text-deep-brown/80",
-                l.xlOnly && "hidden xl:inline",
+                // inline-flex, not inline: .link-underline is `inline-flex
+                // items-center`, and a bare `inline` would clobber that
+                // display, dropping the vertical centring so this one link's
+                // text sat ~10px above the rest of the bar.
+                l.xlOnly && "hidden xl:inline-flex",
               )}
             >
               {l.label}
