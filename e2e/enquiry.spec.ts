@@ -48,10 +48,28 @@ test.describe("Enquiry form", () => {
     await expect(page.getByRole("link", { name: "Chat on WhatsApp" })).toBeVisible();
   });
 
-  test("honeypot field is present but hidden from real users", async ({ page }) => {
+  test("every form's honeypot is present but hidden from real users", async ({ page }) => {
     await page.goto("/contact");
-    const honeypot = page.locator('input[name="website"]');
-    await expect(honeypot).toBeHidden();
-    await expect(honeypot).toHaveAttribute("tabindex", "-1");
+
+    // /contact carries two independent forms — the page's enquiry form and the
+    // site-wide footer subscribe form — and each needs its OWN honeypot, since
+    // each handler reads `new FormData(form)`, which is form-scoped. Two
+    // `input[name="website"]` on the page is therefore correct, not a
+    // duplication to remove: deleting either would leave that form unprotected.
+    // Assert per-form rather than page-wide (a page-wide locator matches both
+    // and trips strict mode).
+    const forms = [
+      page.locator("form", { has: page.getByRole("button", { name: "Send Enquiry" }) }),
+      page.locator("footer form"),
+    ];
+
+    for (const form of forms) {
+      const honeypot = form.locator('input[name="website"]');
+      await expect(honeypot).toHaveCount(1);
+      await expect(honeypot).toBeHidden();
+      await expect(honeypot).toHaveAttribute("tabindex", "-1");
+      await expect(honeypot).toHaveAttribute("autocomplete", "off");
+      await expect(honeypot).toHaveAttribute("aria-hidden", "true");
+    }
   });
 });
