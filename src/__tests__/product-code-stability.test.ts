@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { productInputSchema } from "@/lib/validation";
-import { saveProduct } from "@/app/admin/actions";
+import { saveProduct, updateProductDetails } from "@/app/admin/actions";
 
 const assertAdmin = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/admin-auth", () => ({ assertAdmin }));
@@ -14,7 +14,7 @@ const PRODUCT_ID = "a62fcb7a-fccc-463c-8ab2-3dba81e3a7aa";
  * used to be de-duplicated against a set that still contained itself, so every
  * save of an unchanged product bumped it ("WCS-001" -> "wcs-001-2" -> "-3").
  */
-function mockAdmin(options: { currentCode: string | null; existingCodes: string[] }) {
+function mockAdmin(options: { currentCode: string | null; existingCodes: string[]; status?: string }) {
   const productWrites: Array<Record<string, unknown>> = [];
   assertAdmin.mockResolvedValue({
     admin: {
@@ -44,6 +44,10 @@ function mockAdmin(options: { currentCode: string | null; existingCodes: string[
               product_code: options.currentCode,
               review_status: "not_required",
             },
+            error: null,
+          }),
+          single: async () => ({
+            data: { id: PRODUCT_ID, slug: "saved-saree", product_code: options.currentCode, status: options.status ?? "draft" },
             error: null,
           }),
           then(resolve: (value: unknown) => void) {
@@ -86,6 +90,24 @@ function input(productCode: string | null) {
     variants: [],
   });
 }
+
+it("quick edit only updates name, code and category, preserving the existing code", async () => {
+  const writes = mockAdmin({ currentCode: "WCS-001", existingCodes: ["WCS-001"] });
+  expect(await updateProductDetails({ id: PRODUCT_ID, name: "  New name  ", product_code: "WCS-001", category_id: PRODUCT_ID })).toEqual({ ok: true });
+  expect(writes).toEqual([{ name: "New name", product_code: "WCS-001", category_id: PRODUCT_ID }]);
+});
+
+it("quick edit rejects blank names without writing", async () => {
+  const writes = mockAdmin({ currentCode: null, existingCodes: [] });
+  expect(await updateProductDetails({ id: PRODUCT_ID, name: "  ", product_code: null, category_id: null })).toMatchObject({ ok: false });
+  expect(writes).toEqual([]);
+});
+
+it("quick edit cannot remove a published product's category", async () => {
+  const writes = mockAdmin({ currentCode: null, existingCodes: [], status: "published" });
+  expect(await updateProductDetails({ id: PRODUCT_ID, name: "Saree", product_code: null, category_id: null })).toEqual({ ok: false, error: "Published products need a category" });
+  expect(writes).toEqual([]);
+});
 
 it("keeps an unchanged product code exactly as it is across repeated saves", async () => {
   const writes = mockAdmin({ currentCode: "WCS-001", existingCodes: ["WCS-001", "WCS-002"] });

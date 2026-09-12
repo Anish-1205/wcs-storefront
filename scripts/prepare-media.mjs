@@ -3,7 +3,7 @@
  *
  * Reads the raw WhatsApp exports from a source directory and writes
  * web-ready assets into public/media/<slug>/. Images are gently resized
- * (long edge capped, quality 82, metadata stripped) — NO colour/hue/
+ * (long edge capped, quality 90, metadata stripped) — NO colour/hue/
  * saturation changes, because colour fidelity matters for a textile
  * business. Videos are copied verbatim (no ffmpeg dependency).
  *
@@ -28,7 +28,7 @@ const ONLY = process.argv[3];
 
 const OUT = path.join(process.cwd(), "public", "media");
 const MAX_EDGE = 1600;
-const QUALITY = 82;
+const QUALITY = 90;
 
 /** slug -> { images: [ [srcRelPath, outName], ... ], videos: [ [srcRelPath, outName], ... ] } */
 const MAP = {

@@ -25,6 +25,8 @@ import {
   parseContactDateTimeValue,
   parseContactDateValue,
   productInputSchema,
+  productDetailsSchema,
+  type ProductDetailsShape,
   type CollectionInputShape,
   type CategoryInputShape,
   type ContactImportRowShape,
@@ -784,6 +786,35 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
   revalidatePublic(slugify(source.slug));
   revalidateCatalogShell();
   return { id: newId };
+  });
+}
+
+export async function updateProductDetails(input: ProductDetailsShape): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const parsed = productDetailsSchema.safeParse(input);
+    if (!parsed.success) throw new Error(firstIssueMessage(parsed.error, "Invalid product"));
+    const { id, ...details } = parsed.data;
+    const { data: current, error: readError } = await admin
+      .from("products")
+      .select("slug, status, product_code")
+      .eq("id", id)
+      .single();
+    if (readError) throw new Error(readError.message);
+    if (current.status === "published" && !details.category_id) {
+      throw new Error("Published products need a category");
+    }
+    const refs = await loadExistingProductRefs(admin);
+    const productCode = makeStableCode(details.product_code, refs.productCodes, current.product_code);
+    const { error } = await admin.from("products").update({
+      ...details,
+      product_code: productCode,
+    }).eq("id", id).select("id").single();
+    if (error) throw new Error(error.message);
+    revalidatePublic(current.slug as string);
+    revalidateCatalogShell();
+    revalidatePath(`/admin/products/${id}`);
+    return {};
   });
 }
 

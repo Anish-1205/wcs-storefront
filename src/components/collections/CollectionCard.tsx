@@ -14,10 +14,11 @@ export function CollectionCard({ collection }: { collection: Collection }) {
       {collection.image_url ? (
         <>
           <Image
-            src={cld(collection.image_url, "card")}
+            src={cld(collection.image_url, "landscape")}
             alt={collection.name}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
+            quality={90}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-black/10" />

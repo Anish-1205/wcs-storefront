@@ -15,6 +15,7 @@ export function CategoryCard({ category }: { category: Category }) {
           alt={`${category.name} sarees`}
           fill
           sizes="(max-width: 640px) 50vw, 25vw"
+          quality={90}
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
       ) : (

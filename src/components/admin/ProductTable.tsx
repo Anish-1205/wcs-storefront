@@ -12,6 +12,7 @@ import { Pagination } from "./Pagination";
 import { cld } from "@/lib/cloudinary";
 import {
   updateProductStatus,
+  updateProductDetails,
   toggleFeatured,
   deleteProduct,
   duplicateProduct,
@@ -20,6 +21,7 @@ import {
   DEFAULT_ADMIN_PAGE_SIZE,
   isAdminPageSize,
   type AdminProductsQueryShape,
+  type ProductDetailsShape,
 } from "@/lib/validation";
 import type { ProductStatus } from "@/lib/supabase/types";
 
@@ -32,6 +34,7 @@ export interface AdminProductRow {
   product_code: string | null;
   source: "admin" | "file_sync";
   category_name: string | null;
+  category_id: string | null;
   variant_count: number;
   thumbnail_url: string | null;
   created_at: string;
@@ -71,6 +74,30 @@ export function ProductTable({ rows, query, total, categories }: Props) {
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(query.q);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ProductDetailsShape | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function onQuickEdit(row: AdminProductRow) {
+    setActionError(null);
+    setDraft({ id: row.id, name: row.name, product_code: row.product_code, category_id: row.category_id });
+  }
+
+  function onSaveDetails() {
+    if (!draft || saving) return;
+    setActionError(null);
+    setSaving(true);
+    startTransition(async () => {
+      try {
+        const result = await updateProductDetails(draft);
+        if (result.ok) setDraft(null);
+        else setActionError(result.error);
+      } catch {
+        setActionError("Could not save changes. Please try again.");
+      } finally {
+        setSaving(false);
+      }
+    });
+  }
 
   // The debounce below fires up to 350ms after the render that scheduled it, by
   // which time the admin may have changed a filter. Reading the query through a
@@ -161,7 +188,7 @@ export function ProductTable({ rows, query, total, categories }: Props) {
   return (
     <div className="space-y-4">
       {actionError && (
-        <p className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+        <p role="alert" className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {actionError}
         </p>
       )}
@@ -237,9 +264,19 @@ export function ProductTable({ rows, query, total, categories }: Props) {
                   </div>
                 </td>
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/admin/products/${r.id}`} className="hover:text-primary">
+                  {draft?.id === r.id ? (
+                    <Input
+                      aria-label="Product name"
+                      autoFocus
+                      maxLength={200}
+                      value={draft.name}
+                      disabled={saving}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                      className="min-w-56"
+                    />
+                  ) : <Link href={`/admin/products/${r.id}`} className="hover:text-primary">
                     {r.name}
-                  </Link>
+                  </Link>}
                   {r.source === "file_sync" && (
                     <span
                       className="ml-2 rounded-sm border border-[#B8860B]/40 bg-[#B8860B]/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#B8860B]"
@@ -250,10 +287,32 @@ export function ProductTable({ rows, query, total, categories }: Props) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {r.product_code ?? "—"}
+                  {draft?.id === r.id ? (
+                    <Input
+                      aria-label="Product code"
+                      maxLength={100}
+                      value={draft.product_code ?? ""}
+                      disabled={saving}
+                      onChange={(e) => setDraft({ ...draft, product_code: e.target.value || null })}
+                      className="min-w-40"
+                    />
+                  ) : r.product_code ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {r.category_name ?? "—"}
+                  {draft?.id === r.id ? (
+                    <Select
+                      aria-label="Product category"
+                      value={draft.category_id ?? ""}
+                      disabled={saving}
+                      onChange={(e) => setDraft({ ...draft, category_id: e.target.value || null })}
+                      className="min-w-36"
+                    >
+                      <option value="">No category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </Select>
+                  ) : r.category_name ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{r.variant_count}</td>
                 <td className="px-4 py-3">
@@ -282,6 +341,20 @@ export function ProductTable({ rows, query, total, categories }: Props) {
                   />
                 </td>
                 <td className="px-4 py-3 text-right">
+                  {draft?.id === r.id ? (
+                    <div className="mb-2 flex justify-end gap-2">
+                      <Button type="button" size="sm" disabled={pending || saving || !draft.name.trim()} onClick={onSaveDetails}>
+                        {saving ? "Saving…" : "Save"}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => { setDraft(null); setActionError(null); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <button type="button" disabled={pending || !!draft} onClick={() => onQuickEdit(r)} className="mb-2 block ml-auto text-xs font-medium text-primary hover:underline disabled:opacity-50">
+                      Quick edit
+                    </button>
+                  )}
                   <Link
                     href={`/admin/products/${r.id}`}
                     className="text-xs font-medium text-primary hover:underline"

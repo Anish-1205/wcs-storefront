@@ -39,7 +39,7 @@ export default async function AdminProductsPage(props: {
   let listQuery = admin
     .from("products")
     .select(
-      "id, name, slug, status, is_featured, product_code, source, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
+      "id, name, slug, status, is_featured, product_code, source, category_id, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
       { count: "exact" },
     );
 
@@ -74,6 +74,7 @@ export default async function AdminProductsPage(props: {
     is_featured: p.is_featured as boolean,
     product_code: (p.product_code as string) ?? null,
     source: (p.source as AdminProductRow["source"]) ?? "admin",
+    category_id: (p.category_id as string) ?? null,
     category_name:
       (p.category as { name?: string } | null)?.name ?? null,
     variant_count: ((p.product_variants as unknown[]) ?? []).length,

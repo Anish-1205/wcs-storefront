@@ -72,6 +72,7 @@ export function SareeCard({
           alt={main.alt}
           fill
           sizes={sizes}
+          quality={90}
           priority={priority}
           className={cn(
             "object-cover transition-[transform,opacity] duration-500 ease-out group-hover:scale-[1.025]",
@@ -103,6 +104,7 @@ export function SareeCard({
             aria-hidden="true"
             fill
             sizes={sizes}
+            quality={90}
             className={cn(
               "object-cover transition-opacity duration-500",
               hover ? "opacity-100" : "opacity-0",

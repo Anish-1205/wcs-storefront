@@ -85,6 +85,15 @@ export const variantInputSchema = z.object({
   images: z.array(variantImageSchema),
 });
 
+export const productDetailsSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1, "Product name is required").max(200),
+  product_code: z.string().trim().max(100).nullable(),
+  category_id: z.string().uuid().nullable(),
+});
+
+export type ProductDetailsShape = z.infer<typeof productDetailsSchema>;
+
 export const productInputSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(200),

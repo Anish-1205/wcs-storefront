@@ -76,6 +76,7 @@ export function PortraitImage(props: ImageProps) {
         height={height}
         alt={alt}
         sizes={sizes}
+        quality={90}
         priority={priority}
         className={cn("h-auto w-full", rounded && "rounded-sm", className)}
         style={fit === "contain" ? { objectFit: "contain" } : undefined}
@@ -97,6 +98,7 @@ export function PortraitImage(props: ImageProps) {
         alt={alt}
         fill
         sizes={sizes}
+        quality={90}
         priority={priority}
         className={fit === "contain" ? "object-contain" : "object-cover"}
         style={position ? { objectPosition: position } : undefined}
@@ -174,6 +176,7 @@ export function PortraitVideo(props: VideoProps) {
         alt={alt}
         fill
         sizes={posterSizes}
+        quality={90}
         priority={posterPriority}
         className={cn(
           "transition-opacity duration-500",

@@ -55,6 +55,7 @@ export function ImageGallery({ images, alt, productId, pageUrl }: Props) {
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
+            quality={90}
             className="object-cover"
             onError={() => setFailedUrl(current.image_url)}
           />

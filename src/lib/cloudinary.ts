@@ -1,15 +1,16 @@
 // Cloudinary URL transform helpers.
 // Named transforms from the deployment plan:
-//   thumbnail: c_fill,w_400,h_500,q_auto,f_auto
-//   pinterest: c_fill,w_1000,h_1500,q_auto,f_auto
+// The larger transforms provide enough source pixels for high-density screens;
+// Next/Image still chooses the smaller responsive delivery size in the page.
 
-type Transform = "thumbnail" | "pinterest" | "card" | "full";
+type Transform = "thumbnail" | "pinterest" | "card" | "landscape" | "full";
 
 const TRANSFORMS: Record<Transform, string> = {
-  thumbnail: "c_fill,w_400,h_500,q_auto,f_auto",
-  card: "c_fill,w_600,h_800,q_auto,f_auto",
-  full: "c_fill,w_1200,h_1600,q_auto,f_auto",
-  pinterest: "c_fill,w_1000,h_1500,q_auto,f_auto",
+  thumbnail: "c_fill,w_400,h_500,q_auto:best,f_auto",
+  card: "c_fill,w_1200,h_1600,q_auto:best,f_auto",
+  landscape: "c_fill,w_1600,h_1000,q_auto:best,f_auto",
+  full: "c_fill,w_1800,h_2400,q_auto:best,f_auto",
+  pinterest: "c_fill,w_1200,h_1800,q_auto:best,f_auto",
 };
 
 /**

@@ -68,6 +68,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
           alt={`${product.name}${primaryVariant ? ` – ${primaryVariant.color}` : ""} ${product.fabric_type ?? ""} saree`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          quality={90}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
           unoptimized={currentSrc.startsWith("data:")}

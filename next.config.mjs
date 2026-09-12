@@ -12,6 +12,12 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     formats: ["image/avif", "image/webp"],
+    // Product photography contains fine weave and zari detail. Keep those
+    // details through the final Next.js encode while still serving responsive
+    // AVIF/WebP sizes for each viewport.
+    // 75 remains available for small admin/interface thumbnails; storefront
+    // photography opts into 90 in the components below.
+    qualities: [75, 90],
     remotePatterns: [
       {
         protocol: "https",
