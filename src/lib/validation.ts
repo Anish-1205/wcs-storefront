@@ -474,6 +474,40 @@ export const collectionAliasInputSchema = z.object({
   alias: z.string().min(1).max(200),
 });
 
+// ── Re-running AI naming/tagging over existing products ─────────────
+// The apply step takes values the admin has just seen in a preview, so every
+// field is re-validated here (and re-checked against the real taxonomy in the
+// action) before anything is written. Media, variants, prices, status and slug
+// are deliberately absent: re-processing may never touch them.
+
+/** Caps how many products one re-processing run may touch — each product costs
+ * two AI calls, so a whole-catalogue run has to be done in batches. */
+export const MAX_ENRICHMENT_BATCH = 12;
+
+export const enrichmentPreviewSchema = z.object({
+  product_ids: z.array(z.string().uuid()).min(1).max(MAX_ENRICHMENT_BATCH),
+  /** Re-style names that already satisfy the convention, not just the ones that don't. */
+  rename_all: z.boolean().default(false),
+  /** Replace existing highlights instead of only filling empty ones. */
+  replace_highlights: z.boolean().default(false),
+});
+
+export const enrichmentApplySchema = z.object({
+  proposals: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        name: z.string().min(3).max(200).nullable(),
+        fabric_type: z.string().max(120).nullable(),
+        highlights: z.array(z.string().max(200)).max(10).nullable(),
+        category_id: z.string().uuid().nullable(),
+        add_collection_ids: z.array(z.string().uuid()).max(5),
+      }),
+    )
+    .min(1)
+    .max(MAX_ENRICHMENT_BATCH),
+});
+
 export type ImportBatchCreateShape = z.infer<typeof importBatchCreateSchema>;
 export type ImportUploadSignRequestShape = z.infer<typeof importUploadSignRequestSchema>;
 export type ImportAssetCompleteShape = z.infer<typeof importAssetCompleteSchema>;
@@ -484,3 +518,5 @@ export type CollectionInputShape = z.infer<typeof collectionInputSchema>;
 export type ContactInputShape = z.infer<typeof contactSchema>;
 export type ContactImportRowShape = z.infer<typeof contactImportRowSchema>;
 export type ContactsQueryShape = z.infer<typeof contactsQuerySchema>;
+export type EnrichmentPreviewShape = z.infer<typeof enrichmentPreviewSchema>;
+export type EnrichmentApplyShape = z.infer<typeof enrichmentApplySchema>;

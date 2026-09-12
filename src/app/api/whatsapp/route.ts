@@ -635,9 +635,6 @@ async function finalizeBatch(params: {
   }
 
   const { description, price, fabric } = parseCollectionMessage(text);
-  const name = deriveProductName(description);
-  const slugBase = slugify(name);
-  const codeBase = generateProductSKU(name);
   const imageItems = pending.filter((item) => item.kind === "image");
 
   const aiProvider = getAiProvider();
@@ -648,13 +645,14 @@ async function finalizeBatch(params: {
     fabricType: fabric,
     collectionIds: [],
     collectionNames: [],
+    name: null,
   };
   let colorSplit: ColorVariantSplit | null = null;
 
   if (aiProvider.isConfigured()) {
     const [{ data: categoriesData, error: categoriesError }, { data: collectionsData, error: collectionsError }] =
       await Promise.all([
-        supabase.from("categories").select("id, slug, name"),
+        supabase.from("categories").select("id, slug, name, description"),
         supabase.from("collections").select("id, name, description"),
       ]);
 
@@ -678,6 +676,13 @@ async function finalizeBatch(params: {
       }),
     ]);
   }
+
+  // The AI-drafted name already went through the catalogue style rules; the
+  // deterministic derivation is the fallback so a listing never fails (or
+  // silently degrades in style) just because the AI call didn't land.
+  const name = enrichment.name ?? deriveProductName(description);
+  const slugBase = slugify(name);
+  const codeBase = generateProductSKU(name);
 
   const createdProduct = await insertProductWithUniqueSlug(
     supabase,

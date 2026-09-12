@@ -11,6 +11,7 @@ vi.mock("@/lib/ai", () => ({ getAiProvider: mockGetAiProvider }));
 
 import { POST } from "@/app/api/whatsapp/route";
 import { deriveProductName, parseCollectionMessage, parseProductCaption } from "@/lib/whatsapp-caption";
+import { MAX_NAME_LENGTH } from "@/lib/ai/style-guide";
 
 const AI_OFF_PROVIDER = {
   name: "off",
@@ -257,18 +258,24 @@ describe("parseCollectionMessage", () => {
   });
 });
 
+// deriveProductName is now the AI-free path through the catalogue naming
+// convention (src/lib/ai/style-guide.ts), so it styles rather than truncates.
+// The convention itself is covered in naming-style.test.ts.
 describe("deriveProductName", () => {
-  it("keeps a short description as-is", () => {
-    expect(deriveProductName("Kanjivaram Red")).toBe("Kanjivaram Red");
+  it("keeps the description's words but applies the house style", () => {
+    expect(deriveProductName("Kanjivaram Red")).toBe("Kanjivaram Red Saree");
   });
 
-  it("truncates a long description to a word boundary within 60 chars", () => {
+  it("distils a long marketing description to a short, styled name", () => {
     const long =
       "Exquisite Kanjivaram-style Tissue Benarasi sarees with a rich gold zari border and traditional temple motifs";
     const name = deriveProductName(long);
-    expect(name.length).toBeLessThanOrEqual(60);
-    expect(long.startsWith(name)).toBe(true);
+    expect(name.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
     expect(name.endsWith(" ")).toBe(false);
+    // No marketing lead-in, no plural, exactly one product noun.
+    expect(name).not.toMatch(/exquisite/i);
+    expect(name.match(/saree/gi)).toHaveLength(1);
+    expect(name).not.toMatch(/sarees/i);
   });
 });
 

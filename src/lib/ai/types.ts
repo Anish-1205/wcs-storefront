@@ -44,6 +44,16 @@ export interface AiMetadataInput {
   /** Facts the admin/manifest has actually asserted (fabric, price, etc.) — the
    * only source the provider may echo back for those fields. */
   trustedFacts?: Record<string, string>;
+  /** The real category taxonomy, as a closed list. When supplied, the provider
+   * must pick `category_slug` from it and never invent one — same closed-list
+   * contract as classifyCollection's `existingCollections`, and callers
+   * re-filter defensively regardless. Omitting it means the caller doesn't use
+   * category_slug at all. */
+  existingCategories?: Array<{ slug: string; name: string; description: string | null }>;
+  /** Existing collection names, for context only — so suggested `tags` reuse
+   * the catalogue's real vocabulary instead of inventing near-synonyms.
+   * Collection *assignment* still only ever happens via classifyCollection. */
+  existingCollectionNames?: string[];
 }
 
 export interface CollectionCandidate {

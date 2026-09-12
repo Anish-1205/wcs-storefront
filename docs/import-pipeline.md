@@ -145,6 +145,71 @@ unit tests against a mocked `fetch` (`src/__tests__/ai-provider.test.ts`),
 not a real call. Wire a real key and try an import before trusting AI
 suggestions in production.
 
+## Naming & tagging style guide (`src/lib/ai/style-guide.ts`)
+
+One module is the single source of truth for how every product reads, and it
+is used twice — as prompt text, and as deterministic post-processing:
+
+1. **Prompt text.** `NAMING_STYLE_GUIDE`, `HIGHLIGHTS_STYLE_GUIDE`,
+   `COLOUR_STYLE_GUIDE` and `CATALOGUE_STYLE_PREAMBLE` are injected into the
+   metadata, classification and colour-variant prompts, with good/bad examples
+   and the reasons the bad ones are bad.
+2. **Code enforcement.** `enforceNameStyle`, `composeProductName`,
+   `resolveProductName` and `normalizeHighlights` are applied to whatever comes
+   back. This is the part that actually guarantees consistency: the prompt is
+   guidance, the code is the contract. A product created in a batch where the
+   model drifted — or where AI wasn't configured at all — still reads like the
+   rest of the catalogue.
+
+The convention is `[Colour] [Fabric/Weave] Saree with [Key Detail]`: 3–8 words,
+≤ 70 characters, Title Case with lowercase minor words, exactly one singular
+"Saree", at most one `with` clause, and no marketing/urgency words, prices,
+numbers, emoji, hashtags or trailing punctuation. Fabric/weave/region words may
+appear **only** when the description or trusted facts state them — the
+no-fabrication rule applies to names exactly as it does to `fabric_type`.
+`enforceNameStyle` returns `null` rather than emit junk, and every caller then
+falls back: AI name → name composed from known parts → styled description →
+(WhatsApp only) the deterministic `deriveProductName`. Nothing in this module
+invents a claim; it only deletes, reorders and re-cases words that were already
+in the model's suggestion or the admin's own text.
+
+### Taxonomy as context, not invention
+
+`suggestProductMetadata` now takes `existingCategories` (the real category
+list, as a closed list) and `existingCollectionNames` (for tag vocabulary
+only — collection *assignment* still happens solely through
+`classifyCollection`). The prompt requires `category_slug` to be copied from
+that list, and the provider then **re-filters it defensively**: a slug that
+wasn't offered is dropped, exactly as a hallucinated `collection_id` is. With
+no list supplied, `category_slug` is dropped entirely. Both callers feed the
+live taxonomy in (`import-actions.ts`, `whatsapp-enrichment.ts`).
+
+## Re-processing existing products
+
+Products created before the style guide existed can be brought up to standard
+without re-importing anything: **/admin/products → "Re-run AI naming &
+tagging"** (`src/app/admin/enrichment-actions.ts`,
+`src/lib/enrichment/reprocess.ts`).
+
+- Two steps: `previewProductEnrichment` runs the AI and writes nothing;
+  `applyProductEnrichment` writes only what the admin ticked. The apply step
+  re-validates everything server-side (zod, plus a live check of every category
+  and collection id) and re-runs the style rules — it never trusts the values
+  the browser sent back.
+- **Media is never touched.** Only `name`, `fabric_type`, `highlights`,
+  `category_id` and *additional* `collection_products` rows are written. Images,
+  variants, prices, status — and the slug, so live product URLs keep working —
+  are out of scope.
+- Gaps get filled, curated values are kept: fabric/category/highlights are only
+  proposed when the product has none (opt-in checkboxes override that),
+  collections are only ever added, and a name that already follows the
+  convention is left alone. A second run over the same catalogue is a no-op.
+- Batched at `MAX_ENRICHMENT_BATCH` (12) products per run, three AI calls in
+  flight at a time, since each product costs two provider calls.
+- With no `ANTHROPIC_API_KEY` the flow still works as a deterministic
+  name-tidy — that alone fixes the verbatim-WhatsApp-description names — and
+  says so in the UI.
+
 ## Grouping heuristics (`src/lib/import/grouping.ts`)
 
 Priority order: explicit "start next product" boundary → folder (directory
@@ -268,7 +333,14 @@ transforms, etc.) and was out of scope here.
   `003_seed_sample_data.sql`.
 - `ai-provider.test.ts` — null provider, provider selection, and the
   Anthropic provider's degrade-gracefully/never-fabricate behaviour against
-  a mocked `fetch`.
+  a mocked `fetch`, including the closed-list `category_slug` filter and the
+  style enforcement applied to a drifting name/highlights.
+- `naming-style.test.ts` — the naming convention as executable spec
+  (`enforceNameStyle`, `composeProductName`, `resolveProductName`,
+  `normalizeHighlights`, `deriveProductName`) and the re-processing decision
+  rules (`buildEnrichmentProposal`): gap-filling, never overwriting curated
+  values, add-only collections, second-run-is-a-no-op, and the guard that a
+  proposal can only ever carry name/fabric/highlights/category/collections.
 - `import-upload-sign.test.ts` / `import-asset-complete.test.ts` — auth,
   mime/size/batch-size limits, idempotent completion, etag-based duplicate
   flagging.

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
 import { getAiProvider } from "@/lib/ai";
+import { enforceNameStyle, normalizeHighlights, resolveProductName } from "@/lib/ai/style-guide";
 import { classifyGroupCollection } from "@/lib/import/collection-classification";
 import { resolveColorVariantAssignment } from "@/lib/import/color-variants";
 import { proposeGroups, type GroupableAsset } from "@/lib/import/grouping";
@@ -559,9 +560,17 @@ export async function requestGroupAiSuggestions(groupId: string): Promise<Action
     let warning: string | null = null;
     await recordJobAttempt(admin, group.batch_id, groupId, "ai_group_metadata", async () => {
       const provider = getAiProvider();
+      // The real taxonomy goes in as a closed list so the model picks an
+      // existing category/vocabulary instead of inventing a near-match.
+      const [categories, collectionNames] = await Promise.all([
+        getExistingCategoriesForMetadata(admin),
+        getExistingCollectionNames(admin),
+      ]);
       const suggestions = await provider.suggestProductMetadata({
         adminDescription: group.admin_description,
         imageUrls,
+        existingCategories: categories,
+        existingCollectionNames: collectionNames,
       });
 
       if (!suggestions) {
@@ -681,6 +690,18 @@ export async function clearGroupColorVariants(groupId: string): Promise<ActionRe
     revalidateImport(group.batch_id);
     return {};
   });
+}
+
+/** Closed-list category taxonomy handed to the metadata prompt. */
+async function getExistingCategoriesForMetadata(admin: AdminClient) {
+  const { data } = await admin.from("categories").select("slug, name, description").order("display_order");
+  return (data ?? []) as Array<{ slug: string; name: string; description: string | null }>;
+}
+
+/** Collection names, for tag vocabulary only — assignment stays with classifyCollection. */
+async function getExistingCollectionNames(admin: AdminClient) {
+  const { data } = await admin.from("collections").select("name").eq("is_active", true);
+  return ((data ?? []) as Array<{ name: string }>).map((c) => c.name);
 }
 
 async function getExistingCollectionsForClassification(admin: AdminClient) {
@@ -909,13 +930,24 @@ export async function createProductFromGroup(
     const meta = group.ai_metadata ?? {};
     const aiName = meta.display_name?.value?.trim() || meta.name?.value?.trim();
     const aiDescription = meta.short_description?.value?.trim();
+    const description = group.admin_description?.trim() || aiDescription || null;
+    const fabricType = meta.fabric_type?.value?.trim() || null;
+    // One catalogue convention, whichever batch or session produced the group
+    // (see src/lib/ai/style-guide.ts). Every candidate goes through the same
+    // style rules, so a group imported before this existed reads the same as
+    // one imported after; the dated placeholder stays the last resort.
     const name =
-      aiName ||
+      resolveProductName({
+        aiName,
+        colour: meta.colour?.value ?? null,
+        fabric: fabricType,
+        description: group.admin_description,
+      }) ||
+      enforceNameStyle(firstClause(group.admin_description, 80)) ||
+      enforceNameStyle(imageAssets[0].original_filename?.replace(/\.[a-z0-9]+$/i, "")) ||
       firstClause(group.admin_description, 80) ||
       imageAssets[0].original_filename?.replace(/\.[a-z0-9]+$/i, "") ||
       `Imported item ${new Date().toISOString().slice(0, 10)}`;
-    const description = group.admin_description?.trim() || aiDescription || null;
-    const fabricType = meta.fabric_type?.value?.trim() || null;
     const productCode = meta.product_code?.value?.trim() || null;
     const priceMin = usablePrice(meta.base_price_min?.value);
     const priceMaxRaw = usablePrice(meta.base_price_max?.value);
@@ -934,7 +966,7 @@ export async function createProductFromGroup(
       category_id: categoryId,
       fabric_type: fabricType,
       description,
-      highlights: meta.highlights?.value ?? [],
+      highlights: normalizeHighlights(meta.highlights?.value),
       base_price_min: priceMin,
       base_price_max: priceMax,
       status: "draft" as const,

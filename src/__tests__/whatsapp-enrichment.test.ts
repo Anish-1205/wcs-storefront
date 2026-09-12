@@ -41,6 +41,7 @@ describe("enrichWhatsAppProduct", () => {
       fabricType: null,
       collectionIds: [],
       collectionNames: [],
+      name: null,
     });
     expect(provider.suggestProductMetadata).not.toHaveBeenCalled();
   });
@@ -243,6 +244,9 @@ describe("enrichWhatsAppProduct", () => {
       fabricType: "Silk",
       collectionIds: [],
       collectionNames: [],
+      // Still named to the convention, composed deterministically from the
+      // caption's own fabric — the AI failing never costs the product a name.
+      name: "Silk Saree",
     });
     warn.mockRestore();
   });

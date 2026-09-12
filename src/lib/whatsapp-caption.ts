@@ -1,3 +1,5 @@
+import { enforceNameStyle } from "@/lib/ai/style-guide";
+
 export const NEW_PRODUCT_CAPTION_HINT =
   "description | price | fabric — e.g. Red silk saree with gold border | 2500 | Silk";
 
@@ -72,10 +74,19 @@ const MAX_NAME_LENGTH = 60;
  * slug/product_code stay short and readable instead of encoding the entire
  * forwarded message. Deterministic (no AI call) — a whole product listing
  * hinges on this, so it must never depend on an external call succeeding.
+ *
+ * Applies the same catalogue naming convention the AI is prompted with (see
+ * src/lib/ai/style-guide.ts), so a listing created while AI is unavailable
+ * still reads like the rest of the catalogue. Plain truncation remains the
+ * last resort for text the style rules can't make anything of.
  */
 export function deriveProductName(description: string): string {
   const cleaned = description.replace(/\s+/g, " ").trim();
   if (!cleaned) return `Saree ${Date.now()}`;
+
+  const styled = enforceNameStyle(cleaned);
+  if (styled) return styled;
+
   if (cleaned.length <= MAX_NAME_LENGTH) return cleaned;
 
   const words = cleaned.split(" ");

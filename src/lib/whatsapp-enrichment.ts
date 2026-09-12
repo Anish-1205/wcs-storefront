@@ -1,4 +1,5 @@
 import type { AiProvider } from "@/lib/ai/types";
+import { normalizeHighlights, resolveProductName } from "@/lib/ai/style-guide";
 import { SUGGESTED_CONFIDENCE_THRESHOLD } from "@/lib/import/collection-classification";
 import { resolveColorVariantAssignment } from "@/lib/import/color-variants";
 
@@ -24,6 +25,9 @@ export interface CategoryOption {
   id: string;
   slug: string;
   name: string;
+  /** Passed to the model as taxonomy context so it picks a real category
+   * instead of a loosely-related invention. */
+  description?: string | null;
 }
 
 export interface CollectionOption {
@@ -39,6 +43,10 @@ export interface ProductEnrichment {
   fabricType: string | null;
   collectionIds: string[];
   collectionNames: string[];
+  /** Name drafted to the catalogue convention (see src/lib/ai/style-guide.ts),
+   * or null when AI produced nothing usable — callers fall back to the
+   * deterministic name so a listing never depends on the AI call succeeding. */
+  name: string | null;
 }
 
 // Multiple collections can legitimately apply to one saree (e.g. "Bridal" and
@@ -62,13 +70,26 @@ export async function enrichWhatsAppProduct(params: {
     fabricType: params.fabricFromCaption,
     collectionIds: [],
     collectionNames: [],
+    name: null,
   };
 
   if (!params.aiProvider.isConfigured()) return fallback;
 
   const [metadata, candidates] = await Promise.all([
     params.aiProvider
-      .suggestProductMetadata({ adminDescription: params.description, imageUrls: params.imageUrls })
+      .suggestProductMetadata({
+        adminDescription: params.description,
+        imageUrls: params.imageUrls,
+        // Trusted facts stay the only source for fabric: the caption's own
+        // "| fabric" field, never a photo-derived guess.
+        trustedFacts: params.fabricFromCaption ? { fabric: params.fabricFromCaption } : undefined,
+        existingCategories: params.categories.map((c) => ({
+          slug: c.slug,
+          name: c.name,
+          description: c.description ?? null,
+        })),
+        existingCollectionNames: params.collections.map((c) => c.name),
+      })
       .catch((error) => {
         console.warn(
           "whatsapp enrichment: metadata suggestion failed",
@@ -112,13 +133,24 @@ export async function enrichWhatsAppProduct(params: {
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, MAX_AUTO_COLLECTIONS);
 
+  const fabricType = params.fabricFromCaption ?? metadata?.fabric_type?.value?.trim() ?? null;
+
   return {
     categoryId,
     categoryName,
-    highlights: metadata?.highlights?.value ?? [],
-    fabricType: params.fabricFromCaption ?? metadata?.fabric_type?.value?.trim() ?? null,
+    highlights: normalizeHighlights(metadata?.highlights?.value),
+    fabricType,
     collectionIds: confidentCollections.map((c) => c.collection_id),
     collectionNames: confidentCollections.map((c) => validCollections.get(c.collection_id)!),
+    // One convention for every product, whichever batch created it: the AI's
+    // name if it survives the style rules, else one composed from the parts we
+    // actually know. `fabric` is only ever an admin-stated value here.
+    name: resolveProductName({
+      aiName: metadata?.display_name?.value ?? metadata?.name?.value,
+      colour: metadata?.colour?.value ?? null,
+      fabric: fabricType,
+      description: params.description,
+    }),
   };
 }
 

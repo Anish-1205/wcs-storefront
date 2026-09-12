@@ -81,6 +81,14 @@ tool (see [import-pipeline.md](import-pipeline.md)); if the AI key isn't
 configured, everything still works exactly as before, just without the
 auto-fill.
 
+**The product's name is written for you in a consistent style** — roughly
+*"[Colour] [Fabric] Saree with [Key Detail]"*, e.g. *"Ivory Tissue Saree with
+Gold Zari Border"* — rather than reusing your whole message. Your full message
+is still kept as the product description. Marketing words ("exquisite",
+"hurry"), prices and emoji are always stripped out of the name, and a fabric or
+weave is only used if you actually said it. This works even when the AI is
+unavailable, so every listing reads the same way.
+
 If you don't mention a price, the listing is created without one ("Price on
 request") and you can add it later.
 
@@ -94,6 +102,29 @@ request") and you can add it later.
   (Draft / Published / Archived).
 - Tick/untick the **Featured** box to show/hide it on the homepage.
 - **Delete** permanently removes a saree. Past inquiries about it are kept.
+
+## Tidying up older sarees (re-run AI naming & tagging)
+
+Sarees added before the naming style existed — especially ones created over
+WhatsApp, whose names were just the start of your message — can be brought up to
+standard in place. On the **Products** page click **"Re-run AI naming &
+tagging"**:
+
+1. It lists the sarees worth improving: an off-style name, or a missing
+   category, fabric, highlights or collection tags.
+2. Tick the ones you want (up to 12 at a time) and click **Preview changes**.
+   Nothing is saved yet — you see exactly what would change, line by line.
+3. Untick anything you disagree with, then **Apply**.
+
+What it will and won't do:
+
+- It **never touches photos or videos**, prices, the Draft/Published status, or
+  the saree's web address — so nothing breaks and no link goes dead.
+- It only **fills in what's missing**. A fabric, category or highlight list you
+  wrote yourself is left alone (there are checkboxes if you *do* want it
+  redone), and collection tags are only ever added, never removed.
+- A name that already follows the style is left as it is, so running it twice
+  changes nothing the second time.
 
 ## Marking a color as sold out
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ProductTable, type AdminProductRow } from "@/components/admin/ProductTable";
 import { SyncProductsButton } from "@/components/admin/SyncProductsButton";
+import { ReprocessEnrichmentPanel } from "@/components/admin/ReprocessEnrichmentPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function AdminProductsPage() {
     <div>
       <div className="mb-8 flex items-start justify-between gap-4">
         <h1 className="font-serif text-3xl text-primary">Products</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <SyncProductsButton />
           <Link
             href="/admin/products/new"
@@ -47,6 +48,10 @@ export default async function AdminProductsPage() {
             + Add Product
           </Link>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <ReprocessEnrichmentPanel />
       </div>
 
       <ProductTable rows={rows} />

@@ -137,6 +137,60 @@ describe("anthropic provider — degrades gracefully, never fabricates", () => {
     expect(result!.base_price_max).toEqual({ value: 4500, confidence: 0.9 });
   });
 
+  it("never returns a category_slug outside the offered closed list, even if the model tries", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(textResponse({ category_slug: { value: "kanjivaram-style", confidence: 0.95 } })),
+    );
+    const result = await anthropicAiProvider.suggestProductMetadata({
+      adminDescription: "A saree",
+      imageUrls: [],
+      existingCategories: [{ slug: "kanjivaram", name: "Kanjivaram", description: null }],
+    });
+    expect(result).not.toHaveProperty("category_slug");
+  });
+
+  it("keeps a category_slug that is in the offered list", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(textResponse({ category_slug: { value: "kanjivaram", confidence: 0.95 } })),
+    );
+    const result = await anthropicAiProvider.suggestProductMetadata({
+      adminDescription: "A Kanjivaram saree",
+      imageUrls: [],
+      existingCategories: [{ slug: "kanjivaram", name: "Kanjivaram", description: null }],
+    });
+    expect(result?.category_slug?.value).toBe("kanjivaram");
+  });
+
+  it("drops category_slug entirely when no taxonomy was offered", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(textResponse({ category_slug: { value: "silk", confidence: 0.9 } })));
+    const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: "A saree", imageUrls: [] });
+    expect(result).not.toHaveProperty("category_slug");
+  });
+
+  it("forces a drifting name and highlights back into the house style", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        textResponse({
+          name: { value: "Exquisite premium red silk sarees, hurry limited stock 4900!", confidence: 0.8 },
+          highlights: { value: ["• gold zari border.", "gold zari border", ""], confidence: 0.8 },
+        }),
+      ),
+    );
+    const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] });
+    expect(result?.name?.value).toBe("Red Silk Saree");
+    expect(result?.highlights?.value).toEqual(["Gold zari border"]);
+  });
+
+  it("drops a name that can't be made to follow the convention rather than shipping junk", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(textResponse({ name: { value: "!!! 4900 !!!", confidence: 0.9 } })));
+    const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] });
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("name");
+  });
+
   it("never returns a collection candidate outside the offered closed list, even if the model tries", async () => {
     vi.stubGlobal(
       "fetch",
@@ -161,9 +215,16 @@ describe("anthropic provider — degrades gracefully, never fabricates", () => {
   it("strips markdown code fences some models wrap JSON in", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ content: [{ type: "text", text: "```json\n" + JSON.stringify({ name: { value: "X", confidence: 0.5 } }) + "\n```" }] }),
+      json: async () => ({
+        content: [
+          {
+            type: "text",
+            text: "```json\n" + JSON.stringify({ name: { value: "Red Silk Saree", confidence: 0.5 } }) + "\n```",
+          },
+        ],
+      }),
     }));
     const result = await anthropicAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] });
-    expect(result?.name?.value).toBe("X");
+    expect(result?.name?.value).toBe("Red Silk Saree");
   });
 });

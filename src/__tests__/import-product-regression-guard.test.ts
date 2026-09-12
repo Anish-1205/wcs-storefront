@@ -127,7 +127,9 @@ describe("createProductFromGroup — name & field extraction from the pasted des
     await createProductFromGroup("g1");
 
     const row = admin._spies.productsUpdate.mock.calls[0]![0] as Record<string, unknown>;
-    expect(row.name).toBe("Benarsi crepe saree");
+    // Title Cased by the catalogue naming convention (src/lib/ai/style-guide.ts)
+    // — the AI's words, the catalogue's house style.
+    expect(row.name).toBe("Benarsi Crepe Saree");
     expect(row.fabric_type).toBe("Benarsi crepe");
     expect(row.product_code).toBe("WCS-012");
     // min/max normalised so min <= max even though the AI swapped them
@@ -150,7 +152,7 @@ describe("createProductFromGroup — name & field extraction from the pasted des
     await createProductFromGroup("g1");
 
     const row = admin._spies.productsUpdate.mock.calls[0]![0] as Record<string, unknown>;
-    expect(row.name).toBe("Magenta Banarasi Khaddi bandhej saree");
+    expect(row.name).toBe("Magenta Banarasi Khaddi Bandhej Saree");
     expect(row.fabric_type).toBeNull();
   });
 });

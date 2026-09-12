@@ -8,6 +8,14 @@ import type {
   ColorVariantSuggestion,
   ProductMetadataSuggestions,
 } from "./types";
+import {
+  CATALOGUE_STYLE_PREAMBLE,
+  COLOUR_STYLE_GUIDE,
+  enforceNameStyle,
+  HIGHLIGHTS_STYLE_GUIDE,
+  NAMING_STYLE_GUIDE,
+  normalizeHighlights,
+} from "./style-guide";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -80,36 +88,66 @@ export const classificationResponseSchema = z.object({
     .max(10),
 });
 
-const METADATA_SYSTEM_PROMPT = `You draft DRAFT-ONLY product metadata for a saree wholesale/retail catalog from photos and an optional admin description.
+const METADATA_SYSTEM_PROMPT = `You draft DRAFT-ONLY product metadata for a saree wholesale/retail catalogue from photos and an optional admin description.
 
-Hard rules:
+${CATALOGUE_STYLE_PREAMBLE}
+
+Hard rules on facts:
 - Everything you output is an unverified suggestion an admin will review — never state it as fact.
 - NEVER invent or assert: fabric composition (e.g. "pure silk"), handloom/handwoven authenticity, geographic/weave authenticity (e.g. "Kanjivaram", "Banarasi"), price, stock levels, or supplier information — unless that exact fact is present in the admin description or trusted facts you were given. If you are not given a fact, omit the corresponding field rather than guess.
 - If an admin description is provided, treat it as ground truth and do not contradict it; you may lightly rephrase it for a tagline/short_description but do not add unstated factual claims.
-- "name" must be a short product name (a few words — e.g. "Benarsi crepe saree"), NEVER a sentence or the whole description. If the admin description opens with a marketing sentence, distil the product name out of it.
 - "fabric_type", "product_code", "base_price_min" and "base_price_max" may ONLY be filled when that value is written explicitly in the admin description (e.g. "Fabric: pure silk", "Code: WCS-012", "₹4500", "priced 4000–4500"). Never derive them from the photos. Omit them otherwise. Prices are plain numbers in rupees, no currency symbol or separators. If a single price is stated, use it for both min and max.
-- Respond with ONLY a single JSON object matching this exact shape (omit any field you are not confident about — do not fabricate a value just to fill a field):
+
+${NAMING_STYLE_GUIDE}
+
+"name" and "display_name" must BOTH follow that style guide. Use the same string for both unless you have a specific reason to differ.
+
+${HIGHLIGHTS_STYLE_GUIDE}
+
+${COLOUR_STYLE_GUIDE}
+
+Category and tags:
+- "category_slug" must be copied EXACTLY from the closed list of existing categories given to you. Never invent a slug, never guess a near-match, and omit the field entirely when no listed category clearly fits or the fitting one would require an unstated fabric/weave claim. A category that names a weave or region (e.g. "kanjivaram") is only appropriate when the description states it.
+- "tags" are free-text search keywords (colour, occasion, motif, style), lowercase, 1–3 words each, at most 8. Where an existing collection name fits, prefer that exact wording so the catalogue's vocabulary stays consistent. Tags never assert fabric, authenticity or price.
+- "short_description" is 1–2 plain sentences; "tagline" is under 10 words. Both follow the same no-marketing-superlatives, no-unstated-claims rules.
+- "alt_text" describes each photo factually for accessibility, in photo order.
+
+Confidence: it is your calibrated probability that an admin would accept the value unchanged — not how much you like it. Omit any field you would score below 0.6 rather than filling it.
+
+Respond with ONLY a single JSON object matching this exact shape (omit any field you are not confident about — do not fabricate a value just to fill a field):
 {"name":{"value":string,"confidence":0..1,"evidence":string},"display_name":{...},"short_description":{...},"tagline":{...},"highlights":{"value":string[],...},"colour":{...},"tags":{"value":string[],...},"category_slug":{...},"alt_text":{"value":string[],...},"primary_asset_client_upload_id":{...},"fabric_type":{...},"product_code":{...},"base_price_min":{"value":number,...},"base_price_max":{"value":number,...}}
 No prose, no markdown fences, JSON only.`;
 
-const CLASSIFICATION_SYSTEM_PROMPT = `You match a proposed product (photos + optional description) to an EXISTING catalog collection. You are given the full closed list of collections that may be chosen — you must NEVER propose a collection that is not in that list, and never invent a new one.
+const CLASSIFICATION_SYSTEM_PROMPT = `You match a proposed product (photos + optional description) to an EXISTING catalogue collection. You are given the full closed list of collections that may be chosen — you must NEVER propose a collection that is not in that list, and never invent a new one.
+
+${CATALOGUE_STYLE_PREAMBLE}
 
 Rules:
-- If evidence is weak, conflicting, or absent, return an empty candidates array rather than guessing.
+- Judge each collection on the collection's own name and description, against what the photos and the admin description actually show. A collection whose description states a fabric, weave or region only fits when the admin description states it too — visual resemblance is never enough for an authenticity-based collection.
+- More than one collection may legitimately fit (e.g. an occasion collection and a colour/edit collection). Score each independently; do not force a single winner and do not spread confidence across them as if they were exclusive.
+- If evidence is weak, conflicting, or absent, return an empty candidates array rather than guessing. A vague description ("nice saree 4900") is weak evidence, whatever the photos look like.
 - confidence is your calibrated probability (0..1) that the specific collection_id is correct, not just how visually appealing the item is.
-- evidence must cite what you actually observed (image content or description text), not a generic assumption.
-- Respond with ONLY a JSON object: {"candidates":[{"collection_id":string,"confidence":0..1,"evidence":string}, ...]}. No prose, no markdown fences.`;
+- evidence must cite what you actually observed — quote the phrase from the description or name the visible feature (e.g. 'description says "bridal"', "gold zari border visible in photo 2"). Never a generic assumption like "looks festive".
+
+Good candidate: {"collection_id":"<id of Bridal Sarees>","confidence":0.88,"evidence":"description says \\"perfect for weddings\\" and photos show heavy gold zari work"}
+Bad candidate: {"collection_id":"<id of Kanjivaram Edit>","confidence":0.8,"evidence":"the weave looks like a Kanjivaram"} (an authenticity claim inferred from a photo)
+
+Respond with ONLY a JSON object: {"candidates":[{"collection_id":string,"confidence":0..1,"evidence":string}, ...]}. No prose, no markdown fences.`;
 
 const COLOR_VARIANT_SYSTEM_PROMPT = `You group photos of ONE saree product upload into its distinct colour variants (colourways), from a numbered list of photos, each tagged with an id.
 
 Hard rules:
 - Only split into multiple groups when photos clearly show the SAME weave/pattern/design in DIFFERENT body colours. If every photo shows the same single colourway, return exactly one group covering all of them (or an empty array if you cannot tell colourways apart at all).
+- Photos of the same saree under different lighting, at different zoom levels, folded vs draped, or a close-up of its border are the SAME colourway — never split on those. Split only on a genuinely different body colour.
 - asset_client_upload_ids in your response MUST be drawn only from the ids listed below — never invent, reorder-guess, or split an id across groups.
 - Every asset id you were given should end up in exactly one group.
-- Use a plain, ordinary colour name (e.g. "magenta", "bottle green") — never invent fabric, weave, region, or authenticity claims.
 - Mark at most one group's "is_best_display" true — your pick for the sharpest, best-lit, most visually appealing colourway to show as the product's default image. Omit is_best_display on every group if you cannot confidently judge one; never mark more than one group true.
 - confidence is your calibrated probability that this grouping is correct, not a preference score.
-- Respond with ONLY a JSON object matching this shape: {"variant_groups":[{"color":string,"color_hex":string,"asset_client_upload_ids":string[],"confidence":0..1,"is_best_display":boolean,"evidence":string}, ...]}. No prose, no markdown fences.`;
+
+${COLOUR_STYLE_GUIDE}
+- "color_hex" is the approximate body colour as #rrggbb; omit it if unsure.
+
+Respond with ONLY a JSON object matching this shape: {"variant_groups":[{"color":string,"color_hex":string,"asset_client_upload_ids":string[],"confidence":0..1,"is_best_display":boolean,"evidence":string}, ...]}. No prose, no markdown fences.`;
 
 type ImageBlock = { type: "image"; source: { type: "url"; url: string } };
 type TextBlock = { type: "text"; text: string };
@@ -181,11 +219,21 @@ export const anthropicAiProvider: AiProvider = {
           .join("\n")
       : "";
 
+    const categoryList = (input.existingCategories ?? [])
+      .map((c) => `- slug=${c.slug} name="${c.name}"${c.description ? ` — ${c.description}` : ""}`)
+      .join("\n");
+
     const textParts = [
       input.adminDescription
         ? `Admin description (ground truth, do not contradict): ${input.adminDescription}`
         : "No admin description was provided — you may draft one, clearly speculative, from the photos only.",
       trustedFactsText ? `Trusted facts you may echo:\n${trustedFactsText}` : "",
+      categoryList
+        ? `Existing categories (closed list — category_slug must be copied exactly from these, or omitted):\n${categoryList}`
+        : "No category list was supplied — omit category_slug entirely.",
+      input.existingCollectionNames?.length
+        ? `Existing collection names, for tag vocabulary only (do NOT assign collections here):\n${input.existingCollectionNames.map((n) => `- ${n}`).join("\n")}`
+        : "",
     ].filter(Boolean);
 
     const raw = await callAnthropic(METADATA_SYSTEM_PROMPT, [
@@ -211,6 +259,32 @@ export const anthropicAiProvider: AiProvider = {
       delete parsed.data.product_code;
       delete parsed.data.base_price_min;
       delete parsed.data.base_price_max;
+    }
+
+    // Defensive: a category_slug outside the closed list we offered is dropped,
+    // same guard classifyCollection applies to collection ids — never trust the
+    // model to have obeyed. With no list offered, the field has no meaning.
+    if (parsed.data.category_slug) {
+      const offered = new Set((input.existingCategories ?? []).map((c) => c.slug));
+      if (!offered.has(parsed.data.category_slug.value)) delete parsed.data.category_slug;
+    }
+
+    // Style enforcement, not rewriting: the prompt asks for the convention, this
+    // guarantees it regardless of what came back (see style-guide.ts).
+    const styledName = enforceNameStyle(parsed.data.name?.value);
+    if (parsed.data.name) {
+      if (styledName) parsed.data.name = { ...parsed.data.name, value: styledName };
+      else delete parsed.data.name;
+    }
+    const styledDisplayName = enforceNameStyle(parsed.data.display_name?.value);
+    if (parsed.data.display_name) {
+      if (styledDisplayName) parsed.data.display_name = { ...parsed.data.display_name, value: styledDisplayName };
+      else delete parsed.data.display_name;
+    }
+    if (parsed.data.highlights) {
+      const styledHighlights = normalizeHighlights(parsed.data.highlights.value);
+      if (styledHighlights.length > 0) parsed.data.highlights = { ...parsed.data.highlights, value: styledHighlights };
+      else delete parsed.data.highlights;
     }
 
     return parsed.data;
