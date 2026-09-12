@@ -103,6 +103,15 @@ request") and you can add it later.
 - Tick/untick the **Featured** box to show/hide it on the homepage.
 - **Delete** permanently removes a saree. Past inquiries about it are kept.
 
+### Finding a saree in a long list
+
+The Products list shows one page at a time. Search, the filters and the sort all
+apply to the **whole catalogue**, not just the page you're looking at, so
+searching always finds the saree wherever it is. **Show 10 / 25 / 50 / 100 per
+page** at the bottom left sets how many you see at once, and that choice is
+remembered on this computer for next time. The page you're on is in the web
+address, so you can bookmark or reload without losing your place.
+
 ## Tidying up older sarees (re-run AI naming & tagging)
 
 Sarees added before the naming style existed — especially ones created over
@@ -125,6 +134,46 @@ What it will and won't do:
   redone), and collection tags are only ever added, never removed.
 - A name that already follows the style is left as it is, so running it twice
   changes nothing the second time.
+- **Category is part of every run.** A saree with no category gets one suggested
+  from your real category list (never an invented one); a saree that already has
+  one keeps it. Tick **"Only products with no category"** to narrow the list to
+  exactly those.
+
+## Product codes and web addresses
+
+A separate button on the **Products** page, **"Normalise codes & web
+addresses"**, tidies the two identifiers the AI tool deliberately won't touch.
+
+1. It lists sarees whose code isn't in the house format (`WCS-001`, `WCS-002`…)
+   or whose web address no longer matches their name.
+2. Two tick-boxes decide what it does. **Giving products a house-format code**
+   is on by default and is completely safe — a code is an internal reference
+   nobody links to. **Shortening the web address** is off by default, because
+   changing an address means any link you have already shared to the old one
+   stops working.
+3. **Preview changes** shows every old → new value before anything is saved.
+
+Sarees marked **Storefront** (synced from the live site's own files) are never
+listed here. Their web address is how the site matches their photos and words to
+the public page, so moving it would blank the live page.
+
+## Splitting mixed-colour photos into colour variants
+
+When several colourways of one design arrive together — a WhatsApp batch of
+mustard and pink of the same saree, say — they land as one variant with all the
+photos in it. **"Split photos into colour variants"** on the Products page sorts
+them out:
+
+1. It lists sarees that have a single colour variant and more than one photo.
+2. **Suggest a split** looks at the photos and proposes a colourway for each
+   one. You see the actual thumbnails grouped under each colour name before
+   anything happens.
+3. Tick the ones that look right and **Split**.
+
+No photo is ever uploaded or deleted — they're only moved between colours. Any
+photo it can't confidently place, and every video, stays with the first
+colourway. Afterwards you can rename a colour or drag a photo to a different one
+in the normal product editor.
 
 ## Marking a color as sold out
 

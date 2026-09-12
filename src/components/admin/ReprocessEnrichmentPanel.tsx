@@ -29,6 +29,10 @@ export function ReprocessEnrichmentPanel() {
   const [approved, setApproved] = useState<Set<string>>(new Set());
   const [renameAll, setRenameAll] = useState(false);
   const [replaceHighlights, setReplaceHighlights] = useState(false);
+  // Category IS part of every run (a product with none gets one suggested from
+  // the real taxonomy — see enrichWhatsAppProduct). This narrows the list to
+  // exactly those products, which is the usual reason for reaching for it.
+  const [missingCategoryOnly, setMissingCategoryOnly] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
 
@@ -52,6 +56,11 @@ export function ReprocessEnrichmentPanel() {
     });
   }
 
+  const visibleCandidates = missingCategoryOnly
+    ? candidates.filter((c) => c.missing.includes("category"))
+    : candidates;
+  const missingCategoryCount = candidates.filter((c) => c.missing.includes("category")).length;
+
   function toggle(set: Set<string>, id: string, setter: (next: Set<string>) => void) {
     const next = new Set(set);
     if (next.has(id)) next.delete(id);
@@ -62,7 +71,10 @@ export function ReprocessEnrichmentPanel() {
   function onPreview() {
     setMessage(null);
     setIsError(false);
-    const ids = Array.from(selected).slice(0, MAX_ENRICHMENT_BATCH);
+    const visibleIds = new Set(visibleCandidates.map((c) => c.id));
+    const ids = Array.from(selected)
+      .filter((id) => visibleIds.has(id))
+      .slice(0, MAX_ENRICHMENT_BATCH);
     if (ids.length === 0) return fail("Pick at least one product.");
     startTransition(async () => {
       const result = await previewProductEnrichment({
@@ -164,6 +176,14 @@ export function ReprocessEnrichmentPanel() {
               />
               Replace existing highlights (otherwise only empty ones are filled)
             </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={missingCategoryOnly}
+                onChange={(e) => setMissingCategoryOnly(e.target.checked)}
+              />
+              Only products with no category ({missingCategoryCount})
+            </label>
           </div>
 
           <div className="max-h-72 overflow-y-auto rounded-sm border border-border">
@@ -178,7 +198,7 @@ export function ReprocessEnrichmentPanel() {
                 </tr>
               </thead>
               <tbody>
-                {candidates.map((c) => (
+                {visibleCandidates.map((c) => (
                   <tr key={c.id} className="border-t border-border">
                     <td className="p-2">
                       <input
@@ -203,10 +223,15 @@ export function ReprocessEnrichmentPanel() {
 
           <div className="mt-3 flex items-center gap-3">
             <Button type="button" size="sm" onClick={onPreview} disabled={pending}>
-              {pending ? "Running…" : `Preview changes (${Math.min(selected.size, MAX_ENRICHMENT_BATCH)})`}
+              {pending
+                ? "Running…"
+                : `Preview changes (${Math.min(
+                    visibleCandidates.filter((c) => selected.has(c.id)).length,
+                    MAX_ENRICHMENT_BATCH,
+                  )})`}
             </Button>
             <span className="text-xs text-muted-foreground">
-              {candidates.length} product{candidates.length === 1 ? "" : "s"} could be improved. Up to{" "}
+              {visibleCandidates.length} product{visibleCandidates.length === 1 ? "" : "s"} could be improved. Up to{" "}
               {MAX_ENRICHMENT_BATCH} per run.
             </span>
           </div>

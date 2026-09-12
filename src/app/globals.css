@@ -140,6 +140,17 @@
 }
 
 @layer components {
+  /* Admin shell height. The panel is a fixed-height frame whose sidebar and
+     main column scroll independently, so the document itself never scrolls —
+     which means a mobile browser's URL bar never retracts and 100vh stays
+     TALLER than the visible viewport. That cut the last ~60-90px off the main
+     scroll region, hiding the bottom of long forms (the product editor's
+     "Save product" row). 100dvh tracks the actually-visible viewport; the vh
+     line above it is the fallback for browsers without dvh. */
+  .admin-shell {
+    height: 100vh;
+    height: 100dvh;
+  }
   /* Public showroom readability; admin density remains independently styled. */
   .storefront {
     font-size: 1.125rem;

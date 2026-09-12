@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "./Pagination";
+import { usePagedRows } from "./usePagedRows";
 import { deleteContact, exportContactsCsv, importContactsCsv } from "@/app/admin/actions";
 import type { Contact } from "@/lib/supabase/types";
 import type { ContactsQueryShape } from "@/lib/validation";
@@ -57,6 +59,13 @@ export function ContactTable({ contacts, query }: Props) {
         return dir === "asc" ? compare : -compare;
       });
   }, [contacts, dir, role, search, source, sort, statusTag]);
+
+  // Export and CSV import still work over the whole filtered set — this only
+  // bounds how many rows are in the DOM at once.
+  const { page, pageSize, paged, setPage, changePageSize } = usePagedRows(
+    filtered,
+    "wcs.admin.contactsPerPage",
+  );
 
   function onDelete(id: string, name: string) {
     if (!confirm(`Delete contact "${name}"?`)) return;
@@ -168,7 +177,7 @@ export function ContactTable({ contacts, query }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((contact) => (
+            {paged.map((contact) => (
               <tr key={contact.id} className="border-b border-border/60 last:border-0">
                 <td className="px-4 py-3 font-medium">{contact.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{contact.phone}</td>
@@ -191,6 +200,15 @@ export function ContactTable({ contacts, query }: Props) {
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filtered.length}
+          onPageChange={setPage}
+          onPageSizeChange={changePageSize}
+          itemLabel="contact"
+        />
       </div>
     </div>
   );

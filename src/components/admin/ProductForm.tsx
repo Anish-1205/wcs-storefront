@@ -328,7 +328,16 @@ export function ProductForm({ categories, collections, initial }: Props) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="flex items-center gap-3">
+      {/* Sticky, not just last-in-the-form: the admin shell is a fixed-height
+          frame whose main column is its own scroll region (see the layout's
+          .admin-shell), and this is by far the longest page in the panel. Left
+          in the normal flow the save control only exists at the very end of
+          that region — the part a mobile browser's chrome clips. Sticking it
+          to the bottom of the scrollport keeps it reachable at any scroll
+          position and on any viewport. The negative margins let it span the
+          full width of the scroll region rather than floating inside the
+          form's column. */}
+      <div className="sticky bottom-0 -mx-5 flex items-center gap-3 border-t border-border bg-background/95 px-5 py-4 backdrop-blur-sm sm:-mx-8 sm:px-8">
         <Button type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save product"}
         </Button>

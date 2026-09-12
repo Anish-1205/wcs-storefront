@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "./Pagination";
+import { usePagedRows } from "./usePagedRows";
 import { Select } from "@/components/ui/select";
 import { buildWhatsAppContactURL } from "@/lib/whatsapp";
 import type { Inquiry } from "@/lib/supabase/types";
@@ -31,6 +33,10 @@ export function InquiryTable({ inquiries }: { inquiries: Inquiry[] }) {
     (i) =>
       (!typeFilter || i.inquiry_type === typeFilter) &&
       (!sourceFilter || i.source === sourceFilter),
+  );
+  const { page, pageSize, paged, setPage, changePageSize } = usePagedRows(
+    filtered,
+    "wcs.admin.inquiriesPerPage",
   );
 
   return (
@@ -77,7 +83,7 @@ export function InquiryTable({ inquiries }: { inquiries: Inquiry[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((i) => (
+            {paged.map((i) => (
               <tr key={i.id} className="border-b border-border/60 align-top last:border-0">
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                   {fmtDate(i.created_at)}
@@ -116,6 +122,15 @@ export function InquiryTable({ inquiries }: { inquiries: Inquiry[] }) {
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filtered.length}
+          onPageChange={setPage}
+          onPageSizeChange={changePageSize}
+          itemLabel="inquiry"
+        />
       </div>
     </div>
   );

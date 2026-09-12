@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "./Pagination";
+import { usePagedRows } from "./usePagedRows";
 import { buildWhatsAppContactURL } from "@/lib/whatsapp";
 import type { WhatsAppSubscriber } from "@/lib/supabase/types";
 
@@ -32,6 +34,11 @@ export function SubscriberTable({
   const sources = Array.from(new Set(subscribers.map((s) => s.source)));
   const filtered = subscribers.filter(
     (s) => !sourceFilter || s.source === sourceFilter,
+  );
+  // Export stays over `filtered`, not the visible page — paging is presentation.
+  const { page, pageSize, paged, setPage, changePageSize } = usePagedRows(
+    filtered,
+    "wcs.admin.subscribersPerPage",
   );
 
   function exportCSV() {
@@ -85,7 +92,7 @@ export function SubscriberTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((s) => (
+            {paged.map((s) => (
               <tr key={s.id} className="border-b border-border/60 last:border-0">
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                   {fmtDate(s.opted_in_at)}
@@ -113,6 +120,15 @@ export function SubscriberTable({
             )}
           </tbody>
         </table>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filtered.length}
+          onPageChange={setPage}
+          onPageSizeChange={changePageSize}
+          itemLabel="subscriber"
+        />
       </div>
     </div>
   );

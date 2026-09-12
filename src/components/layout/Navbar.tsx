@@ -84,7 +84,11 @@ export function Navbar() {
           <Link
             href="/search"
             aria-label="Search"
-            className="nav-icon hidden sm:block"
+            // Same reason as the Guides link above: .nav-icon's centring comes
+            // from the storefront rule that makes nav anchors inline-flex, and
+            // a bare `block` clobbers it — the magnifier then sat ~14px above
+            // every other item in the bar.
+            className="nav-icon hidden sm:inline-flex sm:items-center"
           >
             <Search className="h-[1.05rem] w-[1.05rem]" />
           </Link>

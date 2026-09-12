@@ -360,6 +360,40 @@ export const contactsQuerySchema = z.object({
   dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
+// ── Admin list pagination ──────────────────────────────────────────
+
+/**
+ * Page sizes offered in the admin list UIs. Anything outside this list is
+ * rejected rather than clamped, so a hand-edited URL can't ask the database
+ * for 100000 rows in one go.
+ */
+export const ADMIN_PAGE_SIZES = [10, 25, 50, 100] as const;
+export const DEFAULT_ADMIN_PAGE_SIZE = 25;
+export type AdminPageSize = (typeof ADMIN_PAGE_SIZES)[number];
+
+export function isAdminPageSize(value: unknown): value is AdminPageSize {
+  return (ADMIN_PAGE_SIZES as readonly unknown[]).includes(value);
+}
+
+const pageNumberSchema = z.coerce.number().int().min(1).max(10_000).catch(1);
+const pageSizeSchema = z.coerce.number().int().refine(isAdminPageSize).catch(DEFAULT_ADMIN_PAGE_SIZE);
+
+/** Shared by every paginated admin list page. */
+export const adminPaginationSchema = z.object({
+  page: pageNumberSchema,
+  per: pageSizeSchema,
+});
+
+export const adminProductsQuerySchema = adminPaginationSchema.extend({
+  q: z.string().max(200).optional().default(""),
+  status: z.enum(["draft", "published", "archived"]).optional().or(z.literal("")).default(""),
+  /** Empty = all categories; "none" = products with no category assigned. */
+  category: z.string().max(100).optional().default(""),
+  featured: z.enum(["featured", "not-featured"]).optional().or(z.literal("")).default(""),
+  sort: z.enum(["created_at", "updated_at", "name"]).optional().default("created_at"),
+  dir: z.enum(["asc", "desc"]).optional().default("desc"),
+});
+
 // ── Import pipeline ────────────────────────────────────────────────
 
 export const ALLOWED_IMPORT_IMAGE_MIME_TYPES = [
@@ -492,6 +526,49 @@ export const enrichmentPreviewSchema = z.object({
   replace_highlights: z.boolean().default(false),
 });
 
+/**
+ * Code/web-address normalisation. Separate from the naming/tagging schemas on
+ * purpose — it's a separate, opt-in action because a slug is an address
+ * (see src/lib/enrichment/identifiers.ts).
+ */
+export const identifierPreviewSchema = z.object({
+  product_ids: z.array(z.string().uuid()).min(1).max(MAX_ENRICHMENT_BATCH),
+  normalize_codes: z.boolean().default(true),
+  normalize_slugs: z.boolean().default(false),
+});
+
+/** Apply re-plans server-side from ids only: nothing about the new code or
+ * address is taken from the browser. */
+export const identifierApplySchema = identifierPreviewSchema;
+
+export const MAX_COLOR_SPLIT_BATCH = 6;
+
+export const colorSplitPreviewSchema = z.object({
+  product_ids: z.array(z.string().uuid()).min(1).max(MAX_COLOR_SPLIT_BATCH),
+});
+
+export const colorSplitApplySchema = z.object({
+  plans: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        base_variant_id: z.string().uuid(),
+        groups: z
+          .array(
+            z.object({
+              color: z.string().min(1).max(60),
+              color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
+              image_ids: z.array(z.string().uuid()).min(1),
+            }),
+          )
+          .min(2)
+          .max(12),
+      }),
+    )
+    .min(1)
+    .max(MAX_COLOR_SPLIT_BATCH),
+});
+
 export const enrichmentApplySchema = z.object({
   proposals: z
     .array(
@@ -518,5 +595,8 @@ export type CollectionInputShape = z.infer<typeof collectionInputSchema>;
 export type ContactInputShape = z.infer<typeof contactSchema>;
 export type ContactImportRowShape = z.infer<typeof contactImportRowSchema>;
 export type ContactsQueryShape = z.infer<typeof contactsQuerySchema>;
+export type AdminProductsQueryShape = z.infer<typeof adminProductsQuerySchema>;
 export type EnrichmentPreviewShape = z.infer<typeof enrichmentPreviewSchema>;
 export type EnrichmentApplyShape = z.infer<typeof enrichmentApplySchema>;
+export type IdentifierPreviewShape = z.infer<typeof identifierPreviewSchema>;
+export type ColorSplitApplyShape = z.infer<typeof colorSplitApplySchema>;

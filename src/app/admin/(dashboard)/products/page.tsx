@@ -3,18 +3,68 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { ProductTable, type AdminProductRow } from "@/components/admin/ProductTable";
 import { SyncProductsButton } from "@/components/admin/SyncProductsButton";
 import { ReprocessEnrichmentPanel } from "@/components/admin/ReprocessEnrichmentPanel";
+import { IdentifierNormalizePanel } from "@/components/admin/IdentifierNormalizePanel";
+import { ColorSplitPanel } from "@/components/admin/ColorSplitPanel";
+import { adminProductsQuerySchema } from "@/lib/validation";
+import type { Category } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProductsPage() {
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function AdminProductsPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
   const { admin } = await requireAdmin();
 
-  const { data } = await admin
+  // Filters, sort and paging all live in the URL and are applied by Postgres.
+  // Before this the page read EVERY product with EVERY variant and EVERY image
+  // URL on each load and filtered in the browser — fine at 20 products, not at
+  // 500. Rejecting an out-of-range page size here (rather than clamping) keeps
+  // a hand-edited URL from asking for the whole table again.
+  const query = adminProductsQuerySchema.parse({
+    q: first(searchParams.q) ?? "",
+    status: first(searchParams.status) ?? "",
+    category: first(searchParams.category) ?? "",
+    featured: first(searchParams.featured) ?? "",
+    sort: first(searchParams.sort) ?? "created_at",
+    dir: first(searchParams.dir) ?? "desc",
+    page: first(searchParams.page) ?? 1,
+    per: first(searchParams.per) ?? undefined,
+  });
+
+  let listQuery = admin
     .from("products")
     .select(
       "id, name, slug, status, is_featured, product_code, source, created_at, updated_at, category:categories(name), product_variants(id, display_order, variant_images(image_url, is_primary, display_order))",
-    )
-    .order("created_at", { ascending: false });
+      { count: "exact" },
+    );
+
+  if (query.q) {
+    // Escape the LIKE wildcards so a literal % or _ in the search box matches
+    // itself instead of everything (same guard as the contacts search).
+    const escaped = query.q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    listQuery = listQuery.or(
+      `name.ilike.%${escaped}%,slug.ilike.%${escaped}%,product_code.ilike.%${escaped}%`,
+    );
+  }
+  if (query.status) listQuery = listQuery.eq("status", query.status);
+  if (query.category === "none") listQuery = listQuery.is("category_id", null);
+  else if (query.category) listQuery = listQuery.eq("category_id", query.category);
+  if (query.featured) listQuery = listQuery.eq("is_featured", query.featured === "featured");
+
+  const from = (query.page - 1) * query.per;
+  listQuery = listQuery
+    .order(query.sort, { ascending: query.dir === "asc" })
+    .range(from, from + query.per - 1);
+
+  const [{ data, count }, { data: categoryRows }] = await Promise.all([
+    listQuery,
+    admin.from("categories").select("id, name").order("display_order"),
+  ]);
 
   const rows: AdminProductRow[] = (data ?? []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
@@ -50,11 +100,23 @@ export default async function AdminProductsPage() {
         </div>
       </div>
 
-      <div className="mb-6">
+      {/* Catalogue clean-up tools. Each opens into a full-width preview card
+          and writes nothing until the admin confirms. */}
+      <div className="mb-6 flex flex-wrap items-start gap-2">
         <ReprocessEnrichmentPanel />
+        <IdentifierNormalizePanel />
+        <ColorSplitPanel />
       </div>
 
-      <ProductTable rows={rows} />
+      <ProductTable
+        rows={rows}
+        query={query}
+        total={count ?? 0}
+        categories={((categoryRows ?? []) as Pick<Category, "id" | "name">[]).map((c) => ({
+          id: c.id,
+          name: c.name,
+        }))}
+      />
     </div>
   );
 }

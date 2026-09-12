@@ -89,6 +89,31 @@ function makeUniqueSlug(base: string, existing: Set<string>) {
   return candidate;
 }
 
+/**
+ * Normalises a human-typed product code (trim, collapse inner whitespace to a
+ * hyphen, drop characters that don't belong in a reference) while preserving
+ * the admin's capitalisation, then makes it unique — treating the product's
+ * own current code as available so re-saving is idempotent.
+ */
+function makeStableCode(raw: string | null | undefined, existing: Set<string>, currentCode?: string | null) {
+  const cleaned = (raw ?? "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^A-Za-z0-9._/-]/g, "")
+    .replace(/^-+|-+$/g, "");
+  if (!cleaned) return null;
+  if (currentCode && cleaned === currentCode) return currentCode;
+
+  const collisions = new Set(existing);
+  if (currentCode) collisions.delete(currentCode);
+  let candidate = cleaned;
+  let counter = 2;
+  while (collisions.has(candidate)) {
+    candidate = `${cleaned}-${counter++}`;
+  }
+  return candidate;
+}
+
 function makeStableSlug(base: string, existing: Set<string>, currentSlug?: string | null) {
   const root = slugify(base);
   if (currentSlug && currentSlug === root) {
@@ -119,9 +144,10 @@ async function loadExistingProductRefs(admin: Awaited<ReturnType<typeof assertAd
   };
 }
 
-async function getProductSlugById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
-  const { data } = await admin.from("products").select("slug").eq("id", id).maybeSingle();
-  return (data as { slug?: string } | null)?.slug ?? null;
+async function getProductRefsById(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], id: string) {
+  const { data } = await admin.from("products").select("slug, product_code").eq("id", id).maybeSingle();
+  const row = data as { slug?: string; product_code?: string | null } | null;
+  return { slug: row?.slug ?? null, productCode: row?.product_code ?? null };
 }
 
 /**
@@ -492,8 +518,9 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
   await ensurePublishAllowed(admin, input.id, input.status);
 
   let previousSlug: string | null = null;
+  let previousCode: string | null = null;
   if (input.id) {
-    previousSlug = await getProductSlugById(admin, input.id);
+    ({ slug: previousSlug, productCode: previousCode } = await getProductRefsById(admin, input.id));
   }
 
   const refs = await loadExistingProductRefs(admin);
@@ -501,9 +528,12 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
   const slug = input.id
     ? makeStableSlug(slugSource, refs.productSlugs, previousSlug)
     : makeUniqueSlug(slugSource, refs.productSlugs);
-  const productCode = input.product_code?.trim()
-    ? makeUniqueSlug(input.product_code, refs.productCodes)
-    : null;
+  // Codes used to go through makeUniqueSlug, which both lowercased them
+  // ("WCS-001" -> "wcs-001") and compared against a set that still contained
+  // this product's OWN code — so every re-save of an unchanged product bumped
+  // it another step ("wcs-001-2", "wcs-001-3", ...). makeStableCode keeps the
+  // admin's capitalisation and treats the current code as free.
+  const productCode = makeStableCode(input.product_code, refs.productCodes, previousCode);
 
   const productRow = {
     name: input.name,

@@ -26,7 +26,7 @@ export default async function AdminLayout({
   const { user } = await requireAdmin();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ivory">
+    <div className="admin-shell flex overflow-hidden bg-ivory">
       <AdminSidebar links={NAV} siteName={SITE.name} userEmail={user.email} />
 
       {/* Mobile top bar + main content — its own scroll region, independent
