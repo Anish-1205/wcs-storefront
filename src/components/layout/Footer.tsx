@@ -3,13 +3,13 @@ import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
 import { SITE, SOCIAL_LINKS } from "@/lib/site";
 import { BrandMark } from "@/components/layout/BrandMark";
-import { getCategories } from "@/data/products";
+import { getLiveCategories } from "@/lib/storefront-overrides";
 import { COLLECTIONS } from "@/data/collections";
 import { buildWhatsAppURL } from "@/lib/whatsapp";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 
-export function Footer() {
-  const categories = getCategories();
+export async function Footer() {
+  const categories = await getLiveCategories();
 
   return (
     <ContentRegion region="Footer" global><footer className="mt-28 border-t border-line bg-warm-cream/60">

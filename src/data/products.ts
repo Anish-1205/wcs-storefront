@@ -1243,10 +1243,12 @@ export interface CategoryFacet {
   count: number;
 }
 
-/** Catalogue groups — currently the colour families present in the data. */
-export function getCategories(): CategoryFacet[] {
+/** Catalogue groups — the colour families present in the data. Pass the live
+ *  catalogue (getLiveCategories / getProductsWithOverrides) to include the
+ *  colours of products that only exist in Postgres. */
+export function getCategories(products: Product[] = PRODUCTS): CategoryFacet[] {
   const map = new Map<string, CategoryFacet>();
-  for (const p of PRODUCTS) {
+  for (const p of products) {
     const existing = map.get(p.categorySlug);
     if (existing) existing.count += 1;
     else

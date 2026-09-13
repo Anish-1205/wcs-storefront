@@ -37,7 +37,7 @@ export default async function CatalogPage(props: PageProps) {
     {
       key: "category",
       label: "Colour",
-      options: getCategories().map((c) => ({
+      options: getCategories(all).map((c) => ({
         value: c.slug,
         label: c.name,
         count: c.count,

@@ -37,7 +37,7 @@ export default async function HomePage() {
   ]);
   const shelfRank = new Map(config.shelfOrder.map((slug, i) => [slug, i]));
   const more = all.filter((p) => !shown.has(p.slug)).sort((a, b) => (shelfRank.get(a.slug) ?? Infinity) - (shelfRank.get(b.slug) ?? Infinity));
-  const categories = getCategories();
+  const categories = getCategories(all);
 
   return (
     <ContentRegion region="page"><HomepageSections config={config}>

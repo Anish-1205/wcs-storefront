@@ -27,6 +27,8 @@ import { Reveal } from "@/components/media/Reveal";
 
 export const revalidate = 3600;
 
+/** Prerender seeds only. An admin-created product that has no file entry
+ *  still renders on demand — see src/lib/storefront-catalog.ts. */
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
 }

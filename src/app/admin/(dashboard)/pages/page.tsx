@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getAllProducts } from "@/data/products";
+import { getLiveProducts } from "@/lib/storefront-overrides";
 import { DEFAULT_HOMEPAGE, homepageSchema, type HomepageContent } from "@/lib/homepage-content";
 import { pageOverridesSchema, type PageContentMap } from "@/lib/page-content";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
@@ -35,7 +35,9 @@ export default async function PagesDashboard() {
   for (const row of (versionRows ?? []) as { id: string; page: string; created_at: string }[]) {
     versions[row.page] = [...(versions[row.page] ?? []), { id: row.id, created_at: row.created_at }];
   }
-  const products = getAllProducts().map(({ slug, title, images }) => ({ slug, title, image: images[0]?.src ?? "" }));
+  // The live catalogue, so admin-created sarees can be chosen for the hero,
+  // the current selection and the shelf order — not just the file ones.
+  const products = (await getLiveProducts()).map(({ slug, title, images }) => ({ slug, title, image: images[0]?.src ?? "" }));
 
   return <div className="mx-auto max-w-7xl">
     <h1 className="font-serif text-3xl text-primary">Your website pages</h1>

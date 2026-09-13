@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
-import { getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getLiveCategories, getProductsWithOverrides } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
@@ -21,6 +21,8 @@ const AVAIL_LABELS: Record<string, string> = {
   sold: "Unavailable",
 };
 
+/** File-catalogue colours only — these are prerender seeds, not the allowed
+ *  set. A colour that exists only in Postgres still renders on demand. */
 export function generateStaticParams() {
   return getCategories().map((c) => ({ category: c.slug }));
 }
@@ -31,7 +33,7 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  const category = getCategories().find((c) => c.slug === params.category);
+  const category = (await getLiveCategories()).find((c) => c.slug === params.category);
   if (!category) return { title: "Catalog" };
   return {
     title: `${category.name} Sarees`,
@@ -48,10 +50,10 @@ interface PageProps {
 export default async function CategoryPage(props: PageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const category = getCategories().find((c) => c.slug === params.category);
+  const all = await getProductsWithOverrides(getAllProducts());
+  const category = getCategories(all).find((c) => c.slug === params.category);
   if (!category) notFound();
 
-  const all = await getProductsWithOverrides(getAllProducts());
   const products = filterProducts({ ...searchParams, category: params.category }, all);
   const inGroup = all.filter((p) => p.categorySlug === params.category);
   const availabilities = Array.from(new Set(inGroup.map((p) => p.availability)));

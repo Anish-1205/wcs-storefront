@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin-auth";
-import { getAllProducts } from "@/data/products";
+import { getLiveProducts } from "@/lib/storefront-overrides";
 import { AVAILABILITY_SIGNAL_PRESETS } from "@/lib/availability-presets";
 import { StorefrontAvailabilityRow } from "@/components/admin/StorefrontAvailabilityRow";
 import type { StorefrontAvailabilityOverride } from "@/lib/supabase/types";
@@ -16,7 +16,7 @@ const FILE_AVAILABILITY_LABELS: Record<string, string> = {
 
 export default async function StorefrontAvailabilityPage() {
   const { admin } = await requireAdmin();
-  const products = getAllProducts();
+  const products = await getLiveProducts();
 
   const { data } = await admin
     .from("storefront_availability_overrides")
@@ -33,9 +33,9 @@ export default async function StorefrontAvailabilityPage() {
         <h1 className="font-serif text-3xl text-primary">Storefront Signals</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Set a live availability signal (sold, pre-order, limited…) on any
-          product from the storefront (src/data/products.ts). This goes live
-          immediately — no code change or redeploy needed. Leave a product on
-          &ldquo;Use file default&rdquo; to show whatever its own data says.
+          product currently on the storefront. This goes live immediately — no
+          code change or redeploy needed. Leave a product on &ldquo;Use file
+          default&rdquo; to show whatever its own data says.
         </p>
       </div>
 

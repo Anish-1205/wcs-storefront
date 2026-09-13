@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getAllProducts, getFeaturedProducts } from "@/data/products";
+import { getFeaturedProducts } from "@/data/products";
 import { HERO } from "@/lib/site";
 
 export const HOME_SECTIONS = [
@@ -8,7 +8,16 @@ export const HOME_SECTIONS = [
   ["sourcing", "Private sourcing"], ["ordering", "How ordering works"], ["contact", "WhatsApp and collections"],
 ] as const;
 const sectionKeys = HOME_SECTIONS.map(([key]) => key);
-const slug = z.string().refine((value) => getAllProducts().some((p) => p.slug === value), "Choose an existing storefront saree");
+/**
+ * A slug shape, not a membership test. This schema is parsed in the browser
+ * (HomepageEditor) and on every storefront render, so it cannot ask Postgres
+ * which products are live — and checking against the *file* catalogue alone
+ * used to fail the whole config the moment an admin picked an admin-created
+ * saree, silently dropping the homepage back to DEFAULT_HOMEPAGE. The editor
+ * only ever offers slugs from the live catalogue, and the homepage resolves
+ * each one against the catalogue it renders (unknown slugs just drop out).
+ */
+const slug = z.string().trim().min(1).max(240).regex(/^[a-z0-9-]+$/, "Choose an existing storefront saree");
 const shortText = z.string().trim().min(1).max(160);
 export const homepageSchema = z.object({
   heroTitle: shortText,

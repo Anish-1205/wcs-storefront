@@ -11,7 +11,10 @@ purpose.
                          PUBLIC STOREFRONT                 ADMIN
   data source        src/data/products.ts            Supabase (Postgres)
                      src/data/collections.ts
+                     + published rows with no
+                       file entry (section 5c)
   media              public/media/<slug>/            Cloudinary
+                     + Cloudinary for the above
   conversion path    cart -> /enquiry -> WhatsApp     inquiry form / WhatsApp
 ```
 
@@ -22,8 +25,21 @@ enquiry basket; checkout is a pre-filled WhatsApp message.
 
 ## 1. Adding or editing a product
 
-Everything the storefront shows comes from **`src/data/products.ts`**
-(`SEEDS: ProductSeed[]`). To add a product:
+There are two ways a product reaches the site, and only one of them needs a
+developer.
+
+**In admin, no code change.** Create the product in `/admin/products` (or let
+the import pipeline / WhatsApp ingest create it), give it at least one photo,
+and set it to Published. It appears on the storefront within a minute —
+`src/lib/storefront-catalog.ts` materialises published rows that have no file
+entry (section 5c). Unpublishing takes it off again. Use this for everything
+the client adds day to day.
+
+**In the file catalogue**, for a piece that wants art direction the DB has no
+model for — per-photo media roles (`full` / `pallu` / `detail` / …), exact
+intrinsic dimensions, a `colourRangeNote`, a `variantGroup` linking
+colourways, authored gallery order. These come from **`src/data/products.ts`**
+(`SEEDS: ProductSeed[]`):
 
 1. Put its photos/videos in the source folder (default
    `C:/Users/anish/OneDrive/Desktop/wcs pics`).
@@ -366,8 +382,76 @@ the cart follow you across devices.
 
 ## 5c. Admin ↔ storefront bridge
 
-The storefront stays file-driven; two admin-side helpers sit alongside it
-without changing that.
+The storefront's copy, media roles and running order stay file-authored, but
+the *set of products it shows* is the file list reconciled against what admin
+has published in Postgres.
+
+### What is actually on the site (`src/lib/storefront-catalog.ts`)
+
+Before this module existed, every public page started from `getAllProducts()`
+and Postgres rows were only ever overlaid onto a slug the file already had. A
+product created in admin (WhatsApp ingest, `/admin/import`, "Duplicate") could
+therefore **never** appear on the site, however many times someone set it to
+Published — the only way to make it live was to hand-write a matching
+`ProductSeed` into `products.ts` and redeploy (see commit `6035395`, which did
+exactly that for seven products).
+
+`getStorefrontCatalog()` reconciles the two instead:
+
+| Situation | Result |
+|---|---|
+| file entry + published `file_sync` row | file entry, with the mirror's saved media/copy overlaid (unchanged) |
+| file entry + published `admin` row at the same slug | file entry, untouched — the curated copy wins over an import's defaults |
+| file entry, no row at all | file entry (nothing to reconcile against) |
+| file entry + draft/archived row | **dropped** — admin hid or archived it |
+| published row, no file entry | **materialised from the row** |
+
+A materialised product takes its name, description, highlights, price,
+featured flag, photos and video straight from the row. Two things it has to
+derive, because the two halves of the app model them differently:
+
+- **Colour family.** The storefront groups by colour; admin's `categories` are
+  weave families (Banarasi, Chinnon…). The first colour word in the variant
+  colour or the product name wins, left to right, which is why the naming
+  convention in `src/lib/ai/style-guide.ts` (colour first) matters. No colour
+  word anywhere → `Assorted`, never a guess. The weave/category name becomes
+  the product's `weave` and a tag instead.
+- **Reference.** `product_code` if set, otherwise the slug — it is the key and
+  the line label in the WhatsApp enquiry message, so it must be unique.
+
+A row with no photograph is skipped rather than rendered as a broken card.
+Materialised products are appended after the file catalogue, newest first.
+
+Both reads are cached 60s under the tag `storefront-media`, which every admin
+catalogue write already revalidates (`revalidatePublic`), so publishing shows
+up immediately. Both fail soft: unreachable Supabase → the file catalogue
+exactly as before.
+
+`getLiveProducts()` / `getLiveCategories()` (`src/lib/storefront-overrides.ts`)
+are the whole-catalogue accessors — used by the sitemap, the footer's colour
+list, and the two admin pickers that choose from the storefront
+(`/admin/pages`, `/admin/storefront-availability`).
+
+**Still file-only:** per-page content overrides (`EDITABLE_PAGES` in
+`src/lib/page-content.ts`) and `generateStaticParams` prerender seeds. A
+materialised product renders on demand rather than at build time, and has no
+entry in the `/admin/pages` editor.
+
+### Hiding a product (migration `021`)
+
+RLS deliberately stops the anon key reading an unpublished product, so "admin
+hid this" and "this was never mirrored to Postgres" look identical from the
+storefront — and guessing wrong in the second direction would wipe the file
+catalogue off the site the first time someone deployed a product before
+running the sync. `public.storefront_hidden_slugs` (migration `021`) answers
+that one question directly: the slugs of non-published products, and nothing
+else — no name, description, price or photo. It is intentionally not
+`security_invoker`, which is why the projection is one column wide.
+
+Until `021` is applied the view is absent, the read returns empty, and nothing
+is hidden — the rest of this section works regardless.
+
+### Two more admin-side helpers
 
 ### Sync storefront products into admin (read-only mirror)
 
@@ -381,9 +465,12 @@ actually live on the site is visible and searchable in the admin panel.
   admin-authored rows are `source = 'admin'`.
 - A slug already owned by an `admin` row is **skipped, never overwritten**
   (the action returns the skipped titles).
-- Editing a mirrored row in admin does **not** change the live site — the
-  storefront never reads this table. To change a live product, edit the
-  source file and re-sync.
+- Editing a mirrored (`file_sync`) row in admin **does** change the live site:
+  saved photos, the primary-image choice, the name, description, highlights,
+  base price and the featured flag are overlaid onto the file entry. Its
+  media *roles* and running order stay file-authored.
+- Unpublishing or archiving any mirrored row takes the product off the site
+  (needs migration `021` — see above).
 - Each sync replaces the `file_sync` product's variants/images wholesale and
   re-links only its own collection memberships; admin-curated data is left
   alone.
@@ -414,8 +501,9 @@ live product's availability signal — `sold`, `limited`, `on request`,
 
 ### Migrations this section needs
 
-Run `013_product_source.sql`, `014_import_color_variants.sql` and
-`015_storefront_availability_overrides.sql` (SQL Editor, after `012`).
+Run `013_product_source.sql`, `014_import_color_variants.sql`,
+`015_storefront_availability_overrides.sql` and
+`021_storefront_hidden_slugs.sql` (SQL Editor, after `012`).
 `014` is the import pipeline's colour-variant detection — see
 [import-pipeline.md](import-pipeline.md).
 

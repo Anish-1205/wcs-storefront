@@ -1,13 +1,17 @@
 import type { MetadataRoute } from "next";
-import { getAllSlugs, getCategories } from "@/data/products";
+import { getCategories } from "@/data/products";
+import { getLiveProducts } from "@/lib/storefront-overrides";
 import { getAllCollectionSlugs } from "@/data/collections";
 import { getAllGuideSlugs } from "@/data/guides";
 import { SITE } from "@/lib/site";
 
 export const revalidate = 3600;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE.url.replace(/\/$/, "");
+  // The live catalogue, not the file list — an admin-created product has a
+  // real page and belongs in the sitemap, a hidden one no longer does.
+  const products = await getLiveProducts();
 
   const legalRoutes = ["/privacy", "/terms", "/shipping-returns"];
 
@@ -26,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   const dynamicRoutes: MetadataRoute.Sitemap = [
-    ...getCategories().map((c) => ({
+    ...getCategories(products).map((c) => ({
       url: `${base}/catalog/${c.slug}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
@@ -38,8 +42,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
-    ...getAllSlugs().map((slug) => ({
-      url: `${base}/sarees/${slug}`,
+    ...products.map((p) => ({
+      url: `${base}/sarees/${p.slug}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: 0.9,

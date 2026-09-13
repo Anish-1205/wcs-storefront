@@ -6,21 +6,8 @@
 
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
-import type { Product } from "@/data/products";
-import type { ProductWithRelations } from "@/lib/supabase/types";
-import { applyStorefrontMedia } from "@/lib/storefront-media";
-
-const getCachedMedia = unstable_cache(async () => {
-  try {
-    const { data, error } = await createPublicClient().from("products")
-      .select("slug, name, description, highlights, base_price_min, is_featured, product_variants(display_order, variant_images(*))")
-      .eq("status", "published").eq("source", "file_sync");
-    if (error) throw error;
-    return (data ?? []) as unknown as ProductWithRelations[];
-  } catch {
-    return [];
-  }
-}, ["storefront-media"], { revalidate: 60, tags: ["storefront-media"] });
+import { getAllProducts, getCategories, type CategoryFacet, type Product } from "@/data/products";
+import { getStorefrontCatalog } from "@/lib/storefront-catalog";
 
 export interface AvailabilityOverride {
   availability: Product["availability"];
@@ -88,8 +75,25 @@ export function applyAvailabilityOverrides<T extends Product>(
   });
 }
 
-/** Convenience wrapper for pages that just need the full merged catalog. */
+/**
+ * The catalogue a visitor actually sees: the file entries passed in,
+ * reconciled against what admin has published in Postgres (see
+ * src/lib/storefront-catalog.ts), with live availability signals merged over
+ * the top.
+ */
 export async function getProductsWithOverrides(products: Product[]): Promise<Product[]> {
-  const [overrides, media] = await Promise.all([getAvailabilityOverrides(), getCachedMedia()]);
-  return applyAvailabilityOverrides(applyStorefrontMedia(products, media), overrides);
+  const [overrides, catalog] = await Promise.all([getAvailabilityOverrides(), getStorefrontCatalog(products)]);
+  return applyAvailabilityOverrides(catalog, overrides);
+}
+
+/** The whole live catalogue — for callers with no file list of their own to
+ *  narrow (sitemap, footer, the admin pickers that choose from the storefront). */
+export async function getLiveProducts(): Promise<Product[]> {
+  return getProductsWithOverrides(getAllProducts());
+}
+
+/** Colour facets derived from the live catalogue rather than the file alone,
+ *  so an admin-created product's colour gets its own catalogue page. */
+export async function getLiveCategories(): Promise<CategoryFacet[]> {
+  return getCategories(await getLiveProducts());
 }
