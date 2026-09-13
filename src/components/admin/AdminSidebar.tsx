@@ -12,6 +12,7 @@ import {
   Users,
   MessageSquare,
   Mail,
+  Database,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -31,6 +32,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/admin/contacts": Users,
   "/admin/inquiries": MessageSquare,
   "/admin/subscribers": Mail,
+  "/admin/database": Database,
 };
 
 const STORAGE_KEY = "wcs.admin.sidebarCollapsed";
@@ -39,10 +41,13 @@ export function AdminSidebar({
   links,
   siteName,
   userEmail,
+  badges,
 }: {
   links: { href: string; label: string }[];
   siteName: string;
   userEmail?: string;
+  /** Small numeric badge per nav href — 0/undefined renders nothing. */
+  badges?: Record<string, number>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -104,6 +109,7 @@ export function AdminSidebar({
       <nav className="flex-1 space-y-1 p-3">
         {links.map((n) => {
           const Icon = ICONS[n.href];
+          const badge = badges?.[n.href];
           return (
             <Link
               key={n.href}
@@ -115,7 +121,12 @@ export function AdminSidebar({
               )}
             >
               {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
-              <span className={collapsed ? "sr-only" : "truncate"}>{n.label}</span>
+              <span className={collapsed ? "sr-only" : "flex-1 truncate"}>{n.label}</span>
+              {!!badge && !collapsed && (
+                <span className="rounded-full bg-antique-gold/20 px-1.5 py-0.5 text-[11px] font-semibold text-antique-gold">
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}

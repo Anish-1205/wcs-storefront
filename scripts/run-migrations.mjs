@@ -1,78 +1,58 @@
 /**
  * Apply supabase/migrations/*.sql to a remote Postgres database.
- * Usage: SUPABASE_DB_PASSWORD=yourpassword node scripts/run-migrations.mjs
+ * Usage: DATABASE_URL=postgresql://... node scripts/run-migrations.mjs
+ *
+ * This is the manual fallback for the one-click "Apply" button at
+ * /admin/database (src/app/admin/db-migrations-actions.ts) — both share the
+ * same core logic in src/lib/db-migrations.mjs. Use this when DATABASE_URL
+ * isn't configured in Vercel, a migration is too large for the serverless
+ * function's time limit, or you're bootstrapping a brand new project before
+ * any admin session exists.
+ *
+ * DATABASE_URL must be Supabase's connection string in SESSION mode (port
+ * 5432, not the 6543 transaction-mode port) — Settings → Database →
+ * Connection string → "Session" tab. Transaction-pooled connections can
+ * multiplex a multi-statement transaction's queries across different backend
+ * connections, which breaks the explicit begin/DDL/commit blocks below.
  */
-import { readFileSync, readdirSync } from "fs";
-import { join, dirname } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
+import { applyMigrations } from "../src/lib/db-migrations.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, "..", "supabase", "migrations");
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-if (!password) {
-  console.error("Set SUPABASE_DB_PASSWORD to your Supabase database password.");
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error(
+    "Set DATABASE_URL (Supabase's session-mode pooled connection string — see docs/deployment.md).",
+  );
   process.exit(1);
 }
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  `postgresql://postgres.titayctswaqvstdzgqtn:${encodeURIComponent(password)}@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres`;
-
-const client = new pg.Client({
-  connectionString,
-  ssl: { rejectUnauthorized: false },
-});
-
-const files = readdirSync(migrationsDir)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
 
 try {
   await client.connect();
   console.log("Connected to database.");
 
-  await client.query(`
-    create schema if not exists supabase_migrations;
-    create table if not exists supabase_migrations.schema_migrations (
-      version text primary key,
-      statements text[],
-      name text
-    );
-  `);
+  const result = await applyMigrations(client, migrationsDir, {
+    onProgress: (file, status) => {
+      if (status === "skip") console.log(`Skip (already applied): ${file}`);
+      if (status === "applying") console.log(`Applying: ${file}`);
+      if (status === "done") console.log(`Done: ${file}`);
+      if (status === "failed") console.log(`Failed: ${file}`);
+    },
+  });
 
-  for (const file of files) {
-    const version = file.replace(/\.sql$/, "");
-    const { rows } = await client.query(
-      "select version from supabase_migrations.schema_migrations where version = $1",
-      [version],
-    );
-    if (rows.length > 0) {
-      console.log(`Skip (already applied): ${file}`);
-      continue;
-    }
-
-    const sql = readFileSync(join(migrationsDir, file), "utf8");
-    console.log(`Applying: ${file}`);
-    await client.query("begin");
-    try {
-      await client.query(sql);
-      await client.query(
-        "insert into supabase_migrations.schema_migrations (version, statements, name) values ($1, $2, $3)",
-        [version, [], file],
-      );
-      await client.query("commit");
-      console.log(`Done: ${file}`);
-    } catch (err) {
-      await client.query("rollback");
-      throw err;
-    }
+  if (result.failed) {
+    console.error(`Migration failed: ${result.failed.file}: ${result.failed.error}`);
+    process.exit(1);
   }
-
   console.log("All migrations applied.");
 } catch (err) {
-  console.error("Migration failed:", err.message);
+  console.error("Migration failed:", err instanceof Error ? err.message : err);
   process.exit(1);
 } finally {
   await client.end();

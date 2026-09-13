@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import { SITE } from "@/lib/site";
+import { getPendingMigrationsCount } from "@/lib/db-migrations-status";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminMobileNav } from "@/components/admin/AdminMobileNav";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -15,6 +16,7 @@ const NAV = [
   { href: "/admin/contacts", label: "Contacts" },
   { href: "/admin/inquiries", label: "Inquiries" },
   { href: "/admin/subscribers", label: "Subscribers" },
+  { href: "/admin/database", label: "Database" },
 ];
 
 export default async function AdminLayout({
@@ -24,10 +26,11 @@ export default async function AdminLayout({
 }) {
   // Secondary defence-in-depth check (middleware is the first layer).
   const { user } = await requireAdmin();
+  const pendingMigrations = await getPendingMigrationsCount();
 
   return (
     <div className="admin-shell flex overflow-hidden bg-ivory">
-      <AdminSidebar links={NAV} siteName={SITE.name} userEmail={user.email} />
+      <AdminSidebar links={NAV} siteName={SITE.name} userEmail={user.email} badges={{ "/admin/database": pendingMigrations }} />
 
       {/* Mobile top bar + main content — its own scroll region, independent
           of the sidebar's (see AdminSidebar's md:overflow-y-auto). */}

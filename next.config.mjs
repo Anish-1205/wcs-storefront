@@ -32,6 +32,15 @@ const nextConfig = {
   async redirects() {
     return [{ source: "/wholesale", destination: "/contact", permanent: false }];
   },
+  // /admin/database reads supabase/migrations/*.sql off disk at request time
+  // (fs.readdirSync/readFileSync inside a Server Action) — Next's build-time
+  // file tracer can't see that (it only sees static imports), so without this
+  // the folder is silently dropped from the deployed function's bundle: works
+  // in `next dev` (reads straight off disk), 500s once deployed. See
+  // src/app/admin/db-migrations-actions.ts.
+  outputFileTracingIncludes: {
+    "/admin/database": ["./supabase/migrations/**/*.sql"],
+  },
   // Static, request-independent security headers. The Content-Security-Policy
   // itself is set per-request in middleware.ts (it needs a fresh nonce), not here.
   async headers() {
