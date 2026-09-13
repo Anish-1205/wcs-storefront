@@ -91,7 +91,12 @@ for (const width of [320, 390, 768, 1280]) {
     const expected = PRODUCTS.filter((p) => !shown.has(p.slug)).map((p) => `/sarees/${p.slug}`).sort();
     const shelf = page.getByTestId("shelf-grid");
     const cards = shelf.locator(".saree-card");
-    expect((await cards.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")))).sort()).toEqual(expected);
+    // "Complete" means nothing file-authored has silently gone missing from
+    // the shelf. It is not an exact set: the shelf renders the live catalogue
+    // (src/lib/storefront-catalog.ts), so anything published in admin that has
+    // no file entry legitimately shows up here too.
+    const hrefs = (await cards.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")))).sort();
+    expect(hrefs).toEqual(expect.arrayContaining(expected));
     for (const card of await cards.all()) await expect(card).toBeVisible();
     const boxes = await cards.evaluateAll((nodes) => nodes.map((node) => {
       const rect = node.querySelector("img")!.getBoundingClientRect();
