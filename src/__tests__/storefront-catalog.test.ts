@@ -158,7 +158,25 @@ describe("reconciling the file catalogue with Postgres", () => {
     expect(primaryImage(mirrored).src).toBe(swapped);
 
     const authored = mergeStorefrontCatalog(PRODUCTS, [row("admin")]).find((p) => p.slug === fileProduct.slug)!;
-    expect(authored).toBe(fileProduct);
+    expect(authored).toEqual({ ...fileProduct, price: 5290 });
+  });
+
+  it("takes the price from a published row at a file slug, whatever created it", () => {
+    for (const source of ["file_sync", "admin"] as const) {
+      const row = dbRow({ slug: fileProduct.slug, source, base_price_min: 3990 });
+      const merged = mergeStorefrontCatalog(PRODUCTS, [row]).find((p) => p.slug === fileProduct.slug)!;
+      expect(merged.price).toBe(3990);
+    }
+  });
+
+  it("clears the file price when admin has cleared it, and keeps it when there is no row", () => {
+    const cleared = mergeStorefrontCatalog(PRODUCTS, [
+      dbRow({ slug: fileProduct.slug, source: "admin", base_price_min: null }),
+    ]).find((p) => p.slug === fileProduct.slug)!;
+    expect(cleared.price).toBeNull();
+
+    const untouched = mergeStorefrontCatalog(PRODUCTS, []).find((p) => p.slug === fileProduct.slug)!;
+    expect(untouched.price).toBe(fileProduct.price);
   });
 
   it("gives an admin-created product's colour its own catalogue facet", () => {

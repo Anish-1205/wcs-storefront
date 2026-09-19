@@ -14,7 +14,9 @@
  * So the live catalogue is the file list *reconciled* against Postgres:
  *
  *   file entry + published row    → file entry, with the mirror's saved media
- *                                   and copy overlaid (unchanged behaviour)
+ *                                   and copy overlaid (unchanged behaviour),
+ *                                   and the row's price overlaid whatever
+ *                                   created the row
  *   file entry, no row at all     → file entry (nothing to reconcile against)
  *   file entry + unpublished row  → dropped — admin hid or archived it
  *   published row, no file entry  → materialised from the row
@@ -228,6 +230,24 @@ export function toStorefrontProduct(row: ProductWithRelations): Product | null {
 // ── Reconciliation ────────────────────────────────────────────────────
 
 /**
+ * Price is the one field every published row overlays onto its file entry,
+ * whatever created the row. Copy and media stay behind the `file_sync` rule
+ * above (an import's defaults must not replace curated prose or art-directed
+ * media roles), but a price is not prose: whatever admin last saved is the
+ * price the business is asking, and there is no curated version of it to
+ * protect. Without this, changing the price of an `admin` row sitting at a
+ * file slug changed nothing on the site.
+ */
+function applyPriceOverrides(products: Product[], publishedRows: ProductWithRelations[]): Product[] {
+  const priceBySlug = new Map(publishedRows.map((row) => [row.slug, row.base_price_min ?? null]));
+  return products.map((product) => {
+    const price = priceBySlug.get(product.slug);
+    // `undefined` = no row for this slug; `null` = admin cleared the price.
+    return price === undefined || price === product.price ? product : { ...product, price };
+  });
+}
+
+/**
  * Pure merge of the file catalogue with what Postgres says is live. Kept
  * separate from the cached reads above so it can be tested without a database.
  */
@@ -244,9 +264,12 @@ export function mergeStorefrontCatalog(
   // independently of the curated file entry (usually an import), so letting it
   // win would replace hand-written copy and art-directed media roles with the
   // imported defaults.
-  const merged = applyStorefrontMedia(
-    visible,
-    publishedRows.filter((row) => row.source === "file_sync"),
+  const merged = applyPriceOverrides(
+    applyStorefrontMedia(
+      visible,
+      publishedRows.filter((row) => row.source === "file_sync"),
+    ),
+    publishedRows,
   );
 
   const fileSlugs = new Set(fileProducts.map((product) => product.slug));
