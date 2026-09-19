@@ -42,7 +42,7 @@ const REMOTE_IMAGE_H = 1600;
 const CATALOG_SELECT =
   "id, slug, name, description, highlights, base_price_min, is_featured, source, product_code, fabric_type, created_at," +
   " category:categories(id, name, slug)," +
-  " product_variants(id, color, status, display_order, variant_images(id, image_url, is_primary, display_order, media_type))";
+  " product_variants(id, color, status, price_min, display_order, variant_images(id, image_url, is_primary, display_order, media_type))";
 
 /**
  * Every published product, whatever created it. Cached for 60s and tagged
@@ -211,7 +211,7 @@ export function toStorefrontProduct(row: ProductWithRelations): Product | null {
     colour: variantColour ?? (colourFamily === "Assorted" ? "" : colourFamily),
     colourFamily,
     variantGroup: null,
-    price: row.base_price_min ?? null,
+    price: rowPrice(row),
     availability,
     availabilityNote: null,
     description: row.description?.trim() ?? "",
@@ -230,6 +230,23 @@ export function toStorefrontProduct(row: ProductWithRelations): Product | null {
 // ── Reconciliation ────────────────────────────────────────────────────
 
 /**
+ * What a row costs. Admin's product form *hides* the base price fields as soon
+ * as any colour variant carries its own price, so for such a product the base
+ * price is whatever it happened to be before (or null) and the price the admin
+ * actually typed lives on the variants. Reading only `base_price_min` therefore
+ * showed a stale price, or none, for exactly the products priced per colourway.
+ * The cheapest colourway is the honest "from" figure for a page that shows one
+ * price for the whole product.
+ */
+function rowPrice(row: ProductWithRelations): number | null {
+  const variantPrices = (row.product_variants ?? [])
+    .map((variant) => variant.price_min)
+    .filter((price): price is number => price != null);
+  if (variantPrices.length > 0) return Math.min(...variantPrices);
+  return row.base_price_min ?? null;
+}
+
+/**
  * Price is the one field every published row overlays onto its file entry,
  * whatever created the row. Copy and media stay behind the `file_sync` rule
  * above (an import's defaults must not replace curated prose or art-directed
@@ -239,7 +256,7 @@ export function toStorefrontProduct(row: ProductWithRelations): Product | null {
  * file slug changed nothing on the site.
  */
 function applyPriceOverrides(products: Product[], publishedRows: ProductWithRelations[]): Product[] {
-  const priceBySlug = new Map(publishedRows.map((row) => [row.slug, row.base_price_min ?? null]));
+  const priceBySlug = new Map(publishedRows.map((row) => [row.slug, rowPrice(row)]));
   return products.map((product) => {
     const price = priceBySlug.get(product.slug);
     // `undefined` = no row for this slug; `null` = admin cleared the price.

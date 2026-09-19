@@ -161,17 +161,49 @@ describe("reconciling the file catalogue with Postgres", () => {
     expect(authored).toEqual({ ...fileProduct, price: 5290 });
   });
 
+  /** The fixture prices its variant; a product priced at the product level
+   *  (base price, no variant prices) is the other half of the contract. */
+  const basePricedRow = (overrides: Partial<ProductWithRelations> = {}) =>
+    dbRow({
+      product_variants: [
+        { ...dbRow().product_variants[0], price_min: null, price_max: null },
+      ] as ProductWithRelations["product_variants"],
+      ...overrides,
+    });
+
   it("takes the price from a published row at a file slug, whatever created it", () => {
     for (const source of ["file_sync", "admin"] as const) {
-      const row = dbRow({ slug: fileProduct.slug, source, base_price_min: 3990 });
+      const row = basePricedRow({ slug: fileProduct.slug, source, base_price_min: 3990 });
       const merged = mergeStorefrontCatalog(PRODUCTS, [row]).find((p) => p.slug === fileProduct.slug)!;
       expect(merged.price).toBe(3990);
     }
   });
 
+  it("prices a product from its cheapest colourway when the variants carry the price", () => {
+    const perColour = (slug: string, source: "admin" | "file_sync") =>
+      dbRow({
+        slug,
+        source,
+        // Admin hides the base price fields once a variant is priced, so this
+        // is the shape a per-colourway product is actually saved in.
+        base_price_min: 7990,
+        product_variants: [
+          { ...dbRow().product_variants[0], id: "v1", color: "yellow", price_min: 4490, price_max: 4490 },
+          { ...dbRow().product_variants[0], id: "v2", color: "pink", price_min: 3990, price_max: 3990 },
+        ] as ProductWithRelations["product_variants"],
+      });
+
+    const overlaid = mergeStorefrontCatalog(PRODUCTS, [perColour(fileProduct.slug, "admin")])
+      .find((p) => p.slug === fileProduct.slug)!;
+    expect(overlaid.price).toBe(3990);
+
+    const materialised = toStorefrontProduct(perColour("per-colourway-saree", "admin"))!;
+    expect(materialised.price).toBe(3990);
+  });
+
   it("clears the file price when admin has cleared it, and keeps it when there is no row", () => {
     const cleared = mergeStorefrontCatalog(PRODUCTS, [
-      dbRow({ slug: fileProduct.slug, source: "admin", base_price_min: null }),
+      basePricedRow({ slug: fileProduct.slug, source: "admin", base_price_min: null }),
     ]).find((p) => p.slug === fileProduct.slug)!;
     expect(cleared.price).toBeNull();
 
