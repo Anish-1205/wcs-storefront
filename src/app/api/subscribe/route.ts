@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { subscriberSchema } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/report-error";
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   });
 
   if (dbError) {
-    console.error("subscriber insert failed:", dbError.message);
+    reportError(dbError, { scope: "subscriber-insert" });
     return NextResponse.json({ error: "Could not save subscriber" }, { status: 500 });
   }
 

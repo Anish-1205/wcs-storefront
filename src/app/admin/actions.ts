@@ -34,6 +34,7 @@ import {
   type ContactsQueryShape,
   type ProductInputShape,
 } from "@/lib/validation";
+import { reportError, ExpectedError } from "@/lib/report-error";
 
 /**
  * Next.js redacts thrown Server Action error messages in production builds
@@ -56,11 +57,13 @@ export async function toResult<T extends object>(fn: () => Promise<T>): Promise<
     const data = await fn();
     return { ok: true, ...data };
   } catch (e) {
+    reportError(e, { scope: "admin-action" });
     return { ok: false, error: e instanceof Error ? e.message : "Something went wrong." };
   }
 }
 
 function revalidatePublic(slug: string) {
+  revalidateTag("storefront-availability");
   revalidateTag("storefront-media");
   revalidatePath("/search");
   revalidatePath("/");
@@ -220,10 +223,14 @@ function normalizePhone(value: string) {
 
 async function getContactByNormalizedPhone(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], phone: string) {
   const normalized = normalizePhone(phone).toLowerCase();
+  // `.in()` rather than `.or("phone.eq.…")`: PostgREST reads `,` `(` `)` in an
+  // `.or()` string as filter syntax, and contactPhoneRegex admits parentheses,
+  // so a perfectly ordinary "+1 (555) 123-4567" would corrupt the expression.
+  // `.in()` takes real values and lets the client encode them.
   const { data } = await admin
     .from("contacts")
     .select("*")
-    .or(`phone.eq.${phone},phone.eq.${normalized}`)
+    .in("phone", [phone, normalized])
     .maybeSingle();
   return data as Contact | null;
 }
@@ -231,7 +238,10 @@ async function getContactByNormalizedPhone(admin: Awaited<ReturnType<typeof asse
 async function listContactsInternal(admin: Awaited<ReturnType<typeof assertAdmin>>["admin"], query: ContactsQueryShape) {
   let q = admin.from("contacts").select("*");
   if (query.q) {
-    const escaped = query.q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    // `%`/`_` are ILIKE wildcards; `,` `(` `)` are PostgREST's own .or() syntax
+    // and would otherwise let a stray comma in the search box graft extra
+    // filters onto the query (or just 500 the page).
+    const escaped = query.q.replace(/[,()]/g, " ").replace(/%/g, "\\%").replace(/_/g, "\\_");
     q = q.or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%,notes.ilike.%${escaped}%`);
   }
   if (query.role) q = q.eq("role", query.role);
@@ -362,7 +372,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
       .eq("category_id", id);
 
     if ((count ?? 0) > 0) {
-      throw new Error("Move or reassign products before deleting this category.");
+      throw new ExpectedError("Move or reassign products before deleting this category.");
     }
 
     const { error } = await admin.from("categories").delete().eq("id", id);
@@ -641,7 +651,10 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
 
   // 3. Insert new variants
   for (const v of toInsert) {
-    const insertRow: any = {
+    // id/created_at/updated_at are database-assigned, except that a caller may
+    // pin `id` to preserve a variant's identity across a rebuild (duplicate,
+    // import apply), so it stays optional rather than omitted.
+    const insertRow: Omit<ProductVariant, "id" | "created_at" | "updated_at"> & { id?: string } = {
       product_id: productId,
       color: v.color,
       color_hex: v.color_hex,
@@ -649,10 +662,8 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
       price_min: v.price_min,
       price_max: v.price_max,
       display_order: v.display_order,
+      ...(v.id ? { id: v.id } : {}),
     };
-    if (v.id) {
-      insertRow.id = v.id;
-    }
 
     const { data: variantRow, error: insErr } = await admin
       .from("product_variants")
@@ -712,7 +723,7 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!product) throw new Error("Product not found");
+  if (!product) throw new ExpectedError("Product not found");
 
   const refs = await loadExistingProductRefs(admin);
   const source = product as ProductWithRelations & { collection_products?: CollectionProduct[] };
@@ -802,7 +813,7 @@ export async function updateProductDetails(input: ProductDetailsShape): Promise<
       .single();
     if (readError) throw new Error(readError.message);
     if (current.status === "published" && !details.category_id) {
-      throw new Error("Published products need a category");
+      throw new ExpectedError("Published products need a category");
     }
     const refs = await loadExistingProductRefs(admin);
     const productCode = makeStableCode(details.product_code, refs.productCodes, current.product_code);

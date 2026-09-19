@@ -548,6 +548,12 @@ export async function applyProductIdentifiers(input: {
     }
 
     revalidatePath("/admin/products");
+    revalidateTag("storefront-availability");
+    revalidateTag("storefront-media");
+    revalidatePath("/admin/storefront-availability");
+    revalidatePath("/catalog");
+    revalidatePath("/search");
+    revalidatePath("/");
     return { updated, skipped, moved };
   });
 }

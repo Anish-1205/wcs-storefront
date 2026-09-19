@@ -16,14 +16,14 @@
 import { unstable_cache } from "next/cache";
 import { Client } from "pg";
 import { join } from "node:path";
-import { listPendingMigrations } from "@/lib/db-migrations.mjs";
+import { listPendingMigrations, pgSslConfig } from "@/lib/db-migrations.mjs";
 
 const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
 
 async function fetchPendingCount(): Promise<number> {
   const url = process.env.DATABASE_URL;
   if (!url) return 0;
-  const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  const client = new Client({ connectionString: url, ssl: pgSslConfig() });
   try {
     await client.connect();
     const pending = await listPendingMigrations(client, MIGRATIONS_DIR);

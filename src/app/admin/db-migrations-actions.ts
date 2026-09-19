@@ -21,7 +21,12 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { assertAdmin } from "@/lib/admin-auth";
 import { toResult, type ActionResult } from "@/app/admin/actions";
-import { listPendingMigrations, applyMigrations } from "@/lib/db-migrations.mjs";
+import {
+  listPendingMigrations,
+  applyMigrations,
+  pgSslConfig,
+  isCertificateError,
+} from "@/lib/db-migrations.mjs";
 
 /** Mirrors src/lib/db-migrations.mjs's ApplyResult JSDoc typedef — that file
  *  is plain JS (see its header comment for why) and its typedef isn't
@@ -38,8 +43,19 @@ function connectionString(): string | null {
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
   const url = connectionString();
   if (!url) throw new Error("DATABASE_URL is not configured — apply migrations via the Supabase SQL Editor instead.");
-  const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
-  await client.connect();
+  const client = new Client({ connectionString: url, ssl: pgSslConfig() });
+  try {
+    await client.connect();
+  } catch (err) {
+    // Surfaced verbatim in the admin UI, so say which env var fixes it rather
+    // than leaving an operator with a bare OpenSSL code.
+    if (isCertificateError(err)) {
+      throw new Error(
+        "Could not verify the database's TLS certificate. Set DATABASE_CA_CERT to your provider's CA certificate (Supabase: Settings → Database → SSL configuration).",
+      );
+    }
+    throw err;
+  }
   try {
     return await fn(client);
   } finally {

@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
 import { checkImportRateLimit } from "@/lib/rate-limit";
 import { importAssetCompleteSchema } from "@/lib/validation";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
     .single();
 
   if (upsertError) {
-    console.error("import complete: failed to record asset", upsertError.message);
+    reportError(upsertError, { scope: "import-complete" });
     return NextResponse.json({ error: "Could not record upload" }, { status: 500 });
   }
 

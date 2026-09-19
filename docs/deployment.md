@@ -13,9 +13,11 @@ include the required live-save smoke check; applying SQL is separate from deploy
 
 GitHub Actions run on every PR and every push to `main` (`.github/workflows/`):
 
-- **CI** (`ci.yml`) — `lint` → `types` → `npm test --coverage` → `npm run build`.
-  The build uses placeholder `NEXT_PUBLIC_*` env (no secrets); it only
-  prerenders the file-driven storefront.
+- **CI** (`ci.yml`) — `npm audit` → `lint` → `types` → `npm test --coverage` →
+  `npm run build`. The audit step fails the build on a **high or critical**
+  advisory in a production dependency; dev-only tooling is excluded, since it
+  never reaches a user. The build uses placeholder `NEXT_PUBLIC_*` env (no
+  secrets); it only prerenders the file-driven storefront.
 - **E2E** (`e2e.yml`) — spins up the local Supabase stack, seeds the
   `admin@example.com` / `staff@example.com` users, and runs the Playwright suite.
 - **CodeQL** (`codeql.yml`) — `security-and-quality` static analysis, also weekly.
@@ -23,6 +25,23 @@ GitHub Actions run on every PR and every push to `main` (`.github/workflows/`):
   updates, minor/patch only. Major bumps are done deliberately in their own PR.
 
 Make CI + E2E required status checks on the `main` branch protection rule.
+
+### Before merging to `main`
+
+Merging to `main` publishes to production immediately — there is no separate
+staging environment and nothing gates the promotion beyond the checks above.
+Vercel does build a **Preview** deployment for every PR against the same
+environment variables, so treat that preview as the staging step:
+
+1. Open the PR's Vercel preview URL.
+2. Walk the enquiry path end to end — add a saree to the cart, submit
+   `/enquiry`, confirm the WhatsApp handoff opens with a pre-filled message.
+   This is the site's only conversion path and the one worth checking by hand.
+3. Sign in to `/admin` on the preview and load Products and Storefront Signals.
+4. Only then merge.
+
+If a change needs a database migration, apply it **before** merging the code
+that depends on it (see `/admin/database`), not after.
 
 ## 1. Create the production Supabase project
 
@@ -105,6 +124,7 @@ Make CI + E2E required status checks on the `main` branch protection rule.
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | from Supabase |
    | `SUPABASE_SERVICE_ROLE_KEY` | **server-only**, never `NEXT_PUBLIC_` |
    | `DATABASE_URL` | optional, server-only — Supabase's **session-mode** pooled connection string (port 5432). Enables one-click "Apply" at `/admin/database`; unset, that page just points you at the SQL Editor and nothing else changes. This is a raw Postgres connection — unlike the service-role key it bypasses RLS entirely and can run arbitrary SQL, so treat it with the same care as a database superuser password |
+   | `DATABASE_CA_CERT` | optional, server-only — only needed alongside `DATABASE_URL`. That connection verifies the database's TLS certificate, and Supabase signs its certificates with its own CA rather than a publicly-trusted root. If `/admin/database` reports that the certificate could not be verified, paste the PEM from Supabase → Settings → Database → SSL configuration → download certificate here |
    | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | from Cloudinary |
    | `CLOUDINARY_API_KEY` | server-only |
    | `CLOUDINARY_API_SECRET` | server-only |

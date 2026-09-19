@@ -18,7 +18,7 @@
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
-import { applyMigrations } from "../src/lib/db-migrations.mjs";
+import { applyMigrations, pgSslConfig, isCertificateError } from "../src/lib/db-migrations.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, "..", "supabase", "migrations");
@@ -31,10 +31,22 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
+const client = new pg.Client({ connectionString, ssl: pgSslConfig() });
 
 try {
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (err) {
+    if (isCertificateError(err)) {
+      console.error(
+        "Could not verify the database's TLS certificate.\n" +
+          "Set DATABASE_CA_CERT to your provider's CA certificate — Supabase:\n" +
+          "Settings → Database → SSL configuration → download certificate.",
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
   console.log("Connected to database.");
 
   const result = await applyMigrations(client, migrationsDir, {

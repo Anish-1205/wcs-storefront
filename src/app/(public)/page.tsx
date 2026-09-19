@@ -26,9 +26,14 @@ const STEPS = [
 ];
 
 export default async function HomePage() {
-  const all = await getProductsWithOverrides(getAllProducts());
-  const config = await getHomepageContent();
-  const collections = await getStorefrontCollections();
+  // Independent reads — each is separately cached, so on a cold cache (new
+  // deploy, or the 60s window expiring under traffic) awaiting them in sequence
+  // stacks three Supabase round trips onto TTFB for no reason.
+  const [all, config, collections] = await Promise.all([
+    getProductsWithOverrides(getAllProducts()),
+    getHomepageContent(),
+    getStorefrontCollections(),
+  ]);
   const hero = all.find((p) => p.slug === config.heroSlug) ?? all[0];
   const selection = config.featuredSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
   const shown = new Set([

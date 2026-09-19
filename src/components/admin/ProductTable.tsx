@@ -25,10 +25,17 @@ import {
 } from "@/lib/validation";
 import type { ProductStatus } from "@/lib/supabase/types";
 
+import { AVAILABILITY_SIGNAL_PRESETS } from "@/lib/availability-presets";
+import { bulkStorefrontAvailability, undoSignalChanges } from "@/app/admin/storefront-availability-actions";
+import { StorefrontAvailabilityRow } from "./StorefrontAvailabilityRow";
+
 export interface AdminProductRow {
   id: string;
   name: string;
   slug: string;
+  signal: string;
+  defaultSignalLabel: string;
+  customSignalLabel?: string;
   status: ProductStatus;
   is_featured: boolean;
   product_code: string | null;
@@ -42,6 +49,8 @@ export interface AdminProductRow {
 }
 
 interface Props {
+  signalError?: string | null;
+  listError?: string | null;
   rows: AdminProductRow[];
   /** The query the server actually ran — filters/sort/page all live in the URL. */
   query: AdminProductsQueryShape;
@@ -60,6 +69,7 @@ function buildQueryString(query: AdminProductsQueryShape): string {
   if (query.status) params.set("status", query.status);
   if (query.category) params.set("category", query.category);
   if (query.featured) params.set("featured", query.featured);
+  if (query.signal) params.set("signal", query.signal);
   if (query.sort !== "created_at") params.set("sort", query.sort);
   if (query.dir !== "desc") params.set("dir", query.dir);
   if (query.page > 1) params.set("page", String(query.page));
@@ -69,13 +79,36 @@ function buildQueryString(query: AdminProductsQueryShape): string {
   return params.toString();
 }
 
-export function ProductTable({ rows, query, total, categories }: Props) {
+export function ProductTable({ rows, query, total, categories, signalError, listError }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(query.q);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [draft, setDraft] = useState<ProductDetailsShape | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkPreset, setBulkPreset] = useState("available");
+  const [bulkPending, setBulkPending] = useState(false);
+  const [bulkUndo, setBulkUndo] = useState<number[]>([]);
+  const [busyRows, setBusyRows] = useState<string[]>([]);
+  const selection = selected.filter((slug) => rows.some((row) => row.slug === slug));
+  useEffect(() => { setSelected([]); }, [query.page, query.per, query.q, query.signal, query.status, query.category, query.featured, query.sort, query.dir]);
+
+  async function saveBulk(undo = false) {
+    if (bulkPending || busyRows.length) return;
+    setBulkPending(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const result = undo ? await undoSignalChanges(bulkUndo) : await bulkStorefrontAvailability({ slugs: selection, preset: bulkPreset });
+      if (!result.ok) throw new Error(result.error);
+      setBulkUndo(undo ? [] : result.changes.map((change) => change.id));
+      setActionMessage(undo ? "Bulk change undone." : `Stock signal saved for ${selection.length} products.`);
+      setSelected([]);
+    } catch (e) { setActionError(e instanceof Error ? e.message : "Could not save. Please retry."); }
+    finally { setBulkPending(false); }
+  }
 
   function onQuickEdit(row: AdminProductRow) {
     setActionError(null);
@@ -162,11 +195,17 @@ export function ProductTable({ rows, query, total, categories }: Props) {
     apply({ per: size });
   }
 
-  function runAction(action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
+  function runAction(action: () => Promise<{ ok: true } | { ok: false; error: string }>, successMessage?: string) {
     setActionError(null);
+    setActionMessage(null);
     startTransition(async () => {
-      const result = await action();
-      if (!result.ok) setActionError(result.error);
+      try {
+        const result = await action();
+        if (!result.ok) setActionError(result.error);
+        else if (successMessage) setActionMessage(successMessage);
+      } catch {
+        setActionError("Could not save changes. Please try again.");
+      }
     });
   }
 
@@ -187,12 +226,27 @@ export function ProductTable({ rows, query, total, categories }: Props) {
 
   return (
     <div className="space-y-4">
+      {(signalError || listError) && <p role="alert" className="text-sm text-destructive">
+        {signalError || listError} <button className="underline" onClick={() => router.refresh()}>Retry loading</button>
+        {query.signal && <button className="ml-3 underline" onClick={() => apply({ signal: "" })}>Clear signal filter</button>}
+      </p>}
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+        {pending ? "Updating products…" : actionMessage ?? "Stock signals save automatically and appear on the storefront. Default availability restores the product’s original availability."}
+      </p>
       {actionError && (
         <p role="alert" className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {actionError}
         </p>
       )}
       <div className="grid gap-3 lg:grid-cols-5">
+        <Select aria-label="Filter by stock signal override" value={query.signal} onChange={(e) => apply({ signal: e.target.value as AdminProductsQueryShape["signal"] })}>
+          <option value="">All stock signals</option>
+          <option value="available">Override: Available</option>
+          <option value="sold">Override: Unavailable</option>
+          <option value="limited">Override: Limited stock</option>
+          <option value="on-request">Override: On request</option>
+          <option value="pre-order">Override: Pre-order</option>
+        </Select>
         <Input
           placeholder="Search name, slug, product code…"
           value={search}
@@ -237,16 +291,27 @@ export function ProductTable({ rows, query, total, categories }: Props) {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 rounded-sm border border-border p-3">
+        <span className="text-sm">{selection.length} selected on this page</span>
+        <Select aria-label="Bulk stock signal" value={bulkPreset} onChange={(e) => setBulkPreset(e.target.value)} disabled={bulkPending} className="w-52">
+          <option value="">Restore defaults</option>
+          {AVAILABILITY_SIGNAL_PRESETS.map((preset) => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
+        </Select>
+        <Button disabled={!selection.length || bulkPending || !!busyRows.length || !!signalError || pending} onClick={() => saveBulk()}>{bulkPending ? "Saving…" : "Apply to selected"}</Button>
+        {bulkUndo.length > 0 && <Button variant="ghost" disabled={bulkPending || !!busyRows.length || pending} onClick={() => saveBulk(true)}>Undo bulk change</Button>}
+      </div>
       <div className="overflow-x-auto rounded-sm border border-border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="px-3"><input type="checkbox" aria-label="Select all products on this page" checked={rows.length > 0 && selection.length === rows.length} disabled={bulkPending || !!signalError || pending} onChange={(e) => setSelected(e.target.checked ? rows.map((r) => r.slug) : [])} /></th>
               <th className="px-4 py-3">Thumb</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Variants</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Stock signal</th>
               <th className="px-4 py-3">Featured</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -254,6 +319,7 @@ export function ProductTable({ rows, query, total, categories }: Props) {
           <tbody className={pending ? "opacity-60 transition-opacity" : undefined}>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-border/60 last:border-0">
+                <td className="px-3"><input type="checkbox" aria-label={`Select ${r.name}`} checked={selection.includes(r.slug)} disabled={bulkPending || !!signalError || pending} onChange={(e) => setSelected(e.target.checked ? [...selection, r.slug] : selection.filter((slug) => slug !== r.slug))} /></td>
                 <td className="px-4 py-3">
                   <div className="relative h-16 w-12 overflow-hidden rounded-sm border border-border bg-secondary">
                     {r.thumbnail_url ? (
@@ -280,7 +346,7 @@ export function ProductTable({ rows, query, total, categories }: Props) {
                   {r.source === "file_sync" && (
                     <span
                       className="ml-2 rounded-sm border border-[#B8860B]/40 bg-[#B8860B]/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#B8860B]"
-                      title="Synced from the storefront files — edits here don't affect the live site"
+                      title="Synced from the storefront catalogue — saved edits and stock signals appear on the live site"
                     >
                       Storefront
                     </span>
@@ -330,6 +396,11 @@ export function ProductTable({ rows, query, total, categories }: Props) {
                       <option value="archived">Archived</option>
                     </Select>
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  <StorefrontAvailabilityRow slug={r.slug} name={r.name} currentOverrideKey={r.signal}
+                    defaultLabel={r.defaultSignalLabel} customLabel={r.customSignalLabel} disabled={pending || bulkPending || !!signalError}
+                    onBusyChange={(busy) => setBusyRows((current) => busy ? [...new Set([...current, r.slug])] : current.filter((slug) => slug !== r.slug))} />
                 </td>
                 <td className="px-4 py-3">
                   <input
@@ -384,8 +455,8 @@ export function ProductTable({ rows, query, total, categories }: Props) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                  No products found.
+                <td colSpan={10} className="px-4 py-10 text-center text-muted-foreground">
+                  {listError ? "Product list unavailable." : "No products found."}
                 </td>
               </tr>
             )}

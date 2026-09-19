@@ -1,31 +1,20 @@
 import { requireAdmin } from "@/lib/admin-auth";
-import { getLiveProducts } from "@/lib/storefront-overrides";
-import { AVAILABILITY_SIGNAL_PRESETS } from "@/lib/availability-presets";
-import { StorefrontAvailabilityRow } from "@/components/admin/StorefrontAvailabilityRow";
+import { getAllProducts } from "@/data/products";
+import { getStorefrontCatalog } from "@/lib/storefront-catalog";
+import { StorefrontAvailabilityTable } from "@/components/admin/StorefrontAvailabilityTable";
 import type { StorefrontAvailabilityOverride } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-const FILE_AVAILABILITY_LABELS: Record<string, string> = {
-  available: "Available",
-  limited: "Limited",
-  "on-request": "On request",
-  "pre-order": "Pre-order",
-  sold: "Sold",
-};
-
 export default async function StorefrontAvailabilityPage() {
   const { admin } = await requireAdmin();
-  const products = await getLiveProducts();
 
-  const { data } = await admin
-    .from("storefront_availability_overrides")
-    .select("slug, availability, availability_note");
-  const overrides = new Map(
-    ((data ?? []) as Pick<StorefrontAvailabilityOverride, "slug" | "availability" | "availability_note">[]).map(
-      (row) => [row.slug, row],
-    ),
-  );
+  // Independent reads — the catalogue merge doesn't depend on the overrides.
+  const [products, overridesResult] = await Promise.all([
+    getStorefrontCatalog(getAllProducts()),
+    admin.from("storefront_availability_overrides").select("slug, availability, availability_note"),
+  ]);
+  const { data, error } = overridesResult;
 
   return (
     <div>
@@ -34,48 +23,23 @@ export default async function StorefrontAvailabilityPage() {
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Set a live availability signal (sold, pre-order, limited…) on any
           product currently on the storefront. This goes live immediately — no
-          code change or redeploy needed. Leave a product on &ldquo;Use file
-          default&rdquo; to show whatever its own data says.
+          code change or redeploy needed. Choose &ldquo;Default&rdquo; to restore
+          the catalogue availability shown beside each product.
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Product</th>
-              <th className="px-4 py-3">File default</th>
-              <th className="px-4 py-3 text-right">Signal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => {
-              const override = overrides.get(p.slug);
-              const currentOverrideKey = override
-                ? AVAILABILITY_SIGNAL_PRESETS.find(
-                    (preset) =>
-                      preset.availability === override.availability &&
-                      preset.note === override.availability_note,
-                  )?.key ?? ""
-                : "";
-              return (
-                <tr key={p.slug} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3 font-medium">{p.title}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {FILE_AVAILABILITY_LABELS[p.availability] ?? p.availability}
-                    {p.availabilityNote && (
-                      <span className="block text-xs text-muted-foreground/70">{p.availabilityNote}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <StorefrontAvailabilityRow slug={p.slug} currentOverrideKey={currentOverrideKey} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {error && <p role="alert" className="mb-4 text-destructive">Stock signals could not be loaded. Refresh this page to retry.</p>}
+
+      <StorefrontAvailabilityTable
+        products={products}
+        overrides={
+          (data ?? []) as Pick<
+            StorefrontAvailabilityOverride,
+            "slug" | "availability" | "availability_note"
+          >[]
+        }
+        disabled={!!error}
+      />
     </div>
   );
 }

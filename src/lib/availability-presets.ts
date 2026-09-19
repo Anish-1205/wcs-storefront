@@ -4,19 +4,18 @@
 
 import type { Product } from "@/data/products";
 
-/** The fixed set of signals the admin UI offers — add a new one here to make
- * it selectable (per the "add signals one by one" ask). "available" isn't a
- * distinct preset: clearing an override already reverts to the file's own
- * (usually "available") value. */
+/** Signals shared by the admin product list and availability editor.
+ * Clearing an override restores the catalogue default. */
 export const AVAILABILITY_SIGNAL_PRESETS: Array<{
   key: string;
   label: string;
   availability: Product["availability"];
   note: string | null;
 }> = [
+  { key: "available", label: "Available", availability: "available", note: null },
   { key: "limited", label: "Limited stock", availability: "limited", note: null },
   { key: "on-request", label: "On request", availability: "on-request", note: null },
-  { key: "sold", label: "Sold", availability: "sold", note: null },
+  { key: "sold", label: "Unavailable", availability: "sold", note: null },
   {
     key: "preorder-10",
     label: "Pre-order — 10 days",

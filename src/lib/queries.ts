@@ -3,6 +3,7 @@
 // (only published products / active collections are returned to the public).
 
 import { createPublicClient } from "@/lib/supabase/server";
+import { reportError } from "@/lib/report-error";
 import type {
   Category,
   Collection,
@@ -58,7 +59,9 @@ export async function getPublishedProducts(
 
   const { data, error } = await query;
   if (error) {
-    console.error("getPublishedProducts:", error.message);
+    // Returning [] renders an empty catalog rather than an error page, so
+    // without this the storefront can silently go blank.
+    reportError(error, { scope: "getPublishedProducts" });
     return [];
   }
 

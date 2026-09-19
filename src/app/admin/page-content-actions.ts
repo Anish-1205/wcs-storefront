@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/admin-auth";
 import { toResult } from "@/app/admin/actions";
+import { ExpectedError } from "@/lib/report-error";
 import { homepageSchema } from "@/lib/homepage-content";
 import { editablePageSchema, pageOverridesSchema } from "@/lib/page-content";
 
@@ -37,7 +38,7 @@ export async function savePageDraft(page: string, input: unknown) {
       draft_content: draft,
       updated_at: new Date().toISOString(),
     }, { onConflict: "page" });
-    if (error) throw new Error("Could not save your draft. Check that the page-content database migrations have been applied.");
+    if (error) throw new Error("Could not save your draft. Check that the page-content database migrations have been applied.", { cause: error });
     revalidatePath("/admin/pages");
     return {};
   });
@@ -55,7 +56,7 @@ export async function publishPageContent(page: string, input: unknown) {
     const { error } = await admin.from("storefront_page_content").upsert({
       page: scope, content, draft_content: content, updated_at: new Date().toISOString(),
     }, { onConflict: "page" });
-    if (error) throw new Error("Could not publish. Check that the page-content database migrations have been applied.");
+    if (error) throw new Error("Could not publish. Check that the page-content database migrations have been applied.", { cause: error });
     revalidatePublic();
     return {};
   });
@@ -69,7 +70,7 @@ export async function restorePageVersion(page: string, versionId: string) {
     const id = versionIdSchema.parse(versionId);
     const { data: version } = await admin
       .from("storefront_page_content_versions").select("content").eq("id", id).eq("page", scope).maybeSingle();
-    if (!version) throw new Error("That earlier version is no longer available.");
+    if (!version) throw new ExpectedError("That earlier version is no longer available.");
     const content = parseFor(scope, version.content);
     const { data: existing } = await admin
       .from("storefront_page_content").select("content").eq("page", scope).maybeSingle();
@@ -77,7 +78,7 @@ export async function restorePageVersion(page: string, versionId: string) {
     const { error } = await admin.from("storefront_page_content").upsert({
       page: scope, content, draft_content: content, updated_at: new Date().toISOString(),
     }, { onConflict: "page" });
-    if (error) throw new Error("Could not restore that version.");
+    if (error) throw new Error("Could not restore that version.", { cause: error });
     revalidatePublic();
     return { content };
   });

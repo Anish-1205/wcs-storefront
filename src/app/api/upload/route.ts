@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
       uploadUrl,
     });
   } catch (e) {
-    console.error("upload signing failed:", e);
+    reportError(e, { scope: "upload-signing" });
     return NextResponse.json(
       { error: "Cloudinary is not configured" },
       { status: 500 },

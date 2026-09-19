@@ -48,6 +48,14 @@ jobs:
 
       - run: npm ci
 
+      # Gates on known CVEs in shipped dependencies. Scoped to production
+      # dependencies and to high/critical: dev-only tooling (lighthouse,
+      # ffmpeg-static and friends) never reaches a user, and failing the build
+      # on a low-severity transitive advisory would train everyone to ignore
+      # this step. Dependabot still raises the version-bump PRs separately.
+      - name: Audit dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
 

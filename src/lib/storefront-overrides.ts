@@ -23,13 +23,13 @@ interface OverrideRow {
 async function fetchOverrideRows(): Promise<OverrideRow[]> {
   try {
     const supabase = createPublicClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("storefront_availability_overrides")
       .select("slug, availability, availability_note");
+    if (error) throw new Error("Availability could not be confirmed");
     return (data ?? []) as OverrideRow[];
   } catch {
-    // Supabase env not configured / unreachable — storefront still works off file data.
-    return [];
+    throw new Error("Availability could not be confirmed");
   }
 }
 
@@ -50,23 +50,32 @@ const getCachedOverrideRows = unstable_cache(fetchOverrideRows, ["storefront-ava
 /**
  * Reads every override row. Small table, read in full rather than per-slug
  * to keep list pages (catalog, home, collections) to one query each. Never
- * throws — if Supabase is unreachable the storefront just falls back to
- * every product's file-authored availability, exactly as before this
- * feature existed.
+ * throws — a null result means availability could not be confirmed, not
+ * that every product has reverted to its catalogue default.
  */
-export async function getAvailabilityOverrides(): Promise<Map<string, AvailabilityOverride>> {
-  const rows = await getCachedOverrideRows();
-  const overrides = new Map<string, AvailabilityOverride>();
-  for (const row of rows) {
-    overrides.set(row.slug, { availability: row.availability, availabilityNote: row.availability_note });
+export async function getAvailabilityOverrides(): Promise<Map<string, AvailabilityOverride> | null> {
+  try {
+    const rows = await getCachedOverrideRows();
+    const overrides = new Map<string, AvailabilityOverride>();
+    for (const row of rows) {
+      overrides.set(row.slug, { availability: row.availability, availabilityNote: row.availability_note });
+    }
+    return overrides;
+  } catch {
+    // Never turn a failed lookup into a successful empty override list.
+    return null;
   }
-  return overrides;
 }
 
 export function applyAvailabilityOverrides<T extends Product>(
   products: T[],
-  overrides: Map<string, AvailabilityOverride>,
+  overrides: Map<string, AvailabilityOverride> | null,
 ): T[] {
+  if (overrides === null) return products.map((p) => ({
+    ...p,
+    availability: p.availability === "sold" ? "sold" : "on-request",
+    availabilityNote: "Please contact us to confirm current availability.",
+  }));
   if (overrides.size === 0) return products;
   return products.map((p) => {
     const override = overrides.get(p.slug);

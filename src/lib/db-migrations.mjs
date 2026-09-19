@@ -30,6 +30,43 @@ import { join } from "node:path";
 /** Postgres "undefined_table" — thrown when schema_migrations doesn't exist yet. */
 const UNDEFINED_TABLE = "42P01";
 
+/**
+ * TLS options for the privileged DATABASE_URL connection, shared by all three
+ * call sites (the admin action, the pending-count badge and the CLI script) so
+ * they can't drift apart.
+ *
+ * Certificate verification is always on. Unlike SUPABASE_SERVICE_ROLE_KEY this
+ * connection speaks raw Postgres, bypasses RLS and runs arbitrary DDL, so an
+ * intercepted session on the host->database path would hand over both the
+ * credentials and the schema.
+ *
+ * Supabase signs its database certificates with its own CA rather than a
+ * publicly-trusted root, so when the system trust store can't verify the host,
+ * set DATABASE_CA_CERT to that CA's PEM (Supabase dashboard -> Settings ->
+ * Database -> SSL configuration -> download certificate). Env vars that went
+ * through a shell or a one-line paste often arrive with literal "\n" instead of
+ * real newlines, which OpenSSL rejects as a malformed PEM, so those are
+ * normalised back before use.
+ */
+export function pgSslConfig() {
+  const ca = process.env.DATABASE_CA_CERT;
+  if (!ca) return { rejectUnauthorized: true };
+  return { ca: ca.replace(/\\n/g, "\n"), rejectUnauthorized: true };
+}
+
+/** True for the TLS failures that DATABASE_CA_CERT is the fix for. */
+export function isCertificateError(err) {
+  const code = err && (err.code || err.reason);
+  return (
+    typeof code === "string" &&
+    (code.startsWith("UNABLE_TO_VERIFY") ||
+      code.startsWith("SELF_SIGNED") ||
+      code === "DEPTH_ZERO_SELF_SIGNED_CERT" ||
+      code === "ERR_TLS_CERT_ALTNAME_INVALID" ||
+      code === "CERT_HAS_EXPIRED")
+  );
+}
+
 /** Sorted list of every *.sql file in migrationsDir. Pure fs read, no DB. */
 export function listMigrationFiles(migrationsDir) {
   return readdirSync(migrationsDir)

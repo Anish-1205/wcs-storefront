@@ -186,6 +186,56 @@ You don't delete sold-out sarees. Instead:
 On the website, that color shows as crossed-out and can't be enquired about,
 but other colors stay available — and the page stays live for Google.
 
+## Changing what a saree says about stock
+
+Sometimes a saree is still on the website but you need it to say something
+different right now — "Sold", "Only a few left", "Made to order". That's a
+**stock signal**, and it goes live immediately with no help from a developer.
+
+1. Go to **Storefront Signals**.
+2. Find the saree (use the search box — it matches the name or web address).
+3. Pick a signal from the dropdown beside it, or choose **Default** to go back
+   to whatever the catalogue normally says.
+
+Other notes:
+
+- **Bulk changes.** On **Products** you can tick several sarees and apply the
+  same signal to all of them at once.
+- **Undo.** Each change is recorded, so you can put back the previous signal if
+  you pick the wrong one. Only the most recent change per saree can be undone.
+- A signal only changes the *wording and availability* shown to customers. It
+  never hides the saree — to take something off the website entirely, set the
+  product to **Draft** or **Archived** instead.
+
+## Making sure every live saree appears here
+
+Some sarees on the website were set up in the site's own catalogue files rather
+than typed into this admin panel. **Products → "Sync storefront products"**
+copies those in so you can manage them here like anything else.
+
+It's safe to press more than once:
+
+- Sarees you've already edited in admin are never overwritten.
+- Photos, prices and descriptions you've curated are left exactly as they are.
+- It only ever adds what's missing.
+
+If a saree on the website isn't showing up in this list, this is the button to
+press.
+
+## Applying database updates
+
+Occasionally a developer adds a new feature that needs a change to the
+database. When that's waiting, you'll see a **pending database updates** badge
+in the sidebar.
+
+1. Go to **Database**.
+2. Read what's listed as pending.
+3. Press **Apply**.
+
+If the page says it can't connect or can't verify the database certificate,
+stop and send that message to your developer — it's a configuration issue, not
+something to retry.
+
 ## Managing inquiries
 
 - Go to **Inquiries** to see everyone who submitted a form.

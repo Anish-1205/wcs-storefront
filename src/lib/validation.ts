@@ -11,6 +11,12 @@ import type {
 
 const phoneRegex = /^[+]?\d[\d\s-]{6,14}$/;
 
+export const storefrontAvailabilitySchema = z.object({
+  slug: z.string().trim().min(1).max(200),
+  availability: z.enum(["available", "limited", "on-request", "pre-order", "sold"]),
+  availability_note: z.string().max(500).nullable(),
+});
+
 /**
  * "field.path: message" for the first issue of a failed `safeParse`, so admin
  * forms surface *which* field is wrong (e.g. `variants.0.images.2.image_url:
@@ -394,6 +400,7 @@ export const adminPaginationSchema = z.object({
 });
 
 export const adminProductsQuerySchema = adminPaginationSchema.extend({
+  signal: z.enum(["", "available", "limited", "on-request", "pre-order", "sold"]).catch(""),
   q: z.string().max(200).optional().default(""),
   status: z.enum(["draft", "published", "archived"]).optional().or(z.literal("")).default(""),
   /** Empty = all categories; "none" = products with no category assigned. */

@@ -4,6 +4,7 @@ import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
 import { checkImportRateLimit } from "@/lib/rate-limit";
 import { importUploadSignRequestSchema, MAX_IMPORT_ASSETS_PER_BATCH } from "@/lib/validation";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
     { onConflict: "batch_id,client_upload_id", ignoreDuplicates: false },
   );
   if (upsertError) {
-    console.error("import sign: failed to record pending asset", upsertError.message);
+    reportError(upsertError, { scope: "import-sign-record" });
     return NextResponse.json({ error: "Could not register upload" }, { status: 500 });
   }
 
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
       resourceType,
     });
   } catch (e) {
-    console.error("import sign: cloudinary signing failed:", e);
+    reportError(e, { scope: "import-sign-cloudinary" });
     return NextResponse.json({ error: "Cloudinary is not configured" }, { status: 500 });
   }
 }

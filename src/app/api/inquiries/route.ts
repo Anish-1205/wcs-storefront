@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { inquirySchema } from "@/lib/validation";
 import { SITE } from "@/lib/site";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
 
@@ -57,13 +58,15 @@ export async function POST(req: Request) {
   });
 
   if (dbError) {
-    console.error("inquiry insert failed:", dbError.message);
+    // A lost enquiry is a lost lead — this is the highest-value failure on the
+    // site, so it must page rather than sit in a log line.
+    reportError(dbError, { scope: "inquiry-insert", inquiry_type: data.inquiry_type, source: data.source });
     return NextResponse.json({ error: "Could not save inquiry" }, { status: 500 });
   }
 
   // Fire-and-forget admin email notification (non-blocking on failure).
   await sendNotification(data).catch((e) =>
-    console.error("Resend notification failed:", e),
+    reportError(e, { scope: "inquiry-notification" }),
   );
 
   return NextResponse.json({ ok: true });

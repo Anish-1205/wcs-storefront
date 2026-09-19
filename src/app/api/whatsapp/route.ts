@@ -8,6 +8,7 @@ import {
 } from "@/lib/webhook-security";
 import { deriveProductName, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
 import { slugify } from "@/lib/utils";
+import { reportError } from "@/lib/report-error";
 import { getAiProvider } from "@/lib/ai";
 import {
   enrichWhatsAppProduct,
@@ -396,7 +397,7 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
 
 async function replyBestEffort(to: string, text: string, context: string): Promise<void> {
   await sendWhatsAppReply(to, text).catch((error) => {
-    console.error(`whatsapp webhook: reply failed (${context})`, (error as Error).message);
+    reportError(error, { scope: "whatsapp-reply", context });
   });
 }
 
@@ -817,7 +818,9 @@ export async function POST(req: Request) {
   try {
     payload = JSON.parse(rawBody) as WhatsAppWebhookPayload;
   } catch (error) {
-    console.error("whatsapp webhook: invalid json payload", error);
+    // Past the signature check, so this is Meta sending something unexpected
+    // rather than a spoof — worth surfacing, not just dropping.
+    reportError(error, { scope: "whatsapp-invalid-json" });
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
@@ -858,7 +861,9 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (existingEventError) {
-      console.error("whatsapp webhook: duplicate check failed", existingEventError.message);
+      // Non-fatal: processing continues, but a failed dedupe read means the
+      // next retry from Meta can double-ingest, so it needs to be visible.
+      reportError(existingEventError, { scope: "whatsapp-duplicate-check", messageId });
     }
 
     if (existingEvent) {
@@ -1019,7 +1024,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
-    console.error("whatsapp webhook: processing failed", error instanceof Error ? error.message : error);
+    reportError(error, {
+      scope: "whatsapp-processing",
+      stage: error instanceof PipelineStageError ? error.stage : "unknown",
+    });
 
     if (senderPhone) {
       const stage = error instanceof PipelineStageError ? error.stage : "unknown";
