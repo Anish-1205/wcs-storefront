@@ -240,9 +240,15 @@ monogram is the labelled home link.
 ## 4. Cart
 
 `src/lib/cart/CartContext.tsx` — React context, client-only, persisted to
-`localStorage` under `wcs.cart.v1`.
+`localStorage` under `wcs.cart.v2`. The stored value is
+`{ ownerId, updatedAt, items }`, not a bare array: `ownerId` records *whose*
+cart this device holds (a user id, or `null` for a guest) and `updatedAt` is
+bumped only when the customer changes the cart. `wcs.cart.v1` (a bare
+`CartItem[]`) is still read once and upgraded in place. The reconciliation
+rules live in `src/lib/cart/reconcile.ts` and are covered by
+`src/__tests__/cart-reconcile.test.ts`.
 
-- **Persistence is synchronous** on every change (`writeStorage(items)` inside
+- **Persistence is synchronous** on every change (`writeStorage(...)` inside
   the `useEffect`). It was previously debounced; the debounce dropped writes when
   the provider unmounted during navigation. Do not reintroduce a debounce — the
   payload is a few hundred bytes.
@@ -338,10 +344,26 @@ the cart follow you across devices.
   `/auth/callback` (route handler) exchanges the OAuth / email-link `code` for a
   session; `next` is validated to a same-origin path.
 - **Cart sync (`CartContext.tsx`):** logged out → `localStorage` as before.
-  On sign-in: read the `carts` row, merge the guest cart into it (quantities
-  add, capped), then push. While signed in: debounced upsert on every change,
-  plus a `pagehide` / `visibilitychange` flush. `localStorage` is always
-  written too (offline backup). Sign-out keeps the cart locally, stops syncing.
+  On sign-in the stored cart is reconciled against the `carts` row by
+  `reconcileOnSignIn` (`src/lib/cart/reconcile.ts`), which branches on the
+  stored `ownerId`:
+  - **guest cart** (`ownerId: null`) → merged into the account additively
+    (quantities add, capped). This is the only path that adds quantities.
+  - **this account's own cart** → the two are replicas of one cart, so the
+    newer of local `updatedAt` / `carts.updated_at` wins wholesale. Removals
+    and quantity decreases therefore propagate, and reconciling a cart with
+    itself is a no-op.
+  - **another account's cart** (shared device) → discarded; the signing-in
+    user adopts their own server cart.
+
+  Adding quantities unconditionally is what caused the cart to double on every
+  refresh (the local copy was summed with the server cart it mirrored, then
+  pushed back), so do not reintroduce an unguarded `mergeCarts` on load.
+  While signed in: debounced upsert on every change, skipped when the content
+  already matches the server, plus a `pagehide` / `visibilitychange` flush.
+  `localStorage` is always written too (offline backup). Sign-out keeps the
+  cart *and its `ownerId`* locally and stops syncing, so the same user signing
+  back in reconciles rather than merging.
 - **Saved details ("profile"):** `src/lib/profile/useProfile.ts` (`useProfile`
   hook — not a provider, only `/account` and `/enquiry` use it). A signed-in
   customer can save the same fields the enquiry form asks for (name, phone,

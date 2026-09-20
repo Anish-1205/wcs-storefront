@@ -12,47 +12,46 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { CartItem } from "./types";
+import {
+  LEGACY_STORAGE_KEY,
+  MAX_QTY,
+  STORAGE_KEY,
+  type StoredCart,
+  parseStoredCart,
+  reconcileOnSignIn,
+} from "./reconcile";
 
-const STORAGE_KEY = "wcs.cart.v1";
-const MAX_QTY = 20;
 const SYNC_DEBOUNCE_MS = 600;
 
-function writeStorage(items: CartItem[]) {
+function readStorage(): StoredCart {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw) return parseStoredCart(JSON.parse(raw));
+
+    // One-time read-through from the v1 shape (a bare CartItem[]).
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) return parseStoredCart(JSON.parse(legacy));
+
+    return parseStoredCart(null);
+  } catch {
+    return parseStoredCart(null);
+  }
+}
+
+function writeStorage(cart: StoredCart) {
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ownerId: cart.ownerId ?? null,
+        updatedAt: cart.updatedAt,
+        items: cart.items,
+      }),
+    );
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     /* storage unavailable (private mode / blocked) — cart stays in memory */
   }
-}
-
-function normalizeQty(n: unknown): number {
-  const v = Math.floor(Number(n));
-  if (!Number.isFinite(v)) return 1;
-  return Math.min(MAX_QTY, Math.max(1, v));
-}
-
-function coerceItems(value: unknown): CartItem[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(
-      (i): i is CartItem =>
-        i && typeof i.slug === "string" && i.qty != null,
-    )
-    .map((i) => ({ ...i, qty: normalizeQty(i.qty) }));
-}
-
-/** Merge two carts by slug; quantities add, capped at MAX_QTY. */
-function mergeCarts(base: CartItem[], incoming: CartItem[]): CartItem[] {
-  const out = base.map((i) => ({ ...i }));
-  for (const item of incoming) {
-    const existing = out.find((i) => i.slug === item.slug);
-    if (existing) {
-      existing.qty = Math.min(MAX_QTY, existing.qty + item.qty);
-    } else {
-      out.push({ ...item, qty: normalizeQty(item.qty) });
-    }
-  }
-  return out;
 }
 
 interface CartContextValue {
@@ -74,15 +73,6 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function readStorage(): CartItem[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? coerceItems(JSON.parse(raw)) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
@@ -99,13 +89,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   itemsRef.current = items;
   const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Who this device's cart belongs to, and when the customer last changed it.
+  // Persisted alongside the items: without it a refresh cannot tell a guest
+  // cart from a mirror of the signed-in user's own server cart, which is what
+  // made the additive merge run on every load and double the cart.
+  const localMetaRef = useRef<{
+    ownerId: string | null | undefined;
+    updatedAt: number;
+  }>({ ownerId: null, updatedAt: 0 });
+
+  // Items last known to match the server row, so an unchanged cart does not
+  // generate a write on every load.
+  const lastPushedRef = useRef<string | null>(null);
+
+  /** Mark a customer-initiated change. Loads must never call this. */
+  const touch = useCallback(() => {
+    localMetaRef.current.updatedAt = Date.now();
+  }, []);
+
   // Hydrate from localStorage once, on the client.
   useEffect(() => {
-    setItems(readStorage());
+    const stored = readStorage();
+    localMetaRef.current = {
+      ownerId: stored.ownerId,
+      updatedAt: stored.updatedAt,
+    };
+    setItems(stored.items);
     setHydrated(true);
 
     function onStorage(e: StorageEvent) {
-      if (e.key === STORAGE_KEY) setItems(readStorage());
+      if (e.key !== STORAGE_KEY) return;
+      const next = readStorage();
+      localMetaRef.current = {
+        ownerId: next.ownerId,
+        updatedAt: next.updatedAt,
+      };
+      setItems(next.items);
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -115,25 +134,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // A debounce here previously lost writes on fast navigation.
   useEffect(() => {
     if (!hydrated) return;
-    writeStorage(items);
+    writeStorage({ ...localMetaRef.current, items });
   }, [items, hydrated]);
 
-  const pushToServer = useCallback(
-    (next: CartItem[]) => {
-      const uid = syncedUserRef.current;
-      if (!uid) return;
-      void supabaseRef
-        .current!.from("carts")
-        .upsert({ user_id: uid, items: next }, { onConflict: "user_id" })
-        .then(({ error }) => {
-          if (error && process.env.NODE_ENV !== "production") {
+  const pushToServer = useCallback((next: CartItem[]) => {
+    const uid = syncedUserRef.current;
+    if (!uid) return;
+    const serialized = JSON.stringify(next);
+    lastPushedRef.current = serialized;
+    void supabaseRef
+      .current!.from("carts")
+      .upsert({ user_id: uid, items: next }, { onConflict: "user_id" })
+      .then(({ error }) => {
+        if (error) {
+          // Allow a later change to retry this content.
+          if (lastPushedRef.current === serialized) lastPushedRef.current = null;
+          if (process.env.NODE_ENV !== "production") {
             // eslint-disable-next-line no-console
             console.warn("[cart] server sync failed:", error.message);
           }
-        });
-    },
-    [],
-  );
+        }
+      });
+  }, []);
 
   // React to sign-in / sign-out.
   useEffect(() => {
@@ -141,34 +163,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const supabase = supabaseRef.current!;
 
     // Signed out (or still a guest): stop syncing, keep the local cart.
+    // `localMetaRef.ownerId` deliberately keeps the last owner, so signing
+    // back in reconciles rather than merging additively, and a *different*
+    // account signing in on this device discards these items.
     if (!user) {
       syncedUserRef.current = null;
+      lastPushedRef.current = null;
       return;
     }
 
-    // Already synced with this user.
+    // Already synced with this user in this session.
     if (syncedUserRef.current === user.id) return;
 
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("carts")
-        .select("items")
+        .select("items, updated_at")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
 
-      const serverItems = coerceItems(data?.items);
-      const guestItems = itemsRef.current;
-      const merged = mergeCarts(serverItems, guestItems);
+      // Do not guess on a failed read: leaving the cart unsynced keeps the
+      // local copy intact instead of mistaking an outage for an empty cart.
+      if (error) return;
 
+      const server = data
+        ? {
+            items: parseStoredCart({ items: data.items }).items,
+            updatedAt: new Date(data.updated_at as string).getTime() || 0,
+          }
+        : null;
+
+      const result = reconcileOnSignIn(
+        { ...localMetaRef.current, items: itemsRef.current },
+        server,
+        user.id,
+        Date.now(),
+      );
+
+      localMetaRef.current = { ownerId: user.id, updatedAt: result.updatedAt };
       syncedUserRef.current = user.id;
-      setItems(merged);
+      lastPushedRef.current = JSON.stringify(
+        result.push ? result.items : (server?.items ?? []),
+      );
+      setItems(result.items);
+      writeStorage({ ...localMetaRef.current, items: result.items });
 
-      // Persist the merge so the guest additions aren't lost.
-      const changed =
-        JSON.stringify(merged) !== JSON.stringify(serverItems);
-      if (changed) pushToServer(merged);
+      if (result.push) pushToServer(result.items);
     })();
 
     return () => {
@@ -180,6 +222,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     if (!syncedUserRef.current) return;
+    if (lastPushedRef.current === JSON.stringify(items)) return;
     clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => pushToServer(items), SYNC_DEBOUNCE_MS);
     return () => clearTimeout(syncTimer.current);
@@ -189,6 +232,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     function flush() {
       if (!syncedUserRef.current) return;
+      if (lastPushedRef.current === JSON.stringify(itemsRef.current)) return;
       clearTimeout(syncTimer.current);
       pushToServer(itemsRef.current);
     }
@@ -209,36 +253,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isOpen]);
 
-  const add = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
-    setItems((prev) => {
-      const existing = prev.find((i) => i.slug === item.slug);
-      if (existing) {
-        return prev.map((i) =>
-          i.slug === item.slug
-            ? { ...i, qty: Math.min(MAX_QTY, i.qty + qty) }
-            : i,
-        );
-      }
-      return [...prev, { ...item, qty: Math.min(MAX_QTY, Math.max(1, qty)) }];
-    });
-    setIsOpen(true);
-  }, []);
+  const add = useCallback(
+    (item: Omit<CartItem, "qty">, qty = 1) => {
+      touch();
+      setItems((prev) => {
+        const existing = prev.find((i) => i.slug === item.slug);
+        if (existing) {
+          return prev.map((i) =>
+            i.slug === item.slug
+              ? { ...i, qty: Math.min(MAX_QTY, i.qty + qty) }
+              : i,
+          );
+        }
+        return [...prev, { ...item, qty: Math.min(MAX_QTY, Math.max(1, qty)) }];
+      });
+      setIsOpen(true);
+    },
+    [touch],
+  );
 
-  const setQty = useCallback((slug: string, qty: number) => {
-    setItems((prev) =>
-      prev.flatMap((i) => {
-        if (i.slug !== slug) return [i];
-        const next = Math.min(MAX_QTY, Math.floor(qty));
-        return next <= 0 ? [] : [{ ...i, qty: next }];
-      }),
-    );
-  }, []);
+  const setQty = useCallback(
+    (slug: string, qty: number) => {
+      touch();
+      setItems((prev) =>
+        prev.flatMap((i) => {
+          if (i.slug !== slug) return [i];
+          const next = Math.min(MAX_QTY, Math.floor(qty));
+          return next <= 0 ? [] : [{ ...i, qty: next }];
+        }),
+      );
+    },
+    [touch],
+  );
 
-  const remove = useCallback((slug: string) => {
-    setItems((prev) => prev.filter((i) => i.slug !== slug));
-  }, []);
+  const remove = useCallback(
+    (slug: string) => {
+      touch();
+      setItems((prev) => prev.filter((i) => i.slug !== slug));
+    },
+    [touch],
+  );
 
-  const clear = useCallback(() => setItems([]), []);
+  const clear = useCallback(() => {
+    touch();
+    setItems([]);
+  }, [touch]);
+
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
