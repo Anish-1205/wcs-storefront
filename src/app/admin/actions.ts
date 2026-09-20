@@ -812,9 +812,9 @@ export async function updateProductDetails(input: ProductDetailsShape): Promise<
       .eq("id", id)
       .single();
     if (readError) throw new Error(readError.message);
-    if (current.status === "published" && !details.category_id) {
-      throw new ExpectedError("Published products need a category");
-    }
+    // Quick edit deliberately mirrors the publish rules in
+    // productInputSchema, which no longer require a category: it is editorial
+    // organisation, not something a customer is misled by its absence.
     const refs = await loadExistingProductRefs(admin);
     const productCode = makeStableCode(details.product_code, refs.productCodes, current.product_code);
     const { error } = await admin.from("products").update({

@@ -103,10 +103,12 @@ it("quick edit rejects blank names without writing", async () => {
   expect(writes).toEqual([]);
 });
 
-it("quick edit cannot remove a published product's category", async () => {
+it("quick edit lets a published product go without a category", async () => {
+  // Category is editorial organisation, not something a customer is misled
+  // by. Publishing stopped requiring it, so quick edit must not either.
   const writes = mockAdmin({ currentCode: null, existingCodes: [], status: "published" });
-  expect(await updateProductDetails({ id: PRODUCT_ID, name: "Saree", product_code: null, category_id: null })).toEqual({ ok: false, error: "Published products need a category" });
-  expect(writes).toEqual([]);
+  expect(await updateProductDetails({ id: PRODUCT_ID, name: "Saree", product_code: null, category_id: null })).toEqual({ ok: true });
+  expect(writes).toEqual([{ name: "Saree", product_code: null, category_id: null }]);
 });
 
 it("keeps an unchanged product code exactly as it is across repeated saves", async () => {

@@ -131,13 +131,31 @@ export const productInputSchema = z.object({
 
   if (product.status !== "published") return;
 
+  // Publishing only blocks on what a customer would actually be misled by, or
+  // on what makes the product fail to render at all. Category, fabric type
+  // and description are editorial polish: a product missing them still reads
+  // correctly on the storefront, so they must not stop it going live.
+  //
+  // The three that remain:
+  //  - a starting price, because an unpriced card reads as an error rather
+  //    than as "Price on Enquiry" to someone comparing products;
+  //  - at least one photo, because getProductFromRow (storefront-catalog.ts)
+  //    returns null for a product with no photo — it would be dropped from
+  //    the live catalogue silently, while admin still said "Published";
+  //  - at least one variant, which is structural: the variant row is what
+  //    holds the photos and the price.
+  // (The name is already required by the field schema above.)
+  //
+  // "Priced" means priced *anywhere*: the form hides the base price fields
+  // once every colour variant carries its own, so requiring base_price_min
+  // outright would make a fully priced product unpublishable.
+  const hasPrice =
+    product.base_price_min != null ||
+    product.variants.some((variant) => variant.price_min != null);
+
   const requirements: Array<[boolean, (string | number)[], string]> = [
-    [!!product.category_id, ["category_id"], "Published products need a category"],
-    [!!product.fabric_type?.trim(), ["fabric_type"], "Published products need a fabric type"],
-    [!!product.description?.trim() && product.description.trim().length >= 40, ["description"], "Published products need a description of at least 40 characters"],
-    [product.base_price_min != null, ["base_price_min"], "Published products need a starting price"],
+    [hasPrice, ["base_price_min"], "Published products need a price — set a base price, or a price on each colour variant"],
     [product.variants.length > 0, ["variants"], "Published products need at least one variant"],
-    [product.variants.some((variant) => variant.status === "available"), ["variants"], "Published products need at least one available variant"],
     [product.variants.some((variant) => variant.images.length > 0), ["variants"], "Published products need at least one product image"],
   ];
 
