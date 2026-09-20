@@ -1048,7 +1048,7 @@ const SEEDS: ProductSeed[] = [
     origin: null,
     colour: "Dusty pink with multicolour floral embroidery",
     colourFamily: "Pink",
-    price: 7990,
+    price: 3990,
     availability: "available",
     availabilityNote: null,
     description:
