@@ -58,6 +58,7 @@ import {
   MAX_ENRICHMENT_BATCH,
   type ColorSplitApplyShape,
 } from "@/lib/validation";
+import { PRODUCTS } from "@/data/products";
 import { toResult, type ActionResult } from "./actions";
 
 type AdminClient = Awaited<ReturnType<typeof assertAdmin>>["admin"];
@@ -421,7 +422,14 @@ export interface IdentifierCandidate {
 type IdentifierRow = { id: string; name: string; slug: string; product_code: string | null };
 
 /** Every product's slug/code, so uniqueness is checked against the whole table
- * and not just the batch being re-numbered. */
+ * and not just the batch being re-numbered.
+ *
+ * The file catalogue is seeded in too. Its references (`WCS-001`…) and slugs
+ * are already public on the storefront, but a product that has not been
+ * mirrored yet has no row here — so without this the normaliser would hand a
+ * reserved code to an imported product, and the next "Sync storefront
+ * products" would have to take it straight back off again. That churn is
+ * exactly what produced the `products_product_code_key` failure. */
 async function loadIdentifierRefs(admin: AdminClient) {
   const { data, error } = await admin.from("products").select("id, slug, product_code");
   if (error) throw new Error(error.message);
@@ -429,12 +437,17 @@ async function loadIdentifierRefs(admin: AdminClient) {
   const codes = new Set<string>();
   const slugs = new Set<string>();
   let highest = 0;
-  for (const row of rows) {
-    slugs.add(row.slug);
-    if (row.product_code) codes.add(row.product_code);
-    const sequence = productCodeSequence(row.product_code);
+
+  function reserve(slug: string | null, code: string | null) {
+    if (slug) slugs.add(slug);
+    if (code) codes.add(code);
+    const sequence = productCodeSequence(code);
     if (sequence && sequence > highest) highest = sequence;
   }
+
+  for (const row of rows) reserve(row.slug, row.product_code);
+  for (const p of PRODUCTS) reserve(p.slug, p.reference ?? null);
+
   return { codes, slugs, nextSequence: highest + 1 };
 }
 

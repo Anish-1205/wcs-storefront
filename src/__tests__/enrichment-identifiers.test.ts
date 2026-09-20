@@ -8,6 +8,7 @@ import {
   productCodeSequence,
   shortenSlug,
 } from "@/lib/enrichment/identifiers";
+import { PRODUCTS } from "@/data/products";
 
 const empty = { codes: new Set<string>(), slugs: new Set<string>() };
 
@@ -107,5 +108,53 @@ describe("planIdentifiers", () => {
     );
     expect(proposal.unchanged).toBe(true);
     expect(proposal.slug).toBeNull();
+  });
+});
+
+/**
+ * The storefront's file catalogue reserves WCS-001.. as public references, but
+ * an unmirrored file product has no `products` row — so the normaliser used to
+ * hand those codes to imported products, and "Sync storefront products" then
+ * died on `products_product_code_key`. loadIdentifierRefs now seeds the taken
+ * set with the file catalogue; this guards the invariant it relies on.
+ */
+describe("file catalogue codes are reserved against the normaliser", () => {
+  it("never proposes a code the storefront already publishes", () => {
+    const fileCodes = new Set(
+      PRODUCTS.map((p) => p.reference).filter((c): c is string => !!c),
+    );
+    const highest = Math.max(
+      0,
+      ...Array.from(fileCodes, (c) => productCodeSequence(c) ?? 0),
+    );
+
+    const proposals = planIdentifiers(
+      [
+        { id: "1", name: "Imported A", slug: "imported-a", product_code: null },
+        { id: "2", name: "Imported B", slug: "imported-b", product_code: "random" },
+      ],
+      { normalizeCodes: true, normalizeSlugs: false },
+      { codes: new Set(fileCodes), slugs: new Set(PRODUCTS.map((p) => p.slug)) },
+      highest + 1,
+    );
+
+    for (const proposal of proposals) {
+      expect(proposal.code).not.toBeNull();
+      expect(fileCodes.has(proposal.code as string)).toBe(false);
+    }
+  });
+
+  it("never proposes a web address the storefront already publishes", () => {
+    const fileSlugs = new Set(PRODUCTS.map((p) => p.slug));
+    const clashing = PRODUCTS[0];
+
+    const proposals = planIdentifiers(
+      [{ id: "1", name: clashing.title, slug: "some-import", product_code: null }],
+      { normalizeCodes: false, normalizeSlugs: true },
+      { codes: new Set<string>(), slugs: new Set(fileSlugs) },
+      1,
+    );
+
+    if (proposals[0].slug) expect(fileSlugs.has(proposals[0].slug)).toBe(false);
   });
 });

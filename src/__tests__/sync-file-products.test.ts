@@ -44,6 +44,7 @@ function fakeAdmin(seed: Record<string, any[]> = {}, errors: Record<string, stri
     ...seed,
   };
   const inserts: Record<string, any[]> = {};
+  const updates: Record<string, any[]> = {};
   const deletes: Array<{ table: string; filters: unknown[] }> = [];
   let id = 0;
 
@@ -74,6 +75,23 @@ function fakeAdmin(seed: Record<string, any[]> = {}, errors: Record<string, stri
     };
   }
 
+  function updateBuilder(table: string, payload: any) {
+    const filters: Array<[string, string, unknown]> = [];
+    const builder: any = {
+      eq: (c: string, v: unknown) => (filters.push(["eq", c, v]), builder),
+      then: (resolve: (v: unknown) => unknown) => {
+        const message = errors[`${table}:update`];
+        if (message) return resolve({ data: null, error: { message } });
+        for (const row of tables[table]) {
+          if (filters.every(([, c, v]) => row[c] === v)) Object.assign(row, payload);
+        }
+        (updates[table] ??= []).push({ payload, filters });
+        return resolve({ data: null, error: null });
+      },
+    };
+    return builder;
+  }
+
   function deleteBuilder(table: string) {
     const filters: unknown[] = [];
     const builder: any = {
@@ -91,11 +109,12 @@ function fakeAdmin(seed: Record<string, any[]> = {}, errors: Record<string, stri
     from: (table: string) => ({
       select: () => selectBuilder(table),
       insert: (payload: unknown) => insertBuilder(table, payload),
+      update: (payload: unknown) => updateBuilder(table, payload),
       delete: () => deleteBuilder(table),
     }),
   };
 
-  return { admin, tables, inserts, deletes };
+  return { admin, tables, inserts, updates, deletes };
 }
 
 function fileProduct(overrides: Partial<Record<string, unknown>> = {}) {
@@ -275,7 +294,133 @@ describe("syncFileProducts", () => {
 
     const result = await syncFileProducts();
 
-    expect((result as { error: string }).error).toContain("Indigo Silk Saree");
-    expect((result as { error: string }).error).toContain("duplicate key");
+    expect(result).toMatchObject({ ok: true, created: 0 });
+    expect((result as any).failures).toEqual([
+      { name: "Indigo Silk Saree", reason: "duplicate key" },
+    ]);
+  });
+});
+
+/**
+ * `products.product_code` is globally unique, so a code held by ANY row blocks
+ * the insert. The sync used to dedupe on slug alone and blow up on the first
+ * clash — taking every product after it down with it:
+ *   Product "Saree with Temple Border": duplicate key value violates unique
+ *   constraint "products_product_code_key"
+ */
+describe("syncFileProducts — product code collisions", () => {
+  it("takes the code back for the file product and moves the squatter aside", async () => {
+    const { admin, inserts, updates } = fakeAdmin({
+      products: [
+        { id: "imported-1", slug: "some-import", source: "admin", name: "Imported Saree", product_code: "WCS-001" },
+      ],
+    });
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    const result = await syncFileProducts();
+
+    // The storefront shows WCS-001 for the file product, so admin must agree.
+    expect(inserts.products[0]).toMatchObject({ slug: "indigo-silk", product_code: "WCS-001" });
+    // The squatter keeps its row, just with a free code.
+    expect(updates.products).toHaveLength(1);
+    expect(updates.products[0].payload).toEqual({ product_code: "WCS-002" });
+    expect(updates.products[0].filters).toEqual([["eq", "id", "imported-1"]]);
+    // And the move is reported rather than done quietly.
+    expect(result).toMatchObject({
+      ok: true,
+      created: 1,
+      movedCodes: [{ name: "Imported Saree", from: "WCS-001", to: "WCS-002" }],
+      failures: [],
+    });
+  });
+
+  it("never frees a code onto one another file product has reserved", async () => {
+    fileData.PRODUCTS = [
+      fileProduct({ reference: "WCS-001" }),
+      fileProduct({ slug: "ruby-silk", title: "Ruby Silk Saree", reference: "WCS-002" }),
+    ];
+    const { admin, updates } = fakeAdmin({
+      products: [
+        { id: "imported-1", slug: "some-import", source: "admin", name: "Imported Saree", product_code: "WCS-001" },
+      ],
+    });
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    const result = await syncFileProducts();
+
+    // WCS-002 belongs to the second file product, so the squatter must skip it.
+    expect(updates.products[0].payload).toEqual({ product_code: "WCS-003" });
+    expect(result).toMatchObject({ ok: true, created: 2, failures: [] });
+  });
+
+  it("gives two squatters two different codes", async () => {
+    fileData.PRODUCTS = [
+      fileProduct({ reference: "WCS-001" }),
+      fileProduct({ slug: "ruby-silk", title: "Ruby Silk Saree", reference: "WCS-002" }),
+    ];
+    const { admin, updates } = fakeAdmin({
+      products: [
+        { id: "i1", slug: "import-a", source: "admin", name: "Import A", product_code: "WCS-001" },
+        { id: "i2", slug: "import-b", source: "admin", name: "Import B", product_code: "WCS-002" },
+      ],
+    });
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    await syncFileProducts();
+
+    const assigned = updates.products.map((u: any) => u.payload.product_code);
+    expect(new Set(assigned).size).toBe(2);
+    expect(assigned).toEqual(["WCS-003", "WCS-004"]);
+  });
+
+  it("leaves the code alone when the file product already owns it", async () => {
+    const { admin, updates } = fakeAdmin({
+      products: [
+        { id: "p1", slug: "indigo-silk", source: "file_sync", name: "Indigo Silk Saree", product_code: "WCS-001" },
+      ],
+    });
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    const result = await syncFileProducts();
+
+    expect(updates.products).toBeUndefined();
+    expect(result).toMatchObject({ ok: true, created: 0, movedCodes: [], failures: [] });
+  });
+
+  it("syncs the rest of the catalogue when one product cannot be mirrored", async () => {
+    // This is the behaviour that was missing: one bad product used to abort
+    // the whole run, so everything after it silently never synced.
+    fileData.PRODUCTS = [
+      fileProduct({ reference: "WCS-001" }),
+      fileProduct({ slug: "ruby-silk", title: "Ruby Silk Saree", reference: "WCS-050" }),
+      fileProduct({ slug: "jade-silk", title: "Jade Silk Saree", reference: "WCS-051" }),
+    ];
+    const { admin, inserts } = fakeAdmin(
+      {
+        products: [
+          { id: "imported-1", slug: "some-import", source: "admin", name: "Imported Saree", product_code: "WCS-001" },
+        ],
+      },
+      { "products:update": "row is locked" },
+    );
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    const result = await syncFileProducts();
+
+    expect(result).toMatchObject({ ok: true, created: 2 });
+    expect((result as any).failures).toHaveLength(1);
+    expect((result as any).failures[0].name).toBe("Indigo Silk Saree");
+    expect((result as any).failures[0].reason).toContain("WCS-001");
+    // The two healthy products still went in.
+    expect(inserts.products.map((p: any) => p.slug)).toEqual(["ruby-silk", "jade-silk"]);
+  });
+
+  it("still reports a clean run when nothing collides", async () => {
+    const { admin } = fakeAdmin();
+    mockAssertAdmin.mockResolvedValue({ admin, user: {} });
+
+    const result = await syncFileProducts();
+
+    expect(result).toMatchObject({ ok: true, created: 1, movedCodes: [], failures: [] });
   });
 });
