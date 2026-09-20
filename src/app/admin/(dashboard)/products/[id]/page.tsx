@@ -79,7 +79,7 @@ export default async function EditProductPage(
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-[92rem]">
       <h1 className="mb-6 font-serif text-3xl text-primary">Edit Product</h1>
       <ProductForm
         categories={(categories ?? []) as Category[]}

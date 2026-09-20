@@ -37,3 +37,51 @@ export function reindexImages(images: UploadedImage[]): UploadedImage[] {
   }
   return next;
 }
+
+/** One entry in the product preview's media strip. */
+export interface PreviewMedia {
+  image_url: string;
+  is_primary: boolean;
+  isVideo: boolean;
+  colour: string;
+  variantIndex: number;
+}
+
+/**
+ * Flattens every variant's media into one strip, in variant then display
+ * order, tagged with the colourway it belongs to.
+ */
+export function previewMediaFor(
+  variants: Array<{ color: string; images: UploadedImage[] }>,
+): PreviewMedia[] {
+  return variants.flatMap((variant, variantIndex) =>
+    variant.images.map((image) => ({
+      image_url: image.image_url,
+      is_primary: image.is_primary,
+      isVideo: isVideoMedia(image),
+      colour: variant.color,
+      variantIndex,
+    })),
+  );
+}
+
+/**
+ * The photo the preview should show large: the one the admin picked, else
+ * the primary, else the first.
+ *
+ * Resolving by URL rather than holding an index is what keeps the preview
+ * correct while the form is edited underneath it — deleting, reordering or
+ * moving the selected photo to another variant falls back cleanly instead of
+ * showing the wrong saree or going blank.
+ */
+export function pickPreviewHero(
+  media: PreviewMedia[],
+  selectedUrl: string | null,
+): PreviewMedia | null {
+  return (
+    media.find((m) => m.image_url === selectedUrl) ??
+    media.find((m) => m.is_primary) ??
+    media[0] ??
+    null
+  );
+}

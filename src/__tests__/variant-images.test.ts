@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isVideoMedia, reindexImages, type UploadedImage } from "@/lib/variant-images";
+import {
+  isVideoMedia,
+  pickPreviewHero,
+  previewMediaFor,
+  reindexImages,
+  type UploadedImage,
+} from "@/lib/variant-images";
 
 function img(overrides: Partial<UploadedImage> = {}): UploadedImage {
   return {
@@ -58,5 +64,71 @@ describe("reindexImages", () => {
 
   it("returns an empty array unchanged", () => {
     expect(reindexImages([])).toEqual([]);
+  });
+});
+
+describe("previewMediaFor", () => {
+  it("flattens every variant in order and tags each photo with its colourway", () => {
+    const media = previewMediaFor([
+      { color: "Indigo", images: [img({ image_url: "/a.jpg", is_primary: true }), img({ image_url: "/b.jpg" })] },
+      { color: "Ruby", images: [img({ image_url: "/c.jpg" })] },
+    ]);
+
+    expect(media.map((m) => [m.image_url, m.colour, m.variantIndex])).toEqual([
+      ["/a.jpg", "Indigo", 0],
+      ["/b.jpg", "Indigo", 0],
+      ["/c.jpg", "Ruby", 1],
+    ]);
+    expect(media[0].is_primary).toBe(true);
+  });
+
+  it("marks videos so the preview can show a poster frame", () => {
+    const media = previewMediaFor([
+      {
+        color: "Indigo",
+        images: [
+          img({ image_url: "/a.jpg" }),
+          img({ image_url: "https://res.cloudinary.com/demo/video/upload/v.mp4" }),
+        ],
+      },
+    ]);
+
+    expect(media.map((m) => m.isVideo)).toEqual([false, true]);
+  });
+
+  it("handles a variant with no photos yet", () => {
+    expect(previewMediaFor([{ color: "Indigo", images: [] }])).toEqual([]);
+  });
+});
+
+describe("pickPreviewHero", () => {
+  const media = previewMediaFor([
+    { color: "Indigo", images: [img({ image_url: "/a.jpg" }), img({ image_url: "/b.jpg", is_primary: true })] },
+  ]);
+
+  it("shows the photo the admin selected", () => {
+    expect(pickPreviewHero(media, "/a.jpg")?.image_url).toBe("/a.jpg");
+  });
+
+  it("falls back to the primary when nothing is selected", () => {
+    expect(pickPreviewHero(media, null)?.image_url).toBe("/b.jpg");
+  });
+
+  it("falls back to the primary when the selected photo was deleted", () => {
+    // The whole reason the hero is resolved by URL rather than held as an
+    // index: editing the variant grids underneath must not strand the preview.
+    expect(pickPreviewHero(media, "/gone.jpg")?.image_url).toBe("/b.jpg");
+  });
+
+  it("falls back to the first photo when none is primary", () => {
+    const none = previewMediaFor([
+      { color: "Indigo", images: [img({ image_url: "/a.jpg" }), img({ image_url: "/b.jpg" })] },
+    ]);
+    expect(pickPreviewHero(none, null)?.image_url).toBe("/a.jpg");
+  });
+
+  it("returns null for a product with no photos at all", () => {
+    expect(pickPreviewHero([], null)).toBeNull();
+    expect(pickPreviewHero([], "/a.jpg")).toBeNull();
   });
 });

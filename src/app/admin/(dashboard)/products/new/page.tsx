@@ -13,7 +13,7 @@ export default async function NewProductPage() {
   ]);
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-[92rem]">
       <h1 className="mb-6 font-serif text-3xl text-primary">Add Product</h1>
       <ProductForm
         categories={(categories ?? []) as Category[]}
