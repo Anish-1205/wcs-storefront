@@ -20,6 +20,8 @@
  *   file entry, no row at all     → file entry (nothing to reconcile against)
  *   file entry + unpublished row  → dropped — admin hid or archived it
  *   published row, no file entry  → materialised from the row
+ *   row at a RETIRED_SLUGS slug    → dropped — the file catalogue has
+ *                                   deliberately deleted that product
  *
  * Every read here fails soft: if Supabase is unreachable or a table/view is
  * missing, the storefront falls back to exactly the file catalogue, which is
@@ -28,7 +30,7 @@
 
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
-import type { Availability, Product, ProductImage } from "@/data/products";
+import { RETIRED_SLUGS, type Availability, type Product, type ProductImage } from "@/data/products";
 import type { ProductWithRelations, VariantImage } from "@/lib/supabase/types";
 import { applyStorefrontMedia } from "@/lib/storefront-media";
 import { isVideoMedia } from "@/lib/variant-images";
@@ -230,13 +232,13 @@ export function toStorefrontProduct(row: ProductWithRelations): Product | null {
 // ── Reconciliation ────────────────────────────────────────────────────
 
 /**
- * What a row costs. Admin's product form *hides* the base price fields as soon
- * as any colour variant carries its own price, so for such a product the base
- * price is whatever it happened to be before (or null) and the price the admin
- * actually typed lives on the variants. Reading only `base_price_min` therefore
- * showed a stale price, or none, for exactly the products priced per colourway.
- * The cheapest colourway is the honest "from" figure for a page that shows one
- * price for the whole product.
+ * What a row costs. A product priced per colourway may carry no base price at
+ * all (or a stale one from before the variants were priced), so reading only
+ * `base_price_min` showed no price, or the wrong one, for exactly those
+ * products. The cheapest colourway is the honest "from" figure for a page that
+ * shows one price for the whole product; the base price is the fallback for
+ * the ordinary case where the colourways all cost the same and only the base
+ * price is filled in.
  */
 function rowPrice(row: ProductWithRelations): number | null {
   const variantPrices = (row.product_variants ?? [])
@@ -275,6 +277,9 @@ export function mergeStorefrontCatalog(
 ): Product[] {
   const hidden = new Set(hiddenSlugs);
   const visible = hidden.size === 0 ? fileProducts : fileProducts.filter((product) => !hidden.has(product.slug));
+  // A retired slug is a deliberate deletion, not a product waiting to be
+  // mirrored — never materialise one back from its leftover Postgres row.
+  const liveRows = publishedRows.filter((row) => !RETIRED_SLUGS.has(row.slug));
 
   // Only the mirror's own rows overlay a file entry's media and copy. An
   // admin-authored row that happens to sit at a file slug was written
@@ -284,13 +289,13 @@ export function mergeStorefrontCatalog(
   const merged = applyPriceOverrides(
     applyStorefrontMedia(
       visible,
-      publishedRows.filter((row) => row.source === "file_sync"),
+      liveRows.filter((row) => row.source === "file_sync"),
     ),
-    publishedRows,
+    liveRows,
   );
 
   const fileSlugs = new Set(fileProducts.map((product) => product.slug));
-  const dbOnly = publishedRows
+  const dbOnly = liveRows
     .filter((row) => !fileSlugs.has(row.slug))
     .map(toStorefrontProduct)
     .filter((product): product is Product => product !== null)

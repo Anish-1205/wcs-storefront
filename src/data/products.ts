@@ -1010,15 +1010,15 @@ const SEEDS: ProductSeed[] = [
     weave: null,
     material: "Georgette",
     origin: null,
-    colour: "Mustard with multicolour floral embroidery",
+    colour: "Mustard or dusty pink with multicolour floral embroidery",
     colourFamily: "Yellow",
     price: 3990,
     availability: "available",
     availabilityNote: null,
     description:
-      "A mustard georgette saree with an all-over multicolour floral print in Parsi-work style, finished with a wider floral border along the edge.",
+      "A georgette saree with an all-over multicolour floral print in Parsi-work style, finished with a wider floral border along the edge. Made in two colourways at the same price — mustard and dusty pink — both shown in the photographs.",
     details: [
-      "Mustard body with all-over floral print",
+      "Mustard or dusty-pink body with all-over floral print",
       "Multicolour woven border with larger florals",
       "Georgette drape",
       "Versatile everyday wear",
@@ -1032,43 +1032,20 @@ const SEEDS: ProductSeed[] = [
       img("the-most-demanded-collection-in-georgette-parsi-work-sarees", "04-detail.jpg", "detail", "Detail of the floral print"),
       img("the-most-demanded-collection-in-georgette-parsi-work-sarees", "05-detail.jpg", "detail", "Detail of the drape"),
       img("the-most-demanded-collection-in-georgette-parsi-work-sarees", "06-detail.jpg", "detail", "Detail of the border"),
+      // The dusty-pink colourway of the same design. It used to be its own
+      // product (WCS-024) until it was folded in here — its media stays in its
+      // own prepared folder so `prepare-media.mjs` keeps regenerating it.
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "01-full.jpg", "full", "The same saree in dusty pink, with dense multicolour floral embroidery"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "02-detail.jpg", "detail", "Detail of the floral embroidery in the dusty-pink colourway"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "03-detail.jpg", "detail", "Detail of the floral border in the dusty-pink colourway"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "04-detail.jpg", "detail", "Detail of the embroidery in the dusty-pink colourway"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "05-detail.jpg", "detail", "Detail of the drape in the dusty-pink colourway"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "06-detail.jpg", "detail", "Detail of the embroidery in the dusty-pink colourway"),
+      img("bandhani-on-gaji-silk-sarees-with-hand-work", "07-detail.jpg", "detail", "Detail of the pallu in the dusty-pink colourway"),
     ],
-    videos: [],
-    featured: true,
-    colourRangeNote: null,
-    createdAt: "2026-09-11",
-  },
-  {
-    id: "wcs-024",
-    slug: "bandhani-on-gaji-silk-sarees-with-hand-work",
-    title: "Bandhani Gaji Silk Saree with Hand Work",
-    reference: "WCS-024",
-    weave: "Bandhani hand work",
-    material: "Gaji silk",
-    origin: null,
-    colour: "Dusty pink with multicolour floral embroidery",
-    colourFamily: "Pink",
-    price: 3990,
-    availability: "available",
-    availabilityNote: null,
-    description:
-      "A Gaji silk saree with hand-worked Bandhani detailing, in a dusty-pink ground scattered with a dense multicolour floral vine embroidery and a matching floral border.",
-    details: [
-      "Gaji silk with Bandhani hand work",
-      "Dense multicolour floral embroidery",
-      "Matching floral border",
-    ],
-    tags: ["Gaji Silk", "Bandhani", "Hand Work"],
-    includes: null,
-    images: [
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "01-full.jpg", "full", "Dusty pink saree with dense multicolour floral embroidery"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "02-detail.jpg", "detail", "Detail of the floral embroidery"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "03-detail.jpg", "detail", "Detail of the floral border"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "04-detail.jpg", "detail", "Detail of the embroidery"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "05-detail.jpg", "detail", "Detail of the drape"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "06-detail.jpg", "detail", "Detail of the embroidery"),
-      img("bandhani-on-gaji-silk-sarees-with-hand-work", "07-detail.jpg", "detail", "Detail of the pallu"),
-    ],
+    // Both colourways lead with a "full" shot, so pin the hero rather than let
+    // the automatic ranking decide which colour a shopper sees first.
+    primaryImageSrc: "/media/the-most-demanded-collection-in-georgette-parsi-work-sarees/01-full.jpg",
     videos: [],
     featured: true,
     colourRangeNote: null,
@@ -1111,6 +1088,26 @@ const SEEDS: ProductSeed[] = [
     createdAt: "2026-09-11",
   },
 ];
+
+/**
+ * Slugs that were published once and have since been taken off the site for
+ * good — folded into another product, or withdrawn.
+ *
+ * Removing the seed above is not enough on its own: the live catalogue is the
+ * file list *reconciled* against Postgres (src/lib/storefront-catalog.ts), and
+ * a published mirror row with no file entry is materialised straight back onto
+ * the storefront. Listing the slug here is the file catalogue saying "this one
+ * is gone", so the row cannot resurrect the product before someone archives it
+ * in admin.
+ *
+ * Retiring a slug should come with a redirect in next.config.mjs — the URL was
+ * public and is linked from WhatsApp threads and search results.
+ */
+export const RETIRED_SLUGS: ReadonlySet<string> = new Set([
+  // WCS-024, the dusty-pink colourway — now part of WCS-023 (same design,
+  // same price), which carries its photographs.
+  "bandhani-on-gaji-silk-sarees-with-hand-work",
+]);
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({
   ...s,

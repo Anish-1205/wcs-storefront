@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTS, getCategories, primaryImage } from "@/data/products";
+import { PRODUCTS, RETIRED_SLUGS, getCategories, primaryImage } from "@/data/products";
 import { mergeStorefrontCatalog, toStorefrontProduct } from "@/lib/storefront-catalog";
 import type { ProductWithRelations } from "@/lib/supabase/types";
 
@@ -133,6 +133,17 @@ describe("reconciling the file catalogue with Postgres", () => {
 
     expect(merged.some((p) => p.slug === fileProduct.slug)).toBe(false);
     expect(merged).toHaveLength(PRODUCTS.length - 1);
+  });
+
+  it("never resurrects a retired product from its leftover Postgres row", () => {
+    const retired = [...RETIRED_SLUGS][0];
+    expect(retired).toBeTruthy();
+    expect(PRODUCTS.some((p) => p.slug === retired)).toBe(false);
+
+    const merged = mergeStorefrontCatalog(PRODUCTS, [dbRow({ slug: retired })]);
+
+    expect(merged.some((p) => p.slug === retired)).toBe(false);
+    expect(merged).toHaveLength(PRODUCTS.length);
   });
 
   it("keeps the whole file catalogue when Supabase says nothing at all", () => {

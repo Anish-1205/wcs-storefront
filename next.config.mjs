@@ -29,8 +29,19 @@ const nextConfig = {
   // The /wholesale page was removed (Sept 2026) — "Ask on WhatsApp" is now the
   // one consistent CTA for resellers and retail customers alike. Redirect any
   // bookmarked/shared links instead of 404ing.
+  // Retired product slugs (see RETIRED_SLUGS in src/data/products.ts) keep
+  // their URL working — they are linked from WhatsApp threads and indexed by
+  // search — by pointing at the product that absorbed them.
   async redirects() {
-    return [{ source: "/wholesale", destination: "/contact", permanent: false }];
+    return [
+      { source: "/wholesale", destination: "/contact", permanent: false },
+      {
+        // WCS-024, the dusty-pink colourway, is now part of WCS-023.
+        source: "/sarees/bandhani-on-gaji-silk-sarees-with-hand-work",
+        destination: "/sarees/the-most-demanded-collection-in-georgette-parsi-work-sarees",
+        permanent: false,
+      },
+    ];
   },
   // /admin/database reads supabase/migrations/*.sql off disk at request time
   // (fs.readdirSync/readFileSync inside a Server Action) — Next's build-time

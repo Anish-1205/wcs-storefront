@@ -146,9 +146,9 @@ export const productInputSchema = z.object({
   //    holds the photos and the price.
   // (The name is already required by the field schema above.)
   //
-  // "Priced" means priced *anywhere*: the form hides the base price fields
-  // once every colour variant carries its own, so requiring base_price_min
-  // outright would make a fully priced product unpublishable.
+  // "Priced" means priced *anywhere*: a product may be priced per colourway
+  // with no base price at all, so requiring base_price_min outright would make
+  // a fully priced product unpublishable.
   const hasPrice =
     product.base_price_min != null ||
     product.variants.some((variant) => variant.price_min != null);

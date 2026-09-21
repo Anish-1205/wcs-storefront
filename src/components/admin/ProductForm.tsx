@@ -93,7 +93,8 @@ export function ProductForm({ categories, collections, initial }: Props) {
   );
   const isFileSynced = initial?.source === "file_sync";
 
-  const anyVariantPriced = variants.some((v) => v.price_min != null);
+  const pricedVariantCount = variants.filter((v) => v.price_min != null).length;
+  const anyVariantPriced = pricedVariantCount > 0;
 
   function onNameChange(value: string) {
     setName(value);
@@ -208,25 +209,24 @@ export function ProductForm({ categories, collections, initial }: Props) {
                 <Label htmlFor="fabric">Fabric type</Label>
                 <Input id="fabric" value={fabric} onChange={(e) => setFabric(e.target.value)} placeholder="e.g. Pure Silk" />
               </div>
-              {anyVariantPriced ? (
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Base price (₹)</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Hidden — every color variant below has its own price. Clear all
-                    variant prices to set a base price again.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pmin">Base price min (₹)</Label>
-                    <Input id="pmin" type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="pmax">Base price max (₹)</Label>
-                    <Input id="pmax" type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
-                  </div>
-                </>
+              {/* Always editable. Colour variants usually share one price, and
+                  hiding these fields as soon as a single variant carried its
+                  own made that ordinary case unreachable — the base price is
+                  what a variant with a blank price falls back to. */}
+              <div className="space-y-1.5">
+                <Label htmlFor="pmin">Base price min (₹)</Label>
+                <Input id="pmin" type="number" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pmax">Base price max (₹)</Label>
+                <Input id="pmax" type="number" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+              </div>
+              {anyVariantPriced && (
+                <p className="text-sm text-muted-foreground sm:col-span-2">
+                  {pricedVariantCount === variants.length
+                    ? "Every colour variant below has its own price, so the base price is not shown to customers. Clear a variant's price to put it back on the base price."
+                    : `${pricedVariantCount} of ${variants.length} colour variants below have their own price; the rest use this base price.`}
+                </p>
               )}
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="description">Description</Label>

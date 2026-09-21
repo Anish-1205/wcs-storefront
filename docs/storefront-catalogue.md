@@ -473,6 +473,30 @@ else — no name, description, price or photo. It is intentionally not
 Until `021` is applied the view is absent, the read returns empty, and nothing
 is hidden — the rest of this section works regardless.
 
+### Retiring a product for good (`RETIRED_SLUGS`)
+
+Hiding is reversible and lives in admin. *Deleting* a file product is a source
+change, and deleting its seed from `src/data/products.ts` is not enough on its
+own: if the product was ever mirrored into Postgres, its published row now has
+no file entry, which is exactly the "materialise it onto the storefront" case
+above — the product comes straight back.
+
+`RETIRED_SLUGS` (`src/data/products.ts`) is the file catalogue saying "this one
+is gone". `mergeStorefrontCatalog` drops every published row at a retired slug
+before reconciling, so a leftover mirror row cannot resurrect the product
+whether or not anyone remembers to archive it in admin.
+
+To retire a product: delete its seed, add the slug to `RETIRED_SLUGS` with a
+one-line note saying where it went, and add a redirect in `next.config.mjs` —
+the URL was public and is linked from WhatsApp threads and search results.
+Leave its media in `public/media/<slug>/`; if another product now shows those
+photographs it references them there, and `prepare-media.mjs` keeps
+regenerating the folder from the raw library either way.
+
+Retired so far: `bandhani-on-gaji-silk-sarees-with-hand-work` (WCS-024, the
+dusty-pink colourway) — folded into WCS-023, the same design in mustard at the
+same price, which now carries both colourways' photographs.
+
 ### Two more admin-side helpers
 
 ### Sync storefront products into admin (read-only mirror)
