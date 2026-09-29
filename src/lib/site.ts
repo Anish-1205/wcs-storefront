@@ -63,18 +63,20 @@ export const NAV_LINKS = [
 ];
 
 /**
- * Homepage hero media. Points at one strong vertical video in the real
- * library, with a still poster for slow connections / reduced motion.
- * Swap `video` / `poster` for any file under public/media/.
+ * Homepage hero media. Deliberately NOT a product: this is atmosphere from
+ * the showroom, so it lives in public/media/showroom/ rather than a product
+ * folder and carries no `href`. Tying it to a saree would send anyone who
+ * clicks it to a page showing a different piece. Swap `video` / `poster`
+ * for any file under public/media/showroom/ — run scripts/optimize-video.mjs
+ * afterwards to regenerate the poster and the dimensions manifest.
  */
 export const HERO = {
-  video: "/media/indigo-blockprint-modal-silk/video-1.mp4",
-  poster: "/media/hero-poster.jpg",
+  video: "/media/showroom/hero.mp4",
+  poster: "/media/showroom/hero.poster.jpg",
   // intrinsic size of the hero video (from scripts/optimize-video.mjs)
   width: 478,
   height: 850,
-  alt: "An indigo saree with an embroidered pallu, shown in the showroom",
-  href: "/sarees/indigo-blockprint-modal-silk",
+  alt: "A yellow georgette saree with a scalloped stone-work border, shown in the showroom",
 };
 
 /** Editorial "colour story" photograph (a folded colour assortment). */
@@ -84,9 +86,9 @@ export const COLOUR_STORY = {
 };
 
 /** Large textile-detail photograph for the "look closer" section.
- *  (Not the purple 05-weave-detail shot — that frame carries a "blouse pc"
- *  caption in the source image.) */
+ *  Editorial imagery only — this frame has no product page of its own, so
+ *  keep it to a shot that reads as craft rather than as a listing. */
 export const DETAIL_STORY = {
-  image: "/media/antique-gold-patola-tissue/08-patola-macro.jpg",
-  alt: "Macro of a geometric contrast border in pink, orange and green",
+  image: "/media/antique-gold-patola-tissue/11-red-patola-detail.jpg",
+  alt: "A copper tissue saree draped on the stand, bordered in red patola with fine white and gold detailing",
 };

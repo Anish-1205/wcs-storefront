@@ -34,19 +34,21 @@ export default async function HomePage() {
     getHomepageContent(),
     getStorefrontCollections(),
   ]);
-  const hero = all.find((p) => p.slug === config.heroSlug) ?? all[0];
   const selection = config.featuredSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
-  const shown = new Set([
-    ...(config.sections.find((s) => s.key === "hero")?.visible ? [hero.slug] : []),
-    ...(config.sections.find((s) => s.key === "selection")?.visible ? selection.map((p) => p.slug) : []),
-  ]);
+  // The welcome banner shows a standalone showroom clip, not a saree (HERO in
+  // lib/site.ts), so no product is "already shown" up there — only the
+  // selection row can hold a piece back from the shelf. Excluding heroSlug
+  // here would drop that saree off the homepage entirely.
+  const shown = new Set(
+    config.sections.find((s) => s.key === "selection")?.visible ? selection.map((p) => p.slug) : [],
+  );
   const shelfRank = new Map(config.shelfOrder.map((slug, i) => [slug, i]));
   const more = all.filter((p) => !shown.has(p.slug)).sort((a, b) => (shelfRank.get(a.slug) ?? Infinity) - (shelfRank.get(b.slug) ?? Infinity));
   const categories = getCategories(all);
 
   return (
     <ContentRegion region="page"><HomepageSections config={config}>
-      <HomeHero config={config} product={hero} />
+      <HomeHero config={config} />
 
       {/* 02 — Colour strip */}
       <section className="border-y border-line bg-warm-cream/50">

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { SITE } from "../src/lib/site";
-import { PRODUCTS, getFeaturedProducts } from "../src/data/products";
-import { HERO } from "../src/lib/site";
+import { PRODUCTS } from "../src/data/products";
+import { DEFAULT_HOMEPAGE } from "../src/lib/homepage-content";
 
 test("navbar brand mark links home and is the only banner home link", async ({ page }) => {
   await page.goto("/");
@@ -85,9 +85,10 @@ for (const width of [320, 390, 768, 1280]) {
   test(`complete shelf and bounded cards at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    const hero = HERO.href.split("/").pop();
-    const selection = getFeaturedProducts(5).filter((p) => p.slug !== hero).slice(0, 4);
-    const shown = new Set([hero, ...selection.map((p) => p.slug)]);
+    // The welcome banner is a standalone showroom clip, not a saree, so only
+    // the selection row holds pieces back from the shelf.
+    const selection = DEFAULT_HOMEPAGE.featuredSlugs;
+    const shown = new Set(selection);
     const expected = PRODUCTS.filter((p) => !shown.has(p.slug)).map((p) => `/sarees/${p.slug}`).sort();
     const shelf = page.getByTestId("shelf-grid");
     const cards = shelf.locator(".saree-card");

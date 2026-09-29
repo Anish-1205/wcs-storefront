@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { getFeaturedProducts } from "@/data/products";
-import { HERO } from "@/lib/site";
 
 export const HOME_SECTIONS = [
   ["hero", "Welcome"], ["colours", "Browse by colour"], ["selection", "Current selection"],
@@ -32,7 +31,13 @@ export const homepageSchema = z.object({
   sourcingTitle: shortText, orderingTitle: shortText, contactTitle: shortText,
 }).refine((c) => !c.featuredSlugs.includes(c.heroSlug), { message: "The welcome saree should not also be in the current selection", path: ["featuredSlugs"] });
 export type HomepageContent = z.infer<typeof homepageSchema>;
-const heroSlug = HERO.href.split("/").pop()!;
+/**
+ * The welcome banner shows a standalone showroom clip (HERO in lib/site.ts),
+ * not a saree, so the storefront no longer reads `heroSlug` when rendering.
+ * The field is kept because saved configs and the admin editor still carry
+ * it — drop it only with a migration for `storefront_page_content`.
+ */
+const heroSlug = getFeaturedProducts(1)[0]!.slug;
 export const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTitle: "India,\nin every colour.", heroEyebrow: "A private saree showroom",
   heroBody: "Discover distinctive sarees sourced through trusted weaving partners across India, with personal assistance from selection to availability confirmation.",
