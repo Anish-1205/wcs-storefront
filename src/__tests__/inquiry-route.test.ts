@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockSend = vi.hoisted(() => vi.fn());
+const mockReportError = vi.hoisted(() => vi.fn());
+vi.mock("resend", () => ({ Resend: class { emails = { send: mockSend }; } }));
+vi.mock("@/lib/report-error", () => ({ reportError: mockReportError }));
+
 const mockInsert = vi.hoisted(() => vi.fn());
 const mockCheckRateLimit = vi.hoisted(() => vi.fn());
 
@@ -56,4 +61,17 @@ describe("inquiry route", () => {
     expect(response.status).toBe(429);
     expect(mockInsert).not.toHaveBeenCalled();
   });
+});
+
+
+it("F21 reports resolved Resend API errors while preserving the saved inquiry", async () => {
+  vi.stubEnv("RESEND_API_KEY", "test"); vi.stubEnv("INQUIRY_NOTIFICATION_EMAIL", "test@example.invalid");
+  mockCheckRateLimit.mockResolvedValue({ success: true });
+  mockInsert.mockResolvedValue({ error: null });
+  mockSend.mockResolvedValue({ data: null, error: { message: "Invalid API key" } });
+  try {
+    const response = await POST(new Request("http://localhost/api/inquiries", { method: "POST", body: JSON.stringify(validPayload) }));
+    expect(response.status).toBe(200);
+    expect(mockReportError).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Invalid API key") }), { scope: "inquiry-notification" });
+  } finally { vi.unstubAllEnvs(); }
 });

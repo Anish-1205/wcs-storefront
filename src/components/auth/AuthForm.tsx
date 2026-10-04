@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeRedirect } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup";
@@ -19,16 +20,11 @@ type Mode = "signin" | "signup";
  */
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 
-function safeNext(value: string | null): string {
-  return value && value.startsWith("/") && !value.startsWith("//")
-    ? value
-    : "/account";
-}
 
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
-  const next = safeNext(params.get("next"));
+  const next = safeRedirect(params.get("next"));
   const supabase = useRef(createClient()).current;
 
   const [email, setEmail] = useState("");

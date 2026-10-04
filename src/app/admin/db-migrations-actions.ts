@@ -1,19 +1,8 @@
 "use server";
 
-/**
- * One-click "apply pending migrations" for /admin/database — the manual
- * paste-into-the-Supabase-SQL-Editor step, wired into admin instead. Shares
- * its detect/apply logic with the CLI fallback (scripts/run-migrations.mjs)
- * via src/lib/db-migrations.mjs.
- *
- * DATABASE_URL grants a raw Postgres connection — unlike SUPABASE_SERVICE_ROLE_KEY
- * (still PostgREST-mediated), this can run arbitrary SQL and bypasses RLS
- * entirely. It is optional: every function below fails soft when it's unset,
- * so an operator who never configures it keeps applying migrations by hand
- * via the SQL Editor exactly as before, with zero behaviour change elsewhere.
- *
- * Must be the SESSION-mode pooled connection string (port 5432, not the 6543
- * transaction-mode port) — see scripts/run-migrations.mjs's header comment.
+/** Read-only migration inspection. One-click DDL is intentionally disabled.
+ * The CLI uses numeric-ledger preflight and a session advisory lock; operators
+ * must review the deployed ledger/policies before applying pending files.
  */
 
 import { readFileSync } from "node:fs";
@@ -88,18 +77,10 @@ export async function getPendingMigrations(): Promise<
   });
 }
 
-/**
- * Applies every currently-pending migration, one transaction per file,
- * stopping at the first failure (see src/lib/db-migrations.ts). The result
- * is `{ ok: true, applied, failed?, remaining }` even when `failed` is set —
- * a partial run (some files really did commit) is never collapsed into a
- * flat pass/fail, so the caller must render all three fields rather than
- * treating this as a boolean. Only a connection-level problem (bad string,
- * unreachable host, DATABASE_URL unset) becomes `{ ok: false, error }`.
- */
+/** Defense in depth: callers cannot bypass the disabled button with a direct action call. */
 export async function applyPendingMigrations(): Promise<ActionResult<ApplyResult>> {
   return toResult(async () => {
     await assertAdmin();
-    return withClient((client) => applyMigrations(client, MIGRATIONS_DIR));
+    throw new Error("One-click migration apply is disabled. Use the reviewed CLI migration process after checking the numeric ledger and deployed policies.");
   });
 }

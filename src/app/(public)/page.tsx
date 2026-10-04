@@ -154,7 +154,7 @@ export default async function HomePage() {
               in the room it was chosen in — no retouching, no colour shifts.
             </p>
           </Reveal>
-          <Reveal settle className="order-1 overflow-hidden lg:order-2 lg:justify-self-end">
+          <Reveal settle className="order-1 mx-auto w-full max-w-[32rem] overflow-hidden lg:order-2 lg:mx-0 lg:justify-self-end">
             <PortraitImage
               src={DETAIL_STORY.image}
               width={1200}

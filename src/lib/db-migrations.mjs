@@ -72,7 +72,11 @@ export function listMigrationFiles(migrationsDir) {
   return readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort()
-    .map((file) => ({ file, version: file.replace(/\.sql$/, "") }));
+    .map((file) => {
+      const match = /^(\d+)_.+\.sql$/.exec(file);
+      if (!match) throw new Error(`Invalid migration filename: ${file}`);
+      return { file, version: match[1] };
+    });
 }
 
 /**
@@ -84,7 +88,10 @@ export function listMigrationFiles(migrationsDir) {
 export async function getAppliedVersions(client) {
   try {
     const { rows } = await client.query("select version from supabase_migrations.schema_migrations");
-    return new Set(rows.map((row) => row.version));
+    return new Set(rows.map((row) => {
+      if (!/^\d+$/.test(row.version)) throw new Error("Migration preflight failed: ledger contains non-numeric versions. Reconcile it manually before applying.");
+      return row.version;
+    }));
   } catch (err) {
     if (err && err.code === UNDEFINED_TABLE) return new Set();
     throw err;
@@ -123,38 +130,60 @@ async function ensureMigrationsTable(client) {
  */
 export async function applyMigrations(client, migrationsDir, opts = {}) {
   const { onProgress } = opts;
-  await ensureMigrationsTable(client);
-  const applied = await getAppliedVersions(client);
-  const files = listMigrationFiles(migrationsDir);
-  const pending = [];
-  for (const m of files) {
-    if (applied.has(m.version)) onProgress?.(m.file, "skip");
-    else pending.push(m);
-  }
-
-  const result = { applied: [], remaining: pending.map((m) => m.file) };
-
-  for (const { file, version } of pending) {
-    result.remaining.shift();
-    onProgress?.(file, "applying");
-    const sql = readFileSync(join(migrationsDir, file), "utf8");
-    await client.query("begin");
-    try {
-      await client.query(sql);
-      await client.query(
-        "insert into supabase_migrations.schema_migrations (version, statements, name) values ($1, $2, $3)",
-        [version, [], file],
-      );
-      await client.query("commit");
-      result.applied.push(file);
-      onProgress?.(file, "done");
-    } catch (err) {
-      await client.query("rollback");
-      result.failed = { file, error: err instanceof Error ? err.message : String(err) };
-      onProgress?.(file, "failed");
-      break;
+  const lock = await client.query("select pg_try_advisory_lock(746392018) as locked");
+  if (lock.rows[0]?.locked !== true) throw new Error("Another migration apply is running.");
+  try {
+    const filesForPreflight = listMigrationFiles(migrationsDir);
+    if (new Set(filesForPreflight.map((m) => m.version)).size !== filesForPreflight.length) {
+      throw new Error("Migration preflight failed: duplicate numeric versions.");
     }
-  }
+    const known = new Set(filesForPreflight.map((m) => m.version));
+    const ledger = await getAppliedVersions(client);
+    if ([...ledger].some((v) => !known.has(v))) throw new Error("Migration preflight failed: unknown ledger version.");
+    let foundPending = false;
+    for (const file of filesForPreflight) {
+      if (!ledger.has(file.version)) foundPending = true;
+      else if (foundPending) throw new Error("Migration preflight failed: ledger has a gap before an applied migration.");
+    }
+    if (!ledger.size) {
+      const existing = await client.query("select tablename from pg_tables where schemaname = 'public'");
+      if (existing.rows.length) throw new Error("Migration preflight failed: existing public tables without a migration ledger.");
+    }
+    await ensureMigrationsTable(client);
+    const applied = await getAppliedVersions(client);
+    const files = listMigrationFiles(migrationsDir);
+    const pending = [];
+    for (const m of files) {
+      if (applied.has(m.version)) onProgress?.(m.file, "skip");
+      else pending.push(m);
+    }
 
-  return result;
+    const result = { applied: [], remaining: pending.map((m) => m.file) };
+
+    for (const { file, version } of pending) {
+      result.remaining.shift();
+      onProgress?.(file, "applying");
+      const sql = readFileSync(join(migrationsDir, file), "utf8");
+      await client.query("begin");
+      try {
+        await client.query(sql);
+        await client.query(
+          "insert into supabase_migrations.schema_migrations (version, statements, name) values ($1, $2, $3)",
+          [version, [], file],
+        );
+        await client.query("commit");
+        result.applied.push(file);
+        onProgress?.(file, "done");
+      } catch (err) {
+        await client.query("rollback");
+        result.failed = { file, error: err instanceof Error ? err.message : String(err) };
+        onProgress?.(file, "failed");
+        break;
+      }
+    }
+
+    return result;
+  } finally {
+    await client.query("select pg_advisory_unlock(746392018)");
+  }
 }

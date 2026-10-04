@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { safeRedirect } from "@/lib/safe-redirect";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,7 @@ function LoginForm() {
       return;
     }
 
-    const redirectTo = params.get("redirect") || "/admin";
+    const redirectTo = safeRedirect(params.get("redirect"), "/admin");
     router.push(redirectTo);
     router.refresh();
   }

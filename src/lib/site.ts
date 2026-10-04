@@ -89,6 +89,6 @@ export const COLOUR_STORY = {
  *  Editorial imagery only — this frame has no product page of its own, so
  *  keep it to a shot that reads as craft rather than as a listing. */
 export const DETAIL_STORY = {
-  image: "/media/antique-gold-patola-tissue/11-red-patola-detail.jpg",
-  alt: "A copper tissue saree draped on the stand, bordered in red patola with fine white and gold detailing",
+  image: "/media/craft-detail-red-saree.jpeg",
+  alt: "A copper tissue saree draped on the stand, with a wide red patola border in white, blue and green motifs",
 };

@@ -177,7 +177,7 @@ async function syncProducts(
           base_price_max: p.price,
           status: "published" as const,
           product_code: desiredCode,
-          is_featured: p.featured,
+          is_featured: true,
           stock_type: "held" as const,
           source: "file_sync" as const,
         };

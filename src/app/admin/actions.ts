@@ -167,13 +167,14 @@ async function ensurePublishAllowed(
   targetStatus: ProductStatus,
 ) {
   if (targetStatus !== "published" || !productId) return;
-  const { data } = await admin
+  const { data, error } = await admin
     .from("products")
     .select("review_status")
     .eq("id", productId)
     .maybeSingle();
-  const reviewStatus = (data as { review_status?: string } | null)?.review_status ?? "not_required";
-  if (reviewStatus === "pending_review") {
+  if (error || !data) throw new Error("Could not verify review status. Publishing is blocked.");
+  const reviewStatus = (data as { review_status?: string }).review_status;
+  if (reviewStatus !== "approved" && reviewStatus !== "not_required") {
     throw new Error(
       "This product was created from an import and needs review approval before it can be published.",
     );
@@ -744,7 +745,7 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
       base_price_max: source.base_price_max,
       status: "draft",
       product_code: duplicateCode,
-      is_featured: false,
+      is_featured: true,
       stock_type: source.stock_type,
     })
     .select("id")

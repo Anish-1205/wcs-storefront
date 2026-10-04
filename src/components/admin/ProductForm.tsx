@@ -83,7 +83,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
     initial?.status ?? "draft",
   );
   const [productCode, setProductCode] = useState(initial?.product_code ?? "");
-  const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? false);
+  const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? true);
   const [stockType, setStockType] = useState<ProductInputShape["stock_type"]>(
     initial?.stock_type ?? "supplier",
   );

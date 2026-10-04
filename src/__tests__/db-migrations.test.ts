@@ -26,6 +26,7 @@ function fakeClient({ appliedVersions = [], failOnExactSql }: FakeClientOptions 
     async query(text: string) {
       queries.push(text);
       const trimmed = text.trim();
+      if (trimmed.includes("pg_try_advisory_lock")) return { rows: [{ locked: true }] };
       if (trimmed.startsWith("select version from")) {
         return { rows: appliedVersions.map((version) => ({ version })) };
       }
@@ -42,8 +43,8 @@ describe("listMigrationFiles", () => {
   it("lists every real migration file, sorted, correctly parsed", () => {
     const files = listMigrationFiles(MIGRATIONS_DIR);
     expect(files.length).toBeGreaterThanOrEqual(21);
-    expect(files[0]).toEqual({ file: "001_schema.sql", version: "001_schema" });
-    expect(files.every((f) => f.file === `${f.version}.sql`)).toBe(true);
+    expect(files[0]).toEqual({ file: "001_schema.sql", version: "001" });
+    expect(files.every((f) => f.file.startsWith(`${f.version}_`))).toBe(true);
     expect(files.map((f) => f.file)).toEqual([...files.map((f) => f.file)].sort());
   });
 });
@@ -74,10 +75,10 @@ describe("getAppliedVersions", () => {
   it("counts a repaired row (name/statements NULL) as applied — the diff keys only on version", async () => {
     const client = {
       async query() {
-        return { rows: [{ version: "013_product_source", statements: null, name: null }] };
+        return { rows: [{ version: "013", statements: null, name: null }] };
       },
     };
-    expect(await getAppliedVersions(client)).toEqual(new Set(["013_product_source"]));
+    expect(await getAppliedVersions(client)).toEqual(new Set(["013"]));
   });
 });
 
@@ -102,9 +103,10 @@ describe("listPendingMigrations", () => {
 
 describe("applyMigrations", () => {
   it("applies every pending file in order when nothing fails", async () => {
-    const files = listMigrationFiles(MIGRATIONS_DIR);
-    // Everything already applied except the first two — keeps the run short.
-    const client = fakeClient({ appliedVersions: files.slice(2).map((f) => f.version) });
+    const allFiles = listMigrationFiles(MIGRATIONS_DIR);
+    const files = allFiles.slice(-2);
+    // Everything already applied except the last two — keeps the run short.
+    const client = fakeClient({ appliedVersions: allFiles.slice(0, -2).map((f) => f.version) });
 
     const result = await applyMigrations(client, MIGRATIONS_DIR);
 
@@ -112,12 +114,13 @@ describe("applyMigrations", () => {
   });
 
   it("stops immediately on the first failure — later files are never attempted", async () => {
-    const files = listMigrationFiles(MIGRATIONS_DIR);
+    const allFiles = listMigrationFiles(MIGRATIONS_DIR);
+    const files = allFiles.slice(-3);
     const thirdFile = files[2];
     const thirdSql = readFileSync(join(MIGRATIONS_DIR, thirdFile.file), "utf8");
-    // Only the first three files are pending, so the run is short and deterministic.
+    // Only the last three files are pending, so the run is short and deterministic.
     const client = fakeClient({
-      appliedVersions: files.slice(3).map((f) => f.version),
+      appliedVersions: allFiles.slice(0, -3).map((f) => f.version),
       failOnExactSql: thirdSql,
     });
 
@@ -136,12 +139,13 @@ describe("applyMigrations", () => {
   });
 
   it("reports remaining files correctly when a failure leaves later ones unattempted", async () => {
-    const files = listMigrationFiles(MIGRATIONS_DIR);
-    // First four files pending; fail on the second.
+    const allFiles = listMigrationFiles(MIGRATIONS_DIR);
+    const files = allFiles.slice(-4);
+    // Last four files pending; fail on the second.
     const secondFile = files[1];
     const secondSql = readFileSync(join(MIGRATIONS_DIR, secondFile.file), "utf8");
     const client = fakeClient({
-      appliedVersions: files.slice(4).map((f) => f.version),
+      appliedVersions: allFiles.slice(0, -4).map((f) => f.version),
       failOnExactSql: secondSql,
     });
 
@@ -155,5 +159,39 @@ describe("applyMigrations", () => {
     const fourthSql = readFileSync(join(MIGRATIONS_DIR, files[3].file), "utf8");
     expect(client.queries).not.toContain(thirdSql);
     expect(client.queries).not.toContain(fourthSql);
+  });
+});
+
+
+describe("migration replay containment (F01)", () => {
+  it("never executes migration SQL against an already applied numeric ledger", async () => {
+    const files = listMigrationFiles(MIGRATIONS_DIR);
+    const client = fakeClient({ appliedVersions: files.map((f) => f.version) });
+    expect((await applyMigrations(client, MIGRATIONS_DIR)).applied).toEqual([]);
+    for (const f of files) expect(client.queries).not.toContain(readFileSync(join(MIGRATIONS_DIR, f.file), "utf8"));
+    expect(client.queries[0]).toContain("pg_try_advisory_lock");
+    expect(client.queries.at(-1)).toContain("pg_advisory_unlock");
+  });
+  it("fails preflight on a filename ledger and releases its lock", async () => {
+    const client = fakeClient({ appliedVersions: ["001_schema"] });
+    await expect(applyMigrations(client, MIGRATIONS_DIR)).rejects.toThrow(/non-numeric/);
+    expect(client.queries).not.toContain("begin");
+    expect(client.queries.at(-1)).toContain("pg_advisory_unlock");
+  });
+  it("does no work when a concurrent apply owns the advisory lock", async () => {
+    const queries: string[] = [];
+    const client = { query: async (sql: string) => { queries.push(sql); return { rows: [{ locked: false }] }; } };
+    await expect(applyMigrations(client, MIGRATIONS_DIR)).rejects.toThrow(/running/);
+    expect(queries).toHaveLength(1);
+  });
+  it("rejects gaps that could cause older policy migrations to be replayed", async () => {
+    const client = fakeClient({ appliedVersions: ["001", "003"] });
+    await expect(applyMigrations(client, MIGRATIONS_DIR)).rejects.toThrow(/gap/);
+    expect(client.queries).not.toContain("begin");
+  });
+  it("refuses an untracked populated database", async () => {
+    const base = fakeClient();
+    const client = { query: async (sql: string) => sql.includes("pg_tables") ? { rows: [{ tablename: "products" }] } : base.query(sql) };
+    await expect(applyMigrations(client, MIGRATIONS_DIR)).rejects.toThrow(/without a migration ledger/);
   });
 });

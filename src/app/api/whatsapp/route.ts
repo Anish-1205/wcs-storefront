@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { signUpload } from "@/lib/cloudinary";
@@ -92,11 +93,6 @@ type CloudinaryUploadResponse = {
   format?: string;
 };
 
-type AdminUploadSessionRow = {
-  product_id: string | null;
-  variant_id: string | null;
-};
-
 type PendingMediaItem = {
   media_id: string;
   message_id: string;
@@ -105,55 +101,16 @@ type PendingMediaItem = {
   received_at: string;
 };
 
-type PendingMediaSessionRow = {
-  pending_media: PendingMediaItem[] | null;
-};
-
-type ProductRow = {
-  id: string;
-  product_code: string | null;
-  slug: string;
-};
-
-type CreatedProductRow = {
-  id: string;
-  name: string;
-  slug: string;
-  product_code: string | null;
-};
-
-type CreatedVariantRow = {
-  id: string;
-  product_id: string;
-};
-
-/**
- * Tags a thrown error with which pipeline stage failed, so the outer catch
- * can reply on WhatsApp with a plain-language message instead of a raw
- * error — every failure in this route must reach the sender somehow, never
- * just a server-side log.
- */
+/** Stage information is retained in the recoverable inbox error. */
 class PipelineStageError extends Error {
   constructor(
-    public readonly stage: keyof typeof FRIENDLY_MESSAGES,
+    public readonly stage: "media_download" | "media_upload" | "db_write",
     message: string,
   ) {
     super(message);
     this.name = "PipelineStageError";
   }
 }
-
-const FRIENDLY_MESSAGES = {
-  media_download:
-    "We couldn't download a photo/video you sent from WhatsApp. Please resend it.",
-  media_upload:
-    "We couldn't save a photo/video you sent. Please resend it — if it keeps failing, try a smaller file.",
-  db_write:
-    "We hit a problem saving your product. Nothing was lost — please try again, or contact support if it keeps happening.",
-  session_lookup:
-    "Something went wrong looking up your upload session. Please try again.",
-  unknown: "Something went wrong on our end. Please try again, or contact support if it keeps happening.",
-} as const;
 
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -200,10 +157,6 @@ function normalizeCaption(message: WhatsAppMessage): string {
   return (message.image?.caption ?? message.video?.caption ?? message.text?.body ?? "").trim();
 }
 
-function isUniqueViolation(error: { code?: string } | null): boolean {
-  return error?.code === "23505";
-}
-
 function parseMessageTimestamp(timestamp?: string): string {
   if (!timestamp) return new Date().toISOString();
   const numeric = Number(timestamp);
@@ -211,16 +164,52 @@ function parseMessageTimestamp(timestamp?: string): string {
   return new Date(numeric * 1000).toISOString();
 }
 
-function extractFirstMessage(payload: WhatsAppWebhookPayload): {
-  message: WhatsAppMessage | null;
-  contactName: string | null;
-  rawEvent: WhatsAppChangeValue | null;
-} {
-  const changeValue = payload.entry?.[0]?.changes?.[0]?.value ?? null;
-  const message = changeValue?.messages?.[0] ?? null;
-  const contactName = changeValue?.contacts?.[0]?.profile?.name ?? null;
+type InboxMessage = {
+  message_id: string;
+  sender_phone: string;
+  contact_name: string | null;
+  message_timestamp: string;
+  caption: string;
+  media_id: string | null;
+  kind: MediaKind | null;
+  mode: "media" | "finalize" | "numbered";
+  public_id: string;
+  raw_message: WhatsAppMessage;
+};
+type ClaimedMessage = {
+  done?: boolean;
+  busy?: boolean;
+  token: string;
+  attempts: number;
+  asset: PendingMediaItem | null;
+  pending_media: PendingMediaItem[];
+  payload: InboxMessage;
+};
 
-  return { message, contactName, rawEvent: changeValue };
+function extractMessages(payload: WhatsAppWebhookPayload): InboxMessage[] {
+  const messages: InboxMessage[] = [];
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      for (const message of change.value?.messages ?? []) {
+        const sender = message.from?.trim();
+        if (!sender || !isAllowedWhatsAppAdmin(sender)) continue;
+        const kind = messageMediaKind(message);
+        const caption = normalizeCaption(message);
+        if (!kind && !caption) continue;
+        if (!message.id) throw new Error("Handled WhatsApp message is missing its ID");
+        messages.push({
+          message_id: message.id, sender_phone: sender,
+          contact_name: change.value?.contacts?.find((c) => c.wa_id === sender)?.profile?.name ?? null,
+          message_timestamp: parseMessageTimestamp(message.timestamp), caption,
+          media_id: messageMediaId(message) ?? null, kind,
+          mode: kind && /^\d+$/.test(caption) ? "numbered" : caption ? "finalize" : "media",
+          public_id: `whatsapp/inbox/${createHash("sha256").update(message.id).digest("hex")}`,
+          raw_message: message,
+        });
+      }
+    }
+  }
+  return messages;
 }
 
 async function downloadMediaFromMeta(
@@ -289,9 +278,9 @@ async function downloadMediaFromMeta(
 async function uploadToCloudinary(params: {
   buffer: Buffer;
   mimeType?: string;
-  folder: string;
   kind: MediaKind;
-}): Promise<{ secureUrl: string; publicId: string | null }> {
+  publicId: string;
+}): Promise<{ secureUrl: string; publicId: string }> {
   const cloudName = getCloudName();
   const apiKey = requireEnv("CLOUDINARY_API_KEY");
   requireEnv("CLOUDINARY_API_SECRET");
@@ -309,7 +298,7 @@ async function uploadToCloudinary(params: {
 
   let signed: Awaited<ReturnType<typeof signUpload>>;
   try {
-    signed = await signUpload({ timestamp, folder: params.folder }, params.kind);
+    signed = await signUpload({ timestamp, public_id: params.publicId, overwrite: "false" }, params.kind);
   } catch (error) {
     throw new PipelineStageError(
       "media_upload",
@@ -322,7 +311,8 @@ async function uploadToCloudinary(params: {
   formData.append("api_key", apiKey);
   formData.append("timestamp", String(timestamp));
   formData.append("signature", signed.signature);
-  formData.append("folder", params.folder);
+  formData.append("public_id", params.publicId);
+  formData.append("overwrite", "false");
 
   let uploadResponse: Response;
   try {
@@ -346,8 +336,20 @@ async function uploadToCloudinary(params: {
 
   return {
     secureUrl: uploaded.secure_url,
-    publicId: uploaded.public_id ?? null,
+    publicId: uploaded.public_id ?? params.publicId,
   };
+}
+
+async function findUploadedAsset(publicId: string, kind: MediaKind) {
+  const credentials = Buffer.from(`${requireEnv("CLOUDINARY_API_KEY")}:${requireEnv("CLOUDINARY_API_SECRET")}`).toString("base64");
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${getCloudName()}/resources/${kind}/upload/${encodeURIComponent(publicId)}`, {
+    headers: { Authorization: `Basic ${credentials}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new PipelineStageError("media_upload", `Cloudinary recovery lookup failed (${response.status})`);
+  const asset = await response.json() as CloudinaryUploadResponse;
+  if (!asset.secure_url) throw new PipelineStageError("media_upload", "Cloudinary recovery lookup returned no URL");
+  return { secureUrl: asset.secure_url, publicId: asset.public_id ?? publicId };
 }
 
 async function sendWhatsAppReply(to: string, text: string): Promise<void> {
@@ -395,246 +397,10 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
   console.log(`whatsapp webhook: reply sent to ${maskPhone(to)} (${response.status})`);
 }
 
-async function replyBestEffort(to: string, text: string, context: string): Promise<void> {
-  await sendWhatsAppReply(to, text).catch((error) => {
-    reportError(error, { scope: "whatsapp-reply", context });
-  });
-}
-
-async function persistIngestEvent(params: {
-  supabase: ReturnType<typeof createAdminClient>;
-  messageId: string;
-  senderPhone: string;
-  senderName: string | null;
-  messageTimestamp: string;
-  caption: string;
-  imageUrl: string;
-  rawPayload: WhatsAppWebhookPayload;
-  productId: string | null;
-  variantId: string | null;
-  mediaId: string;
-}): Promise<void> {
-  const { error } = await params.supabase.from("whatsapp_ingest_events").insert({
-    message_id: params.messageId,
-    sender_phone: params.senderPhone,
-    sender_name: params.senderName,
-    message_timestamp: params.messageTimestamp,
-    caption: params.caption,
-    image_url: params.imageUrl,
-    raw_payload: params.rawPayload,
-    product_id: params.productId,
-    variant_id: params.variantId,
-    media_id: params.mediaId,
-  });
-
-  if (error) {
-    throw new PipelineStageError("db_write", `DB ingest insert failed: ${error.message}`);
-  }
-}
-
-/** Appends one uncaptioned media item to the sender's pending batch (atomic
- * DB-side append — see append_whatsapp_pending_media in 016_whatsapp_batch_ingestion.sql). */
-async function appendPendingMedia(
-  supabase: ReturnType<typeof createAdminClient>,
-  adminPhone: string,
-  item: PendingMediaItem,
-): Promise<void> {
-  const { error } = await supabase.rpc("append_whatsapp_pending_media", {
-    p_admin_phone: adminPhone,
-    p_item: item,
-  });
-
-  if (error) {
-    throw new PipelineStageError("db_write", `Pending media append failed: ${error.message}`);
-  }
-}
-
-/** Inserts a product with a unique slug/product_code, retrying with -2, -3...
- * suffixes on a unique-constraint collision instead of failing the request. */
-async function insertProductWithUniqueSlug(
-  supabase: ReturnType<typeof createAdminClient>,
-  fields: {
-    name: string;
-    description: string;
-    fabric_type: string | null;
-    base_price_min: number | null;
-    base_price_max: number | null;
-    category_id: string | null;
-    highlights: string[];
-  },
-  slugBase: string,
-  codeBase: string,
-): Promise<CreatedProductRow> {
-  const MAX_ATTEMPTS = 25;
-  let lastErrorMessage = "unknown error";
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-    const { data, error } = await supabase
-      .from("products")
-      .insert({
-        name: fields.name,
-        slug: `${slugBase}${suffix}`,
-        product_code: `${codeBase}${suffix}`,
-        status: "draft",
-        description: fields.description,
-        fabric_type: fields.fabric_type,
-        base_price_min: fields.base_price_min,
-        base_price_max: fields.base_price_max,
-        category_id: fields.category_id,
-        highlights: fields.highlights,
-        stock_type: "supplier",
-      })
-      .select("id, name, slug, product_code")
-      .single<CreatedProductRow>();
-
-    if (!error && data) return data;
-
-    lastErrorMessage = error?.message ?? "unknown error";
-    if (!isUniqueViolation(error)) break;
-  }
-
-  throw new PipelineStageError("db_write", `Product insert failed: ${lastErrorMessage}`);
-}
-
-/**
- * Creates the product's variant(s) + variant_images from the batch's queued
- * media. Without a colour split (or when AI didn't produce a confident one)
- * this is exactly the original single-"Default"-variant behaviour. With a
- * split, it creates one product_variants row per colourway — best/default
- * colour first — mirroring createProductFromGroup's import-pipeline
- * behaviour: videos (never colour-clustered) and any photo the suggestion
- * left unassigned join whichever colourway ends up first, rather than being
- * dropped from the product.
- */
-async function createVariantsForBatch(
-  supabase: ReturnType<typeof createAdminClient>,
-  productId: string,
-  pending: PendingMediaItem[],
-  colorSplit: ColorVariantSplit | null,
-): Promise<{ variantIds: string[]; primaryVariantId: string }> {
-  const imageItems = pending.filter((item) => item.kind === "image");
-  const videoItems = pending.filter((item) => item.kind === "video");
-  const distinctColors = colorSplit ? Array.from(new Set(colorSplit.colorByMediaId.values())) : [];
-
-  if (!colorSplit || distinctColors.length < 2) {
-    const { data: variant, error } = await supabase
-      .from("product_variants")
-      .insert({ product_id: productId, color: "Default", status: "available", display_order: 1 })
-      .select("id, product_id")
-      .single<CreatedVariantRow>();
-
-    if (error || !variant) {
-      throw new PipelineStageError("db_write", `Variant insert failed: ${error?.message ?? "unknown error"}`);
-    }
-
-    const firstImageIndex = pending.findIndex((item) => item.kind === "image");
-    const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
-    const imageRows = pending.map((item, index) => ({
-      variant_id: variant.id,
-      image_url: item.url,
-      media_type: item.kind,
-      is_primary: index === primaryIndex,
-      display_order: index + 1,
-    }));
-
-    const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
-    if (imagesError) {
-      throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
-    }
-
-    return { variantIds: [variant.id], primaryVariantId: variant.id };
-  }
-
-  const orderedColors = [
-    ...(colorSplit.bestColor && distinctColors.includes(colorSplit.bestColor) ? [colorSplit.bestColor] : []),
-    ...distinctColors.filter((c) => c !== colorSplit.bestColor),
-  ];
-  const firstColor = orderedColors[0];
-  const variantIds: string[] = [];
-
-  for (let groupIndex = 0; groupIndex < orderedColors.length; groupIndex++) {
-    const color = orderedColors[groupIndex];
-    const groupImages = imageItems.filter((item) => {
-      const assigned = colorSplit.colorByMediaId.get(item.media_id);
-      return assigned ? assigned === color : color === firstColor;
-    });
-    const groupVideos = color === firstColor ? videoItems : [];
-    const groupItems = [...groupImages, ...groupVideos];
-    if (groupItems.length === 0) continue;
-
-    const { data: variant, error } = await supabase
-      .from("product_variants")
-      .insert({ product_id: productId, color, status: "available", display_order: groupIndex })
-      .select("id, product_id")
-      .single<CreatedVariantRow>();
-
-    if (error || !variant) {
-      throw new PipelineStageError("db_write", `Variant insert failed: ${error?.message ?? "unknown error"}`);
-    }
-
-    const imageRows = groupItems.map((item, index) => ({
-      variant_id: variant.id,
-      image_url: item.url,
-      media_type: item.kind,
-      is_primary: index === 0,
-      display_order: index + 1,
-    }));
-
-    const { error: imagesError } = await supabase.from("variant_images").insert(imageRows);
-    if (imagesError) {
-      throw new PipelineStageError("db_write", `Variant images insert failed: ${imagesError.message}`);
-    }
-
-    variantIds.push(variant.id);
-  }
-
-  if (variantIds.length === 0) {
-    throw new PipelineStageError("db_write", "Colour-variant split produced no groups with any media");
-  }
-
-  return { variantIds, primaryVariantId: variantIds[0] };
-}
-
-/**
- * The trigger step of the new flow: a text-only (or legacy captioned-image)
- * message describing the collection + price. Collects everything queued in
- * the sender's pending batch, auto-fills category/highlights/fabric/
- * collection tags and colour variants when AI is configured (see
- * src/lib/whatsapp-enrichment.ts), creates one product with all of it
- * attached, and clears the batch.
- */
-async function finalizeBatch(params: {
-  supabase: ReturnType<typeof createAdminClient>;
-  senderPhone: string;
-  contactName: string | null;
-  text: string;
-  messageId: string;
-  messageTimestamp: string;
-  rawPayload: WhatsAppWebhookPayload;
-}): Promise<void> {
-  const { supabase, senderPhone, contactName, text, messageId, messageTimestamp, rawPayload } = params;
-
-  const { data: session, error: sessionError } = await supabase
-    .from("admin_upload_sessions")
-    .select("pending_media")
-    .eq("admin_phone", senderPhone)
-    .maybeSingle<PendingMediaSessionRow>();
-
-  if (sessionError) {
-    throw new PipelineStageError("session_lookup", `Pending media lookup failed: ${sessionError.message}`);
-  }
-
-  const pending = session?.pending_media ?? [];
-  if (pending.length === 0) {
-    await replyBestEffort(
-      senderPhone,
-      "No photos or videos received yet. Please forward the photos/videos first, then send one message with the description and price.",
-      "no pending media",
-    );
-    return;
-  }
-
+async function buildProductPlan(
+  supabase: ReturnType<typeof createAdminClient>, text: string, pending: PendingMediaItem[],
+) {
+  if (!pending.length) return { variants: [], reply: "No photos or videos received yet. Forward the photos/videos first, then send a description and price." };
   const { description, price, fabric } = parseCollectionMessage(text);
   const imageItems = pending.filter((item) => item.kind === "image");
 
@@ -685,96 +451,72 @@ async function finalizeBatch(params: {
   const slugBase = slugify(name);
   const codeBase = generateProductSKU(name);
 
-  const createdProduct = await insertProductWithUniqueSlug(
-    supabase,
-    {
-      name,
-      description,
-      fabric_type: enrichment.fabricType,
-      base_price_min: price,
-      base_price_max: price,
-      category_id: enrichment.categoryId,
-      highlights: enrichment.highlights,
-    },
-    slugBase,
-    codeBase,
-  );
+  const distinctColors = colorSplit ? Array.from(new Set(colorSplit.colorByMediaId.values())) : [];
+  const colors = distinctColors.length >= 2 ? [
+    ...(colorSplit?.bestColor && distinctColors.includes(colorSplit.bestColor) ? [colorSplit.bestColor] : []),
+    ...distinctColors.filter((c) => c !== colorSplit?.bestColor),
+  ] : ["Default"];
+  const variants = colors.map((color, groupIndex) => {
+    const media = pending.filter((item) => colors.length === 1 ||
+      (item.kind === "video" ? groupIndex === 0 : (colorSplit?.colorByMediaId.get(item.media_id) ?? colors[0]) === color));
+    const firstImage = media.findIndex((item) => item.kind === "image");
+    return { color, media: media.map((item, index) => ({ ...item,
+      is_primary: index === (firstImage < 0 ? 0 : firstImage), display_order: index + 1,
+    })) };
+  }).filter((v) => v.media.length);
+  return { name, slug: slugBase, code: codeBase, description, price,
+    fabric_type: enrichment.fabricType, category_id: enrichment.categoryId,
+    highlights: enrichment.highlights, collection_ids: enrichment.collectionIds, variants,
+    reply: `Created "${name}" with ${pending.length} photo(s)/video(s). Review it in the admin panel. Send more photos/videos then a new description to start another listing.`,
+  };
+}
 
-  const { variantIds, primaryVariantId } = await createVariantsForBatch(
-    supabase,
-    createdProduct.id,
-    pending,
-    colorSplit,
-  );
+async function rpc<T>(supabase: ReturnType<typeof createAdminClient>, name: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.rpc(name, args);
+  if (error) throw new PipelineStageError("db_write", `${name}: ${error.message}`);
+  return data as T;
+}
 
-  if (enrichment.collectionIds.length > 0) {
-    const collectionRows = enrichment.collectionIds.map((collection_id, index) => ({
-      collection_id,
-      product_id: createdProduct.id,
-      display_order: index,
-    }));
-    const { error: collectionsInsertError } = await supabase.from("collection_products").insert(collectionRows);
-    if (collectionsInsertError) {
-      throw new PipelineStageError("db_write", `Collection tagging failed: ${collectionsInsertError.message}`);
+async function processMessage(supabase: ReturnType<typeof createAdminClient>, messageId: string) {
+  const claimed = await rpc<ClaimedMessage>(supabase, "claim_whatsapp_message", { p_message_id: messageId });
+  if (claimed.done) return;
+  if (claimed.busy) throw new Error("WhatsApp message is queued behind an unfinished delivery");
+  const m = claimed.payload;
+  try {
+    let asset = claimed.asset;
+    if (m.kind && m.media_id && !asset) {
+      let uploaded = claimed.attempts > 1 ? await findUploadedAsset(m.public_id, m.kind) : null;
+      if (!uploaded) {
+        const { buffer, mimeType } = await downloadMediaFromMeta(m.media_id, m.kind);
+        uploaded = await uploadToCloudinary({ buffer, mimeType, kind: m.kind, publicId: m.public_id });
+      }
+      asset = { media_id: m.media_id, message_id: m.message_id, url: uploaded.secureUrl,
+        kind: m.kind, received_at: m.message_timestamp };
+      await rpc(supabase, "checkpoint_whatsapp_asset", { p_message_id: messageId, p_token: claimed.token,
+        p_asset: { ...asset, public_id: uploaded.publicId ?? m.public_id } });
     }
+    const plan = m.mode === "finalize"
+      ? await buildProductPlan(supabase, m.caption, [...claimed.pending_media, ...(asset ? [asset] : [])])
+      : { reply: m.mode === "numbered" ? `Saved photo ${m.caption}.` : null };
+    await rpc(supabase, "complete_whatsapp_message", { p_message_id: messageId, p_token: claimed.token, p_plan: plan });
+  } catch (error) {
+    // If recording this failure also fails, the committed claim remains visible
+    // and becomes reclaimable after its lease expires. Never acknowledge success.
+    await rpc(supabase, "fail_whatsapp_message", { p_message_id: messageId, p_token: claimed.token,
+      p_error: error instanceof Error ? error.message : String(error) }).catch((recordError) =>
+        reportError(recordError, { scope: "whatsapp-failure-record", messageId }));
+    throw error;
   }
+}
 
-  const { error: sessionResetError } = await supabase.from("admin_upload_sessions").upsert({
-    admin_phone: senderPhone,
-    product_id: createdProduct.id,
-    variant_id: primaryVariantId,
-    pending_media: [],
-    updated_at: new Date().toISOString(),
-  });
-  if (sessionResetError) {
-    throw new PipelineStageError("db_write", `Session reset failed: ${sessionResetError.message}`);
-  }
-
-  const firstImageIndex = pending.findIndex((item) => item.kind === "image");
-  const primaryIndex = firstImageIndex === -1 ? 0 : firstImageIndex;
-
-  await persistIngestEvent({
-    supabase,
-    messageId,
-    senderPhone,
-    senderName: contactName,
-    messageTimestamp,
-    caption: text,
-    imageUrl: pending[primaryIndex].url,
-    rawPayload,
-    productId: createdProduct.id,
-    variantId: primaryVariantId,
-    mediaId: pending[primaryIndex].media_id,
-  });
-
-  const photoCount = imageItems.length;
-  const videoCount = pending.length - imageItems.length;
-  const mediaSummary = [
-    photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : null,
-    videoCount > 0 ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null,
-  ]
-    .filter(Boolean)
-    .join(" and ");
-
-  const colourNote = variantIds.length > 1 ? ` across ${variantIds.length} colourways` : "";
-  const tagNote = [
-    enrichment.categoryName ? `Category: ${enrichment.categoryName}.` : null,
-    enrichment.collectionNames.length ? `Collections: ${enrichment.collectionNames.join(", ")}.` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const missingParts = [price == null && "price", !enrichment.fabricType && "fabric"]
-    .filter(Boolean)
-    .join(" and ");
-  const reminder = missingParts ? ` No ${missingParts} yet — add it in the admin panel when you get a chance.` : "";
-
-  await replyBestEffort(
-    senderPhone,
-    `Created "${createdProduct.name}" (${createdProduct.product_code}) with ${mediaSummary}${colourNote}` +
-      `${price != null ? ` — ₹${price}` : ""}.${tagNote ? ` ${tagNote}` : ""}${reminder} Send more photos/videos then a new description to start another listing.`,
-    "after finalize",
-  );
+async function deliverReply(supabase: ReturnType<typeof createAdminClient>, messageId: string) {
+  const { data, error } = await supabase.from("whatsapp_inbox")
+    .select("sender_phone, reply, reply_sent, state").eq("message_id", messageId).maybeSingle();
+  if (error) throw error;
+  if (data?.state !== "done" || !data.reply || data.reply_sent) return;
+  await sendWhatsAppReply(data.sender_phone, data.reply);
+  const { error: saveError } = await supabase.from("whatsapp_inbox").update({ reply_sent: true }).eq("message_id", messageId);
+  if (saveError) throw saveError;
 }
 
 export async function GET(req: Request) {
@@ -792,7 +534,6 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   let payload: WhatsAppWebhookPayload;
-  let senderPhone: string | null = null;
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_WEBHOOK_BYTES) {
@@ -821,219 +562,28 @@ export async function POST(req: Request) {
     // Past the signature check, so this is Meta sending something unexpected
     // rather than a spoof — worth surfacing, not just dropping.
     reportError(error, { scope: "whatsapp-invalid-json" });
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { message, contactName } = extractFirstMessage(payload);
-
-  if (payload.object !== "whatsapp_business_account" || !message) {
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  senderPhone = message.from?.trim() ?? null;
-  if (!senderPhone) {
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  if (!isAllowedWhatsAppAdmin(senderPhone)) {
-    console.warn("whatsapp webhook: ignored message from a non-admin sender");
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  const mediaKind = messageMediaKind(message);
-  const mediaId = messageMediaId(message);
-  const textBody = message.text?.body?.trim();
-
-  // Nothing this route handles (sticker, location, reaction, status, etc.).
-  if (!mediaKind && !mediaId && !textBody) {
-    return NextResponse.json({ ok: true }, { status: 200 });
-  }
-
-  const messageId = message.id ?? `${senderPhone}-${mediaId ?? "text"}-${message.timestamp ?? Date.now()}`;
-  const messageTimestamp = parseMessageTimestamp(message.timestamp);
-  const supabase = createAdminClient();
-
+  if (payload.object !== "whatsapp_business_account") return NextResponse.json({ ok: true });
   try {
-    const { data: existingEvent, error: existingEventError } = await supabase
-      .from("whatsapp_ingest_events")
-      .select("message_id")
-      .eq("message_id", messageId)
-      .maybeSingle();
-
-    if (existingEventError) {
-      // Non-fatal: processing continues, but a failed dedupe read means the
-      // next retry from Meta can double-ingest, so it needs to be visible.
-      reportError(existingEventError, { scope: "whatsapp-duplicate-check", messageId });
-    }
-
-    if (existingEvent) {
-      return NextResponse.json({ ok: true }, { status: 200 });
-    }
-
-    // ── Media message (image or video) ──────────────────────────────
-    if (mediaKind && mediaId) {
-      const caption = normalizeCaption(message);
-      const isNumberCaption = /^\d+$/.test(caption);
-
-      if (isNumberCaption) {
-        // Legacy path: numbered captions append a photo to an already-active
-        // (already-created) product's session.
-        const displayOrder = Number.parseInt(caption, 10);
-
-        const { data: session, error: sessionError } = await supabase
-          .from("admin_upload_sessions")
-          .select("product_id, variant_id")
-          .eq("admin_phone", senderPhone)
-          .maybeSingle<AdminUploadSessionRow>();
-
-        if (sessionError) {
-          throw new PipelineStageError("session_lookup", `Active session lookup failed: ${sessionError.message}`);
-        }
-
-        if (!session?.product_id || !session?.variant_id) {
-          await replyBestEffort(
-            senderPhone,
-            "No active product session found. Send an image with a text description first.",
-            "missing session",
-          );
-          return NextResponse.json({ ok: true }, { status: 200 });
-        }
-
-        const productId = session.product_id;
-        const variantId = session.variant_id;
-
-        const { data: product, error: productError } = await supabase
-          .from("products")
-          .select("id, product_code, slug")
-          .eq("id", productId)
-          .maybeSingle<ProductRow>();
-
-        if (productError) {
-          throw new PipelineStageError("db_write", `Product lookup failed: ${productError.message}`);
-        }
-
-        const folder = product?.product_code || product?.slug || productId;
-
-        const { buffer, mimeType } = await downloadMediaFromMeta(mediaId, mediaKind);
-        const uploaded = await uploadToCloudinary({ buffer, mimeType, folder, kind: mediaKind });
-
-        const { error: imageError } = await supabase.from("variant_images").insert({
-          variant_id: variantId,
-          image_url: uploaded.secureUrl,
-          media_type: mediaKind,
-          is_primary: false,
-          display_order: displayOrder,
-        });
-
-        if (imageError) {
-          throw new PipelineStageError("db_write", `variant_images insert failed: ${imageError.message}`);
-        }
-
-        const { error: touchSessionError } = await supabase.from("admin_upload_sessions").upsert({
-          admin_phone: senderPhone,
-          product_id: productId,
-          variant_id: variantId,
-          updated_at: new Date().toISOString(),
-        });
-
-        if (touchSessionError) {
-          throw new PipelineStageError("db_write", `admin_upload_sessions upsert failed: ${touchSessionError.message}`);
-        }
-
-        await persistIngestEvent({
-          supabase,
-          messageId,
-          senderPhone,
-          senderName: contactName,
-          messageTimestamp,
-          caption,
-          imageUrl: uploaded.secureUrl,
-          rawPayload: payload,
-          productId,
-          variantId,
-          mediaId,
-        });
-
-        await replyBestEffort(
-          senderPhone,
-          `Saved photo ${displayOrder} for ${folder}. Send the next photo as a number, or send a new description to start a new listing.`,
-          "after numbered photo",
-        );
-
-        return NextResponse.json({ ok: true }, { status: 200 });
+    const messages = extractMessages(payload);
+    if (!messages.length) return NextResponse.json({ ok: true });
+    const supabase = createAdminClient();
+    await rpc(supabase, "enqueue_whatsapp_messages", { p_messages: messages });
+    let failed = false;
+    for (const message of messages) {
+      try {
+        await processMessage(supabase, message.message_id);
+        await deliverReply(supabase, message.message_id);
+      } catch (error) {
+        failed = true;
+        reportError(error, { scope: "whatsapp-processing", messageId: message.message_id });
       }
-
-      // New flow (and legacy single-caption flow): queue this media into the
-      // sender's pending batch first.
-      const { buffer, mimeType } = await downloadMediaFromMeta(mediaId, mediaKind);
-      const uploaded = await uploadToCloudinary({ buffer, mimeType, folder: "whatsapp/pending", kind: mediaKind });
-
-      await appendPendingMedia(supabase, senderPhone, {
-        media_id: mediaId,
-        message_id: messageId,
-        url: uploaded.secureUrl,
-        kind: mediaKind,
-        received_at: messageTimestamp,
-      });
-
-      if (!caption) {
-        // Uncaptioned media: silently accumulate, no reply, no product yet.
-        await persistIngestEvent({
-          supabase,
-          messageId,
-          senderPhone,
-          senderName: contactName,
-          messageTimestamp,
-          caption: "",
-          imageUrl: uploaded.secureUrl,
-          rawPayload: payload,
-          productId: null,
-          variantId: null,
-          mediaId,
-        });
-        return NextResponse.json({ ok: true }, { status: 200 });
-      }
-
-      // A caption on the media doubles as the finalizing description (keeps
-      // the old single-image-with-caption flow working).
-      await finalizeBatch({
-        supabase,
-        senderPhone,
-        contactName,
-        text: caption,
-        messageId,
-        messageTimestamp,
-        rawPayload: payload,
-      });
-
-      return NextResponse.json({ ok: true }, { status: 200 });
     }
-
-    // ── Text-only message: the finalizing trigger ───────────────────
-    if (textBody) {
-      await finalizeBatch({
-        supabase,
-        senderPhone,
-        contactName,
-        text: textBody,
-        messageId,
-        messageTimestamp,
-        rawPayload: payload,
-      });
-    }
-
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json(failed ? { error: "Messages retained for retry" } : { ok: true }, { status: failed ? 503 : 200 });
   } catch (error) {
-    reportError(error, {
-      scope: "whatsapp-processing",
-      stage: error instanceof PipelineStageError ? error.stage : "unknown",
-    });
-
-    if (senderPhone) {
-      const stage = error instanceof PipelineStageError ? error.stage : "unknown";
-      await replyBestEffort(senderPhone, FRIENDLY_MESSAGES[stage], "on failure");
-    }
-
-    return NextResponse.json({ ok: true }, { status: 200 });
+    reportError(error, { scope: "whatsapp-receipt" });
+    return NextResponse.json({ error: "Could not accept messages" }, { status: 503 });
   }
 }

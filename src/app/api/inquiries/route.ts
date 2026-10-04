@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Could not save inquiry" }, { status: 500 });
   }
 
-  // Fire-and-forget admin email notification (non-blocking on failure).
+  // The inquiry is saved even if its optional notification fails.
   await sendNotification(data).catch((e) =>
     reportError(e, { scope: "inquiry-notification" }),
   );
@@ -88,7 +88,7 @@ async function sendNotification(data: {
   const resend = new Resend(apiKey);
   const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: `${SITE.name} <${from}>`,
     to,
     subject: `New ${data.inquiry_type} enquiry from ${data.name}`,
@@ -102,6 +102,7 @@ async function sendNotification(data: {
       ${data.message ? `<p><strong>Message:</strong><br/>${escapeHtml(data.message)}</p>` : ""}
     `,
   });
+  if (error) throw new Error(`Resend notification failed: ${error.message}`);
 }
 
 function escapeHtml(s: string): string {

@@ -106,6 +106,7 @@ export function ProductTable({ rows, query, total, categories, signalError, list
       setBulkUndo(undo ? [] : result.changes.map((change) => change.id));
       setActionMessage(undo ? "Bulk change undone." : `Stock signal saved for ${selection.length} products.`);
       setSelected([]);
+      router.refresh();
     } catch (e) { setActionError(e instanceof Error ? e.message : "Could not save. Please retry."); }
     finally { setBulkPending(false); }
   }

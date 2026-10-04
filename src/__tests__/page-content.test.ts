@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ContentRegion, PageContentProvider } from "@/components/content/ContentRegion";
@@ -16,9 +17,14 @@ type FakeRows = { live?: unknown; version?: unknown; upsertError?: boolean };
 /** Chainable stand-in for the PostgREST builder, recording what was written. */
 function fakeAdmin({ live, version, upsertError }: FakeRows = {}) {
   const upserts: Record<string, unknown>[] = [];
+  const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
   const inserts: Record<string, unknown>[] = [];
   const deletes: string[] = [];
   const admin = {
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      rpcCalls.push({ name, args });
+      return { error: upsertError ? { message: "missing function" } : null };
+    },
     from(table: string) {
       const chain: Record<string, unknown> = {};
       const self = () => chain;
@@ -41,7 +47,7 @@ function fakeAdmin({ live, version, upsertError }: FakeRows = {}) {
       return chain;
     },
   };
-  return { admin, upserts, inserts, deletes };
+  return { admin, upserts, inserts, deletes, rpcCalls };
 }
 
 describe("page content", () => {
@@ -87,12 +93,40 @@ describe("page content", () => {
 
   it("keeps a saved draft off the public website", async () => {
     const live = { "page:root.0": { kind: "text", value: "Published wording" } };
-    const { admin, upserts } = fakeAdmin({ live });
+    const { admin, upserts, rpcCalls } = fakeAdmin({ live });
     assertAdmin.mockResolvedValue({ admin });
     const draft = { "page:root.0": { kind: "text", value: "Work in progress" } };
     expect(await savePageDraft("/about", draft)).toEqual({ ok: true });
-    expect(upserts[0]).toMatchObject({ page: "/about", content: live, draft_content: draft });
+    // Draft saving goes only through the draft-only function, with no write path
+    // of its own to the live content column.
+    expect(rpcCalls).toEqual([{ name: "save_storefront_page_draft", args: { p_page: "/about", p_draft: draft } }]);
+    expect(upserts).toEqual([]);
     expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("F14 never sends live content when saving the very first homepage draft", async () => {
+    const { admin, upserts, rpcCalls } = fakeAdmin();
+    assertAdmin.mockResolvedValue({ admin });
+    expect(await savePageDraft("home", { ...DEFAULT_HOMEPAGE, heroTitle: "Private unfinished headline" })).toEqual({ ok: true });
+    expect(rpcCalls).toHaveLength(1);
+    expect(rpcCalls[0].name).toBe("save_storefront_page_draft");
+    expect(Object.keys(rpcCalls[0].args).sort()).toEqual(["p_draft", "p_page"]);
+    expect(rpcCalls[0].args.p_draft).toMatchObject({ heroTitle: "Private unfinished headline" });
+    expect(upserts).toEqual([]);
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("F14 the shipped draft function inserts no published content and only updates the draft", () => {
+    const sql = readFileSync("supabase/migrations/026_draft_only_page_rows.sql", "utf8");
+    // Published content must be representable as absent, not as a synthetic object.
+    expect(sql).toMatch(/alter column content drop not null/i);
+    const body = sql.slice(sql.indexOf("create or replace function public.save_storefront_page_draft"));
+    const insert = body.slice(body.indexOf("insert into"), body.indexOf("on conflict"));
+    expect(insert).toMatch(/values\s*\(p_page,\s*null,\s*p_draft/i);
+    const update = body.slice(body.indexOf("on conflict"), body.indexOf("$$;"));
+    expect(update).toMatch(/set draft_content = excluded\.draft_content, updated_at = excluded\.updated_at/);
+    // ...and nothing else: in particular not the live `content` column.
+    expect(update).not.toMatch(/(^|[^_\w])content\s*=/);
   });
 
   it("publishes validated content, keeps the previous version and refreshes public pages", async () => {

@@ -151,3 +151,16 @@ describe("import review gate — publishing is blocked until reviewed", () => {
     if (!result.ok) expect(result.error).toMatch(/review approval/i);
   });
 });
+
+
+describe("F11 fail closed", () => {
+  it.each([{ data: null, error: { message: "read failed" } }, { data: null, error: null }, { data: { review_status: "unexpected" }, error: null }])(
+    "blocks publish when review cannot be verified: %j", async (lookup) => {
+      const update = vi.fn();
+      const chain = { select: () => chain, eq: () => chain, maybeSingle: async () => lookup, update };
+      mockAssertAdmin.mockResolvedValue({ user: { email: "admin@example.com" }, admin: { from: () => chain } });
+      const { updateProductStatus } = await import("@/app/admin/actions");
+      expect((await updateProductStatus("p1", "published")).ok).toBe(false);
+      expect(update).not.toHaveBeenCalled();
+    });
+});

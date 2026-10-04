@@ -29,15 +29,9 @@ export async function savePageDraft(page: string, input: unknown) {
     const { admin } = await assertAdmin();
     const scope = scopeFor(page);
     const draft = parseFor(scope, input);
-    const { data: existing } = await admin
-      .from("storefront_page_content").select("content").eq("page", scope).maybeSingle();
-    const { error } = await admin.from("storefront_page_content").upsert({
-      page: scope,
-      // A first draft must not blank the live page, so publish nothing new here.
-      content: existing?.content ?? (scope === "home" ? draft : {}),
-      draft_content: draft,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "page" });
+    const { error } = await admin.rpc("save_storefront_page_draft", {
+      p_page: scope, p_draft: draft,
+    });
     if (error) throw new Error("Could not save your draft. Check that the page-content database migrations have been applied.", { cause: error });
     revalidatePath("/admin/pages");
     return {};

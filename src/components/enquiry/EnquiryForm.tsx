@@ -42,6 +42,7 @@ export function EnquiryForm() {
   const { profile, loading: profileLoading, signedIn, save: saveProfile } =
     useProfile();
   const [errors, setErrors] = useState<Errors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const submitting = useRef(false);
   const [submittingState, setSubmittingState] = useState(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -77,7 +78,7 @@ export function EnquiryForm() {
     );
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting.current) return;
 
@@ -114,6 +115,7 @@ export function EnquiryForm() {
       return;
     }
     setErrors({});
+    setSubmitError(null);
 
     // ── Lock, build message, hand off WITHIN the user gesture ──
     submitting.current = true;
@@ -138,25 +140,7 @@ export function EnquiryForm() {
       window.open(waUrl, "_blank", "noopener,noreferrer");
     }
 
-    // Persist a snapshot so the confirmation page can re-open WhatsApp and
-    // the customer never has to rebuild their selection after a failed handoff.
-    try {
-      sessionStorage.setItem(
-        ENQUIRY_STORAGE_KEY,
-        JSON.stringify({
-          waUrl,
-          configured: WHATSAPP_CONFIGURED,
-          items,
-          customer: { ...customer, phone: values.phone, whatsapp: values.whatsapp, email: values.email },
-          ts: Date.now(),
-        }),
-      );
-    } catch {
-      /* storage unavailable — the sent page falls back to a generic message */
-    }
-
-    // Fire-and-forget internal notification. The WhatsApp hand-off is the
-    // real channel, so a failure here must not block or alarm the customer.
+    // Confirm persistence before showing the saved-enquiry screen.
     const itemLines = items
       .map(
         (i) =>
@@ -184,22 +168,45 @@ export function EnquiryForm() {
         ? "wholesale"
         : "retail";
 
-    fetch("/api/inquiries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: values.name,
-        phone: values.phone,
-        email: values.email,
-        message: composedMessage,
-        inquiry_type: inquiryType,
-        product_name: items.map((i) => i.title).join(", ").slice(0, 200),
-        website: "",
-        source,
-      }),
-    }).catch(() => {
-      /* recorded via sessionStorage; the customer continues on WhatsApp */
-    });
+    try {
+      const response = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name,
+          phone: values.phone,
+          email: values.email,
+          message: composedMessage,
+          inquiry_type: inquiryType,
+          product_name: items.map((i) => i.title).join(", ").slice(0, 200),
+          website: "",
+          source,
+        }),
+      });
+      if (!response.ok || (await response.json()).ok !== true) throw new Error("Inquiry was not confirmed");
+    } catch {
+      setSubmitError("We could not confirm your enquiry was saved. Your selection and details are still here. Please try again.");
+      submitting.current = false;
+      setSubmittingState(false);
+      return;
+    }
+
+    // Persist a snapshot so the confirmation page can re-open WhatsApp and
+    // the customer never has to rebuild their selection after a failed handoff.
+    try {
+      sessionStorage.setItem(
+        ENQUIRY_STORAGE_KEY,
+        JSON.stringify({
+          waUrl,
+          configured: WHATSAPP_CONFIGURED,
+          items,
+          customer: { ...customer, phone: values.phone, whatsapp: values.whatsapp, email: values.email },
+          ts: Date.now(),
+        }),
+      );
+    } catch {
+      /* storage unavailable — the sent page falls back to a generic message */
+    }
 
     analytics.inquirySubmit({ inquiry_type: inquiryType, source });
 
@@ -301,6 +308,7 @@ export function EnquiryForm() {
           <Link href="/privacy" className="underline hover:text-oxblood">privacy policy</Link>.
         </p>
 
+        {submitError && <p role="alert" className="text-destructive">{submitError}</p>}
         <button
           type="submit"
           disabled={submittingState}

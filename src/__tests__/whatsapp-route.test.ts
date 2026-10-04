@@ -1,855 +1,216 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-const mockCreateAdminClient = vi.hoisted(() => vi.fn());
-const mockSignUpload = vi.hoisted(() => vi.fn());
-const mockGetAiProvider = vi.hoisted(() => vi.fn());
-
-vi.mock("@/lib/supabase/server", () => ({ createAdminClient: mockCreateAdminClient }));
-vi.mock("@/lib/cloudinary", () => ({ signUpload: mockSignUpload }));
-vi.mock("@/lib/ai", () => ({ getAiProvider: mockGetAiProvider }));
-
+const mocks = vi.hoisted(() => ({ client: vi.fn(), sign: vi.fn(), ai: vi.fn(), report: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ createAdminClient: mocks.client }));
+vi.mock("@/lib/cloudinary", () => ({ signUpload: mocks.sign }));
+vi.mock("@/lib/ai", () => ({ getAiProvider: mocks.ai }));
+vi.mock("@/lib/report-error", () => ({ reportError: mocks.report }));
 import { POST } from "@/app/api/whatsapp/route";
-import { deriveProductName, parseCollectionMessage, parseProductCaption } from "@/lib/whatsapp-caption";
-import { MAX_NAME_LENGTH } from "@/lib/ai/style-guide";
 
-const AI_OFF_PROVIDER = {
-  name: "off",
-  isConfigured: () => false,
-  suggestProductMetadata: vi.fn(),
-  classifyCollection: vi.fn(),
-  suggestColorVariants: vi.fn(),
-};
-
-const APP_SECRET = "secret";
-const ADMIN_NUMBER = "919876543210";
-
-function signedRequest(body: string) {
-  const digest = createHmac("sha256", APP_SECRET).update(body).digest("hex");
-  return new Request("http://localhost/api/whatsapp", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-hub-signature-256": `sha256=${digest}` },
-    body,
-  });
+const phone = "919876543210";
+function message(id: string, caption = "", kind = "image") {
+  return { id, from: phone, timestamp: "1700000000", type: kind,
+    ...(kind === "text" ? { text: { body: caption } } : { [kind]: { id: `media-${id}`, caption } }) };
 }
-
-function imageMessagePayload(opts: { caption: string; mediaId?: string; messageId?: string; from?: string }) {
-  return JSON.stringify({
-    object: "whatsapp_business_account",
-    entry: [
-      {
-        changes: [
-          {
-            value: {
-              contacts: [{ profile: { name: "Store Admin" } }],
-              messages: [
-                {
-                  from: opts.from ?? ADMIN_NUMBER,
-                  id: opts.messageId ?? "wamid.1",
-                  timestamp: "1700000000",
-                  type: "image",
-                  image: { id: opts.mediaId ?? "media-1", caption: opts.caption },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    ],
-  });
+function envelope(messages: unknown[]) {
+  return { object: "whatsapp_business_account", entry: [{ changes: [{ value: { messages } }] }] };
 }
-
-function videoMessagePayload(opts: { caption?: string; mediaId?: string; messageId?: string; from?: string }) {
-  return JSON.stringify({
-    object: "whatsapp_business_account",
-    entry: [
-      {
-        changes: [
-          {
-            value: {
-              contacts: [{ profile: { name: "Store Admin" } }],
-              messages: [
-                {
-                  from: opts.from ?? ADMIN_NUMBER,
-                  id: opts.messageId ?? "wamid.video",
-                  timestamp: "1700000000",
-                  type: "video",
-                  video: { id: opts.mediaId ?? "media-video", caption: opts.caption ?? "" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    ],
-  });
+function request(payload: unknown) {
+  const body = JSON.stringify(payload);
+  return new Request("http://localhost/api/whatsapp", { method: "POST", body,
+    headers: { "x-hub-signature-256": `sha256=${createHmac("sha256", "secret").update(body).digest("hex")}` } });
 }
-
-function textMessagePayload(opts: { body: string; messageId?: string; from?: string }) {
-  return JSON.stringify({
-    object: "whatsapp_business_account",
-    entry: [
-      {
-        changes: [
-          {
-            value: {
-              contacts: [{ profile: { name: "Store Admin" } }],
-              messages: [
-                {
-                  from: opts.from ?? ADMIN_NUMBER,
-                  id: opts.messageId ?? "wamid.text",
-                  timestamp: "1700000000",
-                  type: "text",
-                  text: { body: opts.body },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    ],
+// Stateful transport double; actual SQL locking/rollback is tested separately on PostgreSQL.
+function database() {
+  const jobs = new Map<string, any>();
+  const plans: any[] = [];
+  let openBatch = 1;
+  let token = 0;
+  const failures = new Map<string, number>();
+  const rpc = vi.fn(async (name: string, args: any) => {
+    if ((failures.get(name) ?? 0) > 0) { failures.set(name, failures.get(name)! - 1); return { error: { message: "injected failure" }, data: null }; }
+    if (name === "enqueue_whatsapp_messages") {
+      for (const m of args.p_messages) {
+        if (jobs.has(m.message_id)) continue;
+        jobs.set(m.message_id, { payload: m, batch: openBatch, state: "pending", attempts: 0, asset: null });
+        if (m.mode === "finalize") openBatch++;
+      }
+      return { error: null };
+    }
+    const job = jobs.get(args.p_message_id);
+    if (name === "claim_whatsapp_message") {
+      if (job.state === "done") return { data: { done: true } };
+      const earlier = [...jobs.values()].slice(0, [...jobs.values()].indexOf(job));
+      if (job.state === "processing" || earlier.some((j) => j.payload.sender_phone === job.payload.sender_phone && j.state !== "done")) return { data: { busy: true } };
+      job.state = "processing"; job.attempts++; job.token = `token-${++token}`;
+      return { data: { ...job, pending_media: earlier.filter((j) => j.batch === job.batch && j.asset).map((j) => j.asset) } };
+    }
+    if (args.p_token !== job.token) return { error: { message: "stale worker" } };
+    if (name === "checkpoint_whatsapp_asset") job.asset = args.p_asset;
+    if (name === "fail_whatsapp_message") { job.state = "failed"; job.last_error = args.p_error; }
+    if (name === "complete_whatsapp_message") { job.state = "done"; job.reply = args.p_plan.reply; plans.push(args.p_plan); }
+    return { data: {}, error: null };
   });
-}
-
-/**
- * Minimal chainable Supabase query-builder stub. Each terminal call
- * (`.maybeSingle()`, `.single()`, a bare `await ...insert(...)`, or
- * `.rpc(...)`) consumes the next entry from `queue`, in the exact order the
- * route issues them.
- */
-function createSupabaseMock(
-  queue: Array<{ data: unknown; error: unknown }>,
-  tableResponses: Record<string, { data: unknown; error: unknown }> = {},
-) {
-  let cursor = 0;
-  const next = () => queue[cursor++] ?? { data: null, error: null };
-  const inserts: Array<{ table: string; payload: any }> = [];
-
-  function chain(table?: string): any {
-    const node: any = {
-      select: () => chain(table),
-      eq: () => chain(table),
-      maybeSingle: async () => next(),
-      single: async () => next(),
-      insert: (payload: unknown) => {
-        inserts.push({ table: table ?? "", payload });
-        const inserted = chain(table);
-        inserted.__payload = payload;
-        inserted.then = (resolve: (v: unknown) => void) => resolve(next());
-        return inserted;
-      },
-      upsert: async () => next(),
-      // A bare `await supabase.from(x).select(...)` with no further chaining
-      // (e.g. the categories/collections lookups) resolves via this — table
-      // -specific canned responses when given, otherwise the shared queue.
-      then: (resolve: (v: unknown) => void) =>
-        resolve(table && tableResponses[table] ? tableResponses[table] : next()),
+  function from(table: string): any {
+    let id: string;
+    let update: any;
+    const chain = {
+      select: () => chain, eq: (_: string, value: string) => { id = value; return chain; },
+      maybeSingle: async () => ({ data: { ...jobs.get(id), sender_phone: phone }, error: null }),
+      update: (value: any) => { update = value; return chain; },
+      then: (resolve: any) => { if (update) Object.assign(jobs.get(id), update); resolve({ data: table === "categories" ? [{ id: "cat", name: "Silk", slug: "silk" }] : [{ id: "collection", name: "Bridal", description: null }], error: null }); },
     };
-    return node;
+    return chain;
   }
-
-  return { from: (table: string) => chain(table), rpc: async () => next(), inserts };
+  return { rpc, from, jobs, plans, failures };
 }
-
-function mockFetchSequence(responses: Array<{ ok: boolean; json?: unknown; text?: string; headers?: Record<string, string> }>) {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
-  let i = 0;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push({ url, init });
-      const r = responses[i++] ?? { ok: true, json: {} };
-      return {
-        ok: r.ok,
-        status: r.ok ? 200 : 500,
-        headers: new Map(Object.entries(r.headers ?? { "content-type": "image/jpeg" })),
-        json: async () => r.json ?? {},
-        text: async () => r.text ?? "",
-        arrayBuffer: async () => new ArrayBuffer(8),
-      };
-    }),
-  );
-  return calls;
-}
-
-function setBaseEnv() {
-  process.env.WHATSAPP_APP_SECRET = APP_SECRET;
-  process.env.WHATSAPP_ADMIN_NUMBERS = ADMIN_NUMBER;
-}
-
-function setReplyEnv() {
-  process.env.WHATSAPP_ACCESS_TOKEN = "token";
-  process.env.WHATSAPP_PHONE_NUMBER_ID = "phone-id";
-}
-
-function setCloudinaryEnv() {
-  process.env.CLOUDINARY_API_KEY = "key";
-  process.env.CLOUDINARY_API_SECRET = "secret";
-  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = "cloud";
-}
-
-describe("parseProductCaption", () => {
-  it("splits description | price | fabric and cleans the price", () => {
-    expect(parseProductCaption("Red silk saree with gold border | 2500 | Silk")).toEqual({
-      description: "Red silk saree with gold border",
-      price: 2500,
-      fabric: "Silk",
-    });
-  });
-
-  it("strips currency symbols and commas from the price", () => {
-    expect(parseProductCaption("Green saree | ₹1,999 | Cotton").price).toBe(1999);
-  });
-
-  it("falls back to the whole caption as description when there is no separator", () => {
-    expect(parseProductCaption("Kanjivaram Red")).toEqual({
-      description: "Kanjivaram Red",
-      price: null,
-      fabric: null,
-    });
-  });
-
-  it("treats a missing or non-numeric price as null without dropping the fabric", () => {
-    expect(parseProductCaption("Blue saree | | Georgette")).toEqual({
-      description: "Blue saree",
-      price: null,
-      fabric: "Georgette",
-    });
-  });
-
-  it("rejects a zero price", () => {
-    expect(parseProductCaption("Saree | 0 | Silk").price).toBeNull();
-  });
+let db: ReturnType<typeof database>;
+let uploads: number;
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("WHATSAPP_APP_SECRET", "secret"); vi.stubEnv("WHATSAPP_ADMIN_NUMBERS", phone);
+  for (const key of ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME"]) vi.stubEnv(key, "test");
+  db = database(); mocks.client.mockReturnValue(db);
+  mocks.ai.mockReturnValue({ isConfigured: () => false });
+  mocks.sign.mockResolvedValue({ signature: "signed", uploadUrl: "https://upload.invalid" });
+  uploads = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === "https://upload.invalid") {
+      uploads++; const id = (init?.body as FormData).get("public_id");
+      return new Response(JSON.stringify({ secure_url: `https://cdn.invalid/${id}.jpg`, public_id: id }));
+    }
+    if (url.includes("/resources/")) return new Response("{}", { status: 404 });
+    if (url.includes("/messages")) return new Response("{}");
+    if (url === "https://media.invalid") return new Response(new Uint8Array([1,2,3]));
+    return new Response(JSON.stringify({ url: "https://media.invalid" }));
+  }));
 });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-describe("parseCollectionMessage", () => {
-  it("extracts a trailing price from free-flowing prose", () => {
-    expect(
-      parseCollectionMessage("Exquisite Kanjivaram-style Tissue Benarasi sarees... 4900"),
-    ).toEqual({
-      description: "Exquisite Kanjivaram-style Tissue Benarasi sarees",
-      price: 4900,
-      fabric: null,
-    });
+describe("durable WhatsApp route (F02/F03/F04)", () => {
+  it("rejects invalid signatures and ignores unauthorized senders", async () => {
+    expect((await POST(new Request("http://localhost", { method: "POST", body: "{}" }))).status).toBe(401);
+    expect((await POST(request(envelope([{ ...message("a"), from: "11111111111" }])))).status).toBe(200);
+    expect(db.rpc).not.toHaveBeenCalled();
   });
-
-  it("understands a currency symbol and /- suffix", () => {
-    expect(parseCollectionMessage("Pure mysore silk saree ₹4,500/-")).toEqual({
-      description: "Pure mysore silk saree",
-      price: 4500,
-      fabric: null,
-    });
+  it("enumerates every message, change and entry and matches contacts by sender", async () => {
+    const payload = { object: "whatsapp_business_account", entry: [
+      { changes: [{ value: { messages: [message("a"), message("b")] } }, { value: { messages: [message("c")] } }] },
+      { changes: [{ value: { messages: [message("d")], contacts: [{ wa_id: "wrong", profile: { name: "Wrong" } }, { wa_id: phone, profile: { name: "Right" } }] } }] },
+    ] };
+    expect((await POST(request(payload))).status).toBe(200);
+    expect([...db.jobs.keys()]).toEqual(["a", "b", "c", "d"]);
+    expect(db.jobs.get("d").payload.contact_name).toBe("Right");
+    expect(uploads).toBe(4);
+    expect(db.plans.every((p) => p.reply === null)).toBe(true);
   });
-
-  it("falls back to the whole text as description when no price is found", () => {
-    expect(parseCollectionMessage("Beautiful cotton sarees, new arrivals")).toEqual({
-      description: "Beautiful cotton sarees, new arrivals",
-      price: null,
-      fabric: null,
-    });
+  it("fails closed if durable acceptance fails, before uploading anything", async () => {
+    db.failures.set("enqueue_whatsapp_messages", 1);
+    expect((await POST(request(envelope([message("a")])))).status).toBe(503);
+    expect(uploads).toBe(0);
   });
-
-  it("still honours the pipe-separated legacy format", () => {
-    expect(parseCollectionMessage("Red silk saree | 2500 | Silk")).toEqual({
-      description: "Red silk saree",
-      price: 2500,
-      fabric: "Silk",
-    });
+  it("handles videos, text finalization and subsequent products with disjoint batches", async () => {
+    const payload = envelope([message("a"), message("b", "", "video"), message("c", "Silk saree | 1200", "text"), message("d", "Cotton saree | 900")]);
+    expect((await POST(request(payload))).status).toBe(200);
+    const products = db.plans.filter((p) => p.variants?.length);
+    expect(products).toHaveLength(2);
+    expect(products[0].variants[0].media.map((m: any) => m.message_id)).toEqual(["a", "b"]);
+    expect(products[1].variants[0].media.map((m: any) => m.message_id)).toEqual(["d"]);
+    expect(products[0].price).toBe(1200);
   });
-});
-
-// deriveProductName is now the AI-free path through the catalogue naming
-// convention (src/lib/ai/style-guide.ts), so it styles rather than truncates.
-// The convention itself is covered in naming-style.test.ts.
-describe("deriveProductName", () => {
-  it("keeps the description's words but applies the house style", () => {
-    expect(deriveProductName("Kanjivaram Red")).toBe("Kanjivaram Red Saree");
+  it("deduplicates simultaneous deliveries before external side effects", async () => {
+    const payload = envelope([message("a", "Silk saree | 1200")]);
+    await Promise.all([POST(request(payload)), POST(request(payload))]);
+    expect(uploads).toBe(1); expect(db.plans).toHaveLength(1);
+    expect((await POST(request(payload))).status).toBe(200);
+    expect(uploads).toBe(1);
   });
-
-  it("distils a long marketing description to a short, styled name", () => {
-    const long =
-      "Exquisite Kanjivaram-style Tissue Benarasi sarees with a rich gold zari border and traditional temple motifs";
-    const name = deriveProductName(long);
-    expect(name.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
-    expect(name.endsWith(" ")).toBe(false);
-    // No marketing lead-in, no plural, exactly one product noun.
-    expect(name).not.toMatch(/exquisite/i);
-    expect(name.match(/saree/gi)).toHaveLength(1);
-    expect(name).not.toMatch(/sarees/i);
+  it("retains upload and failed state when commit fails; retry reuses media and creates once", async () => {
+    db.failures.set("complete_whatsapp_message", 1);
+    const payload = envelope([message("a", "Silk saree | 1200")]);
+    expect((await POST(request(payload))).status).toBe(503);
+    expect(db.jobs.get("a")).toMatchObject({ state: "failed", asset: { media_id: "media-a" }, last_error: expect.stringContaining("injected") });
+    expect(db.plans).toHaveLength(0);
+    expect((await POST(request(payload))).status).toBe(200);
+    expect(uploads).toBe(1); expect(db.plans).toHaveLength(1);
   });
-});
-
-describe("WhatsApp route boundary", () => {
-  beforeEach(() => {
-    mockGetAiProvider.mockReturnValue(AI_OFF_PROVIDER);
+  it("retains raw media identity even when the upload checkpoint write fails", async () => {
+    db.failures.set("checkpoint_whatsapp_asset", 1);
+    const payload = envelope([message("a")]);
+    expect((await POST(request(payload))).status).toBe(503);
+    expect(db.jobs.get("a").payload).toMatchObject({ media_id: "media-a", public_id: expect.any(String) });
+    expect((await POST(request(payload))).status).toBe(200);
+    const calls = mocks.sign.mock.calls;
+    expect(calls[0][0].public_id).toBe(calls[1][0].public_id);
+    expect(calls[0][0].overwrite).toBe("false");
   });
-
-  afterEach(() => {
-    delete process.env.WHATSAPP_APP_SECRET;
-    delete process.env.WHATSAPP_ADMIN_NUMBERS;
-    delete process.env.WHATSAPP_ACCESS_TOKEN;
-    delete process.env.WHATSAPP_PHONE_NUMBER_ID;
-    delete process.env.CLOUDINARY_API_KEY;
-    delete process.env.CLOUDINARY_API_SECRET;
-    delete process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-  });
-
-  it("rejects unsigned webhook payloads", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const response = await POST(
-      new Request("http://localhost/api/whatsapp", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-hub-signature-256": "sha256=invalid" },
-        body: "{}",
-      }),
-    );
-    expect(response.status).toBe(401);
-    expect(mockCreateAdminClient).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalled();
-  });
-
-  it("ignores correctly signed image messages from non-admin senders", async () => {
-    setBaseEnv();
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const body = imageMessagePayload({ caption: "Test", from: "919999999999" });
-    const response = await POST(signedRequest(body));
-    expect(response.status).toBe(200);
-    expect(mockCreateAdminClient).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith("whatsapp webhook: ignored message from a non-admin sender");
-  });
-
-  it("ignores a duplicate message_id without re-processing it", async () => {
-    setBaseEnv();
-    const supabase = createSupabaseMock([{ data: { message_id: "wamid.dup" }, error: null }]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const body = imageMessagePayload({ caption: "New Kanjivaram", messageId: "wamid.dup" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-  });
-
-  it("silently queues an uncaptioned photo without creating a product or replying", async () => {
-    setBaseEnv();
-    setReplyEnv();
-    setCloudinaryEnv();
-
-    mockSignUpload.mockResolvedValue({
-      signature: "sig",
-      apiKey: "key",
-      cloudName: "cloud",
-      uploadUrl: "https://api.cloudinary.com/v1_1/cloud/image/upload",
-    });
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: null, error: null }, // rpc append_whatsapp_pending_media
-      { data: null, error: null }, // whatsapp_ingest_events.insert()
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([
-      { ok: true, json: { url: "https://graph.example/media/media-1", mime_type: "image/jpeg" } }, // Meta media metadata
-      { ok: true, headers: { "content-type": "image/jpeg" } }, // Meta binary download
-      { ok: true, json: { secure_url: "https://res.cloudinary.com/cloud/image/upload/v1/pending-1.jpg" } }, // Cloudinary upload
-    ]);
-
-    const body = imageMessagePayload({ caption: "" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-    // Exactly 3 fetch calls (metadata, download, upload) — no WhatsApp reply sent.
-    expect(calls.length).toBe(3);
-  });
-
-  it("silently queues an uncaptioned video the same way as a photo", async () => {
-    setBaseEnv();
-    setReplyEnv();
-    setCloudinaryEnv();
-
-    mockSignUpload.mockResolvedValue({
-      signature: "sig",
-      apiKey: "key",
-      cloudName: "cloud",
-      uploadUrl: "https://api.cloudinary.com/v1_1/cloud/video/upload",
-    });
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: null, error: null }, // rpc append
-      { data: null, error: null }, // ingest insert
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([
-      { ok: true, json: { url: "https://graph.example/media/media-video", mime_type: "video/mp4" } },
-      { ok: true, headers: { "content-type": "video/mp4" } },
-      { ok: true, json: { secure_url: "https://res.cloudinary.com/cloud/video/upload/v1/pending-video.mp4" } },
-    ]);
-
-    const body = videoMessagePayload({});
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(calls.length).toBe(3);
-  });
-
-  it("finalizes a batch of queued photos + a video into one product when the description text arrives", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      {
-        data: {
-          pending_media: [
-            { media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "2026-01-01T00:00:00.000Z" },
-            { media_id: "m2", message_id: "wamid.m2", url: "https://res.cloudinary.com/cloud/video/upload/v1/b.mp4", kind: "video", received_at: "2026-01-01T00:00:01.000Z" },
-          ],
-        },
-        error: null,
-      }, // admin_upload_sessions pending_media lookup
-      { data: { id: "prod-1", name: "Exquisite Kanjivaram-style Tissue Benarasi sarees", slug: "exquisite-kanjivaram-style-tissue-benarasi-sarees", product_code: "EXQUISITE-KANJIVARAM-STYLE-TISSUE-BENARASI-SAREES" }, error: null }, // products.insert().select().single()
-      { data: { id: "var-1", product_id: "prod-1" }, error: null }, // product_variants.insert().select().single()
-      { data: null, error: null }, // variant_images.insert() (bulk)
-      { data: null, error: null }, // admin_upload_sessions.upsert() (reset)
-      { data: null, error: null }, // whatsapp_ingest_events.insert()
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]); // WhatsApp reply only — no media in this message
-
-    const body = textMessagePayload({
-      body: "Exquisite Kanjivaram-style Tissue Benarasi sarees... 4900",
-      messageId: "wamid.finalize",
-    });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-    expect(calls.length).toBe(1);
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toContain("Exquisite Kanjivaram");
-    expect(replyBody.text.body).toContain("1 photo and 1 video");
-  });
-
-  it("replies with the correct photo/video counts on finalize", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null },
-      {
-        data: {
-          pending_media: [
-            { media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "t1" },
-            { media_id: "m2", message_id: "wamid.m2", url: "https://res.cloudinary.com/cloud/video/upload/v1/b.mp4", kind: "video", received_at: "t2" },
-          ],
-        },
-        error: null,
-      },
-      { data: { id: "prod-1", name: "Some Saree", slug: "some-saree", product_code: "SOME-SAREE" }, error: null },
-      { data: { id: "var-1", product_id: "prod-1" }, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some saree 1200", messageId: "wamid.finalize-2" });
-    await POST(signedRequest(body));
-
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toContain("1 photo and 1 video");
-    expect(replyBody.text.body).toContain("₹1200");
-    expect(replyBody.text.body).toContain("Some Saree");
-  });
-
-  it("replies with a helpful hint instead of creating a product when the description arrives with nothing queued", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: { pending_media: [] }, error: null }, // pending_media lookup: empty
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some description 1200" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(calls.length).toBe(1);
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toMatch(/forward the photos/i);
-  });
-
-  it("keeps the legacy single-image-with-caption flow working", async () => {
-    setBaseEnv();
-    setReplyEnv();
-    setCloudinaryEnv();
-
-    mockSignUpload.mockResolvedValue({
-      signature: "sig",
-      apiKey: "key",
-      cloudName: "cloud",
-      uploadUrl: "https://api.cloudinary.com/v1_1/cloud/image/upload",
-    });
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: null, error: null }, // rpc append
-      {
-        data: { pending_media: [{ media_id: "media-1", message_id: "wamid.1", url: "https://res.cloudinary.com/cloud/image/upload/v1/kanjivaram-red.jpg", kind: "image", received_at: "t1" }] },
-        error: null,
-      }, // pending_media lookup (finalize)
-      { data: { id: "prod-1", name: "Kanjivaram Red", slug: "kanjivaram-red", product_code: "KANJIVARAM-RED" }, error: null }, // products.insert().select().single()
-      { data: { id: "var-1", product_id: "prod-1" }, error: null }, // product_variants.insert().select().single()
-      { data: null, error: null }, // variant_images.insert()
-      { data: null, error: null }, // admin_upload_sessions.upsert() (reset)
-      { data: null, error: null }, // whatsapp_ingest_events.insert()
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    mockFetchSequence([
-      { ok: true, json: { url: "https://graph.example/media/media-1", mime_type: "image/jpeg" } }, // Meta media metadata
-      { ok: true, headers: { "content-type": "image/jpeg" } }, // Meta binary download
-      { ok: true, json: { secure_url: "https://res.cloudinary.com/cloud/image/upload/v1/kanjivaram-red.jpg", public_id: "kanjivaram-red" } }, // Cloudinary upload
-      { ok: true, json: {} }, // WhatsApp reply
-    ]);
-
-    const body = imageMessagePayload({ caption: "Kanjivaram Red" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-  });
-
-  it("adds a numbered photo to the sender's active upload session", async () => {
-    setBaseEnv();
-    setReplyEnv();
-    setCloudinaryEnv();
-
-    mockSignUpload.mockResolvedValue({
-      signature: "sig",
-      apiKey: "key",
-      cloudName: "cloud",
-      uploadUrl: "https://api.cloudinary.com/v1_1/cloud/image/upload",
-    });
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: { product_id: "prod-1", variant_id: "var-1" }, error: null }, // admin_upload_sessions lookup
-      { data: { id: "prod-1", product_code: "KANJIVARAM-RED", slug: "kanjivaram-red" }, error: null }, // products lookup
-      { data: null, error: null }, // variant_images.insert()
-      { data: null, error: null }, // admin_upload_sessions.upsert() (touch)
-      { data: null, error: null }, // whatsapp_ingest_events.insert()
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    mockFetchSequence([
-      { ok: true, json: { url: "https://graph.example/media/media-2" } },
-      { ok: true, headers: { "content-type": "image/jpeg" } },
-      { ok: true, json: { secure_url: "https://res.cloudinary.com/cloud/image/upload/v1/kanjivaram-red-2.jpg" } },
-      { ok: true, json: {} },
-    ]);
-
-    const body = imageMessagePayload({ caption: "2", mediaId: "media-2", messageId: "wamid.2" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
-  });
-
-  it("replies with a helpful message when a numbered caption arrives with no active session", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      { data: null, error: null }, // admin_upload_sessions lookup: none
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = imageMessagePayload({ caption: "2", mediaId: "media-2", messageId: "wamid.no-session" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(calls.length).toBe(1);
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toMatch(/no active product session/i);
-  });
-
-  it("retries with a -2 suffix on a slug collision instead of failing", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const supabase = createSupabaseMock([
-      { data: null, error: null }, // dedup check
-      {
-        data: { pending_media: [{ media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "t1" }] },
-        error: null,
-      }, // pending_media lookup
-      { data: null, error: { code: "23505", message: 'duplicate key value violates unique constraint "products_slug_key"' } }, // first insert attempt: collision
-      { data: { id: "prod-2", name: "Some Saree", slug: "some-saree-2", product_code: "SOME-SAREE-2" }, error: null }, // second attempt: success
-      { data: { id: "var-1", product_id: "prod-2" }, error: null }, // product_variants insert
-      { data: null, error: null }, // variant_images insert
-      { data: null, error: null }, // session reset
-      { data: null, error: null }, // ingest insert
-    ]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some saree 1200", messageId: "wamid.collision" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toContain("SOME-SAREE-2");
-    expect(replyBody.text.body).toContain("Some Saree");
-  });
-
-  it("never fails silently: a persistent DB error still gets a plain-language WhatsApp reply, not the raw error", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    const dedupAndLookup = [
-      { data: null, error: null }, // dedup check
-      {
-        data: { pending_media: [{ media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "t1" }] },
-        error: null,
-      }, // pending_media lookup
-    ];
-    const persistentCollisions = Array.from({ length: 25 }, () => ({
-      data: null,
-      error: { code: "23505", message: 'duplicate key value violates unique constraint "products_slug_key"' },
+  it("recovers an orphaned upload by its stable identity even after Meta media expires", async () => {
+    db.failures.set("checkpoint_whatsapp_asset", 1);
+    const payload = envelope([message("a", "Silk")]);
+    expect((await POST(request(payload))).status).toBe(503);
+    const original = global.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (...args: Parameters<typeof fetch>) => {
+      const url = String(args[0]);
+      if (url.includes("/resources/")) return new Response(JSON.stringify({ secure_url: "https://cdn.invalid/recovered.jpg" }));
+      if (url.includes("media-a")) throw new Error("Meta media expired");
+      return original(...args);
     }));
-    const supabase = createSupabaseMock([...dedupAndLookup, ...persistentCollisions]);
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some saree 1200", messageId: "wamid.fail" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(calls.length).toBe(1);
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toMatch(/problem saving your product/i);
-    expect(replyBody.text.body).not.toMatch(/duplicate key/i);
-    expect(replyBody.text.body).not.toMatch(/23505/);
-    error.mockRestore();
+    expect((await POST(request(payload))).status).toBe(200);
+    expect(uploads).toBe(1);
+    expect(db.jobs.get("a").asset.url).toBe("https://cdn.invalid/recovered.jpg");
   });
-});
-
-describe("WhatsApp route — AI auto-tagging", () => {
-  afterEach(() => {
-    delete process.env.WHATSAPP_APP_SECRET;
-    delete process.env.WHATSAPP_ADMIN_NUMBERS;
-    delete process.env.WHATSAPP_ACCESS_TOKEN;
-    delete process.env.WHATSAPP_PHONE_NUMBER_ID;
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
+  it("records all messages before a failure and keeps later batches recoverable", async () => {
+    db.failures.set("complete_whatsapp_message", 1);
+    const payload = envelope([message("a"), message("b", "Silk", "text"), message("c", "Cotton")]);
+    expect((await POST(request(payload))).status).toBe(503);
+    expect(db.jobs.size).toBe(3);
+    expect(db.jobs.get("b").state).toBe("pending");
+    expect((await POST(request(payload))).status).toBe(200);
+    expect(db.plans.filter((p) => p.variants?.length)).toHaveLength(2);
   });
-
-  function fakeAiProvider(overrides: Record<string, unknown> = {}) {
-    return {
-      name: "fake",
-      isConfigured: () => true,
-      suggestProductMetadata: vi.fn().mockResolvedValue(null),
-      classifyCollection: vi.fn().mockResolvedValue([]),
-      suggestColorVariants: vi.fn().mockResolvedValue(null),
-      ...overrides,
-    };
-  }
-
-  const CATEGORY_TABLE_RESPONSE = {
-    data: [{ id: "cat-banarasi", slug: "banarasi", name: "Banarasi" }],
-    error: null,
-  };
-  const COLLECTION_TABLE_RESPONSE = {
-    data: [{ id: "col-bridal", name: "Bridal Sarees", description: null }],
-    error: null,
-  };
-
-  it("auto-fills category/fabric/highlights, tags a confident collection, and splits into colour-variant products", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    mockGetAiProvider.mockReturnValue(
-      fakeAiProvider({
-        suggestProductMetadata: vi.fn().mockResolvedValue({
-          category_slug: { value: "banarasi", confidence: 0.9 },
-          highlights: { value: ["Rich zari border"], confidence: 0.8 },
-          fabric_type: { value: "Tissue silk", confidence: 0.85 },
-        }),
-        classifyCollection: vi
-          .fn()
-          .mockResolvedValue([{ collection_id: "col-bridal", collection_name: "Bridal Sarees", confidence: 0.85, evidence: "e" }]),
-        suggestColorVariants: vi.fn().mockResolvedValue([
-          { color: "Ivory", color_hex: null, asset_client_upload_ids: ["m1", "m2"], confidence: 0.9, is_best_display: true },
-          { color: "Rani Pink", color_hex: null, asset_client_upload_ids: ["m3"], confidence: 0.85, is_best_display: false },
-        ]),
-      }),
-    );
-
-    const supabase = createSupabaseMock(
-      [
-        { data: null, error: null }, // dedup check
-        {
-          data: {
-            pending_media: [
-              { media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/ivory1.jpg", kind: "image", received_at: "t1" },
-              { media_id: "m2", message_id: "wamid.m2", url: "https://res.cloudinary.com/cloud/image/upload/v1/ivory2.jpg", kind: "image", received_at: "t2" },
-              { media_id: "m3", message_id: "wamid.m3", url: "https://res.cloudinary.com/cloud/image/upload/v1/pink1.jpg", kind: "image", received_at: "t3" },
-              { media_id: "v1", message_id: "wamid.v1", url: "https://res.cloudinary.com/cloud/video/upload/v1/clip.mp4", kind: "video", received_at: "t4" },
-            ],
-          },
-          error: null,
-        }, // pending_media lookup
-        { data: { id: "prod-1", name: "Banarasi Tissue Saree", slug: "banarasi-tissue-saree", product_code: "BANARASI-TISSUE-SAREE" }, error: null }, // products.insert
-        { data: { id: "var-ivory", product_id: "prod-1" }, error: null }, // product_variants.insert (Ivory)
-        { data: null, error: null }, // variant_images.insert (Ivory + video)
-        { data: { id: "var-pink", product_id: "prod-1" }, error: null }, // product_variants.insert (Rani Pink)
-        { data: null, error: null }, // variant_images.insert (Rani Pink)
-        { data: null, error: null }, // collection_products.insert
-        { data: null, error: null }, // admin_upload_sessions.upsert (reset)
-        { data: null, error: null }, // whatsapp_ingest_events.insert
-      ],
-      { categories: CATEGORY_TABLE_RESPONSE, collections: COLLECTION_TABLE_RESPONSE },
-    );
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Exquisite Banarasi tissue sarees 4900", messageId: "wamid.tagged" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-
-    const productInsert = supabase.inserts.find((i) => i.table === "products");
-    expect(productInsert?.payload).toMatchObject({
-      category_id: "cat-banarasi",
-      highlights: ["Rich zari border"],
-      fabric_type: "Tissue silk",
+  it("retains a recoverable error when Meta fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("unavailable", { status: 500 })));
+    expect((await POST(request(envelope([message("a")])))).status).toBe(503);
+    expect(db.jobs.get("a").state).toBe("failed");
+    expect(db.plans).toHaveLength(0);
+  });
+  it("completes empty text with a helpful durable reply, and numbered photos with no new product plan", async () => {
+    expect((await POST(request(envelope([message("a", "Silk", "text"), message("b", "2")])))).status).toBe(200);
+    expect(db.plans[0]).toMatchObject({ variants: [], reply: expect.stringContaining("No photos") });
+    expect(db.plans[1]).toEqual({ reply: "Saved photo 2." });
+  });
+  it("preserves AI metadata, collection tagging, colour splitting and video ownership in the atomic plan", async () => {
+    mocks.ai.mockReturnValue({ isConfigured: () => true,
+      suggestProductMetadata: vi.fn().mockResolvedValue({ category_slug: { value: "silk", confidence: 0.9 }, highlights: { value: ["Zari border"], confidence: 0.9 } }),
+      classifyCollection: vi.fn().mockResolvedValue([{ collection_id: "collection", collection_name: "Bridal", confidence: 0.9, evidence: "bridal" }]),
+      suggestColorVariants: vi.fn().mockResolvedValue([
+        { color: "Ivory", color_hex: null, asset_client_upload_ids: ["media-a"], confidence: 0.9, is_best_display: true },
+        { color: "Pink", color_hex: null, asset_client_upload_ids: ["media-b"], confidence: 0.9, is_best_display: false },
+      ]),
     });
-
-    const variantInserts = supabase.inserts.filter((i) => i.table === "product_variants");
-    expect(variantInserts.map((i) => i.payload.color)).toEqual(["Ivory", "Rani Pink"]);
-
-    const imageInserts = supabase.inserts.filter((i) => i.table === "variant_images");
-    expect(imageInserts[0].payload).toHaveLength(3); // 2 ivory photos + the video
-    expect(imageInserts[0].payload.some((row: any) => row.media_type === "video")).toBe(true);
-    expect(imageInserts[1].payload).toHaveLength(1); // 1 pink photo
-
-    const collectionInsert = supabase.inserts.find((i) => i.table === "collection_products");
-    expect(collectionInsert?.payload).toEqual([{ collection_id: "col-bridal", product_id: "prod-1", display_order: 0 }]);
-
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).toContain("2 colourways");
-    expect(replyBody.text.body).toContain("Category: Banarasi.");
-    expect(replyBody.text.body).toContain("Collections: Bridal Sarees.");
+    expect((await POST(request(envelope([message("a"), message("b"), message("v", "", "video"), message("close", "Bridal Silk | 1200 | Silk", "text")])))).status).toBe(200);
+    const product = db.plans.at(-1);
+    expect(product).toMatchObject({ category_id: "cat", collection_ids: ["collection"], highlights: ["Zari border"], fabric_type: "Silk" });
+    expect(product.variants.map((v: any) => v.color)).toEqual(["Ivory", "Pink"]);
+    expect(product.variants[0].media.map((m: any) => m.message_id)).toEqual(["a", "v"]);
+    expect(product.variants[1].media.map((m: any) => m.message_id)).toEqual(["b"]);
   });
-
-  it("keeps a single Default variant when AI can't confidently split colours, but still applies tags", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    mockGetAiProvider.mockReturnValue(
-      fakeAiProvider({
-        suggestProductMetadata: vi.fn().mockResolvedValue({
-          category_slug: { value: "banarasi", confidence: 0.9 },
-        }),
-        suggestColorVariants: vi.fn().mockResolvedValue([
-          { color: "Ivory", color_hex: null, asset_client_upload_ids: ["m1", "m2"], confidence: 0.9, is_best_display: true },
-        ]), // only one colourway found — not a split
-      }),
-    );
-
-    const supabase = createSupabaseMock(
-      [
-        { data: null, error: null }, // dedup check
-        {
-          data: {
-            pending_media: [
-              { media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "t1" },
-              { media_id: "m2", message_id: "wamid.m2", url: "https://res.cloudinary.com/cloud/image/upload/v1/b.jpg", kind: "image", received_at: "t2" },
-            ],
-          },
-          error: null,
-        },
-        { data: { id: "prod-1", name: "Some Saree", slug: "some-saree", product_code: "SOME-SAREE" }, error: null },
-        { data: { id: "var-1", product_id: "prod-1" }, error: null }, // single Default variant
-        { data: null, error: null }, // variant_images.insert
-        { data: null, error: null }, // admin_upload_sessions.upsert (reset)
-        { data: null, error: null }, // whatsapp_ingest_events.insert
-      ],
-      { categories: CATEGORY_TABLE_RESPONSE, collections: { data: [], error: null } },
-    );
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some saree 1200", messageId: "wamid.no-split" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(supabase.inserts.filter((i) => i.table === "product_variants")).toHaveLength(1);
-    expect(supabase.inserts.find((i) => i.table === "product_variants")?.payload.color).toBe("Default");
-
-    const replyBody = JSON.parse((calls[0].init?.body as string) ?? "{}");
-    expect(replyBody.text.body).not.toMatch(/colourways/);
-    expect(replyBody.text.body).toContain("Category: Banarasi.");
+  it("falls back to a single variant when AI suggestions fail", async () => {
+    mocks.ai.mockReturnValue({ isConfigured: () => true,
+      suggestProductMetadata: vi.fn().mockRejectedValue(new Error("AI offline")),
+      classifyCollection: vi.fn().mockRejectedValue(new Error("AI offline")),
+      suggestColorVariants: vi.fn().mockRejectedValue(new Error("AI offline")),
+    });
+    expect((await POST(request(envelope([message("a", "Silk | 1200 | Silk")])))).status).toBe(200);
+    expect(db.plans[0].variants[0].color).toBe("Default");
   });
-
-  it("still creates the product when the category/collection lookup itself fails", async () => {
-    setBaseEnv();
-    setReplyEnv();
-
-    mockGetAiProvider.mockReturnValue(fakeAiProvider());
-
-    const supabase = createSupabaseMock(
-      [
-        { data: null, error: null }, // dedup check
-        {
-          data: { pending_media: [{ media_id: "m1", message_id: "wamid.m1", url: "https://res.cloudinary.com/cloud/image/upload/v1/a.jpg", kind: "image", received_at: "t1" }] },
-          error: null,
-        },
-        { data: { id: "prod-1", name: "Some Saree", slug: "some-saree", product_code: "SOME-SAREE" }, error: null },
-        { data: { id: "var-1", product_id: "prod-1" }, error: null },
-        { data: null, error: null }, // variant_images.insert
-        { data: null, error: null }, // admin_upload_sessions.upsert (reset)
-        { data: null, error: null }, // whatsapp_ingest_events.insert
-      ],
-      {
-        categories: { data: null, error: { message: "categories lookup boom" } },
-        collections: { data: null, error: { message: "collections lookup boom" } },
-      },
-    );
-    mockCreateAdminClient.mockReturnValue(supabase);
-
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const calls = mockFetchSequence([{ ok: true, json: {} }]);
-
-    const body = textMessagePayload({ body: "Some saree 1200", messageId: "wamid.lookup-fail" });
-    const response = await POST(signedRequest(body));
-
-    expect(response.status).toBe(200);
-    expect(calls.length).toBe(1); // still got exactly one reply, not an error reply
-    const productInsert = supabase.inserts.find((i) => i.table === "products");
-    expect(productInsert?.payload).toMatchObject({ category_id: null, highlights: [] });
-    warn.mockRestore();
+  it("does not recreate products if reply delivery fails after commit", async () => {
+    const original = global.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (...args: Parameters<typeof fetch>) => String(args[0]).includes("/messages") ? new Response("failed", { status: 500 }) : original(...args)));
+    const payload = envelope([message("a", "Silk | 1200")]);
+    expect((await POST(request(payload))).status).toBe(503);
+    expect(db.jobs.get("a").state).toBe("done");
+    expect((await POST(request(payload))).status).toBe(503);
+    expect(db.plans).toHaveLength(1); expect(uploads).toBe(1);
   });
 });
