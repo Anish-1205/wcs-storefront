@@ -18,6 +18,17 @@ const nextConfig = {
     // 75 remains available for small admin/interface thumbnails; storefront
     // photography opts into 90 in the components below.
     qualities: [75, 90],
+    // Next's defaults (8 deviceSizes x 8 imageSizes) generate far more
+    // variants than this site ever requests: source photography is capped at
+    // 1600px (scripts/prepare-media.mjs MAX_EDGE) or 1800px (Cloudinary's
+    // "full" transform, src/lib/cloudinary.ts), so device widths above ~1920
+    // are pure waste, and the layout never needs the full stock ladder of
+    // tiny imageSizes either (actual `fill` thumbnails use 14-112px, ~44-96
+    // for admin panels, ~400+ for cards/galleries). Trimming both arrays
+    // directly cuts the per-image variant count Vercel bills as
+    // transformations.
+    deviceSizes: [384, 640, 828, 1080, 1280, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
     remotePatterns: [
       {
         protocol: "https",
