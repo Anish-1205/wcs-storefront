@@ -3,7 +3,7 @@
 import { ContentRegion } from "@/components/content/ContentRegion";
 
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {

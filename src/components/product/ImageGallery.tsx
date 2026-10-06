@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { PinterestSaveButton } from "./PinterestSaveButton";

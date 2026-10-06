@@ -1,6 +1,6 @@
 
 import { ContentRegion } from "@/components/content/ContentRegion";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import Link from "next/link";
 import { cld } from "@/lib/cloudinary";
 import type { Collection } from "@/lib/supabase/types";

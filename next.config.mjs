@@ -1,41 +1,23 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
-// Scope the Cloudinary remote pattern to our own delivery account. Cloudinary
-// URLs are https://res.cloudinary.com/<cloud-name>/<resource>/... so restricting
-// the pathname to our cloud name stops the Image Optimizer being used as a
-// fetch proxy for arbitrary third-party Cloudinary accounts. Falls back to the
-// broad pattern only if the (public) cloud name is unavailable at build time.
-const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    formats: ["image/avif", "image/webp"],
-    // Product photography contains fine weave and zari detail. Keep those
-    // details through the final Next.js encode while still serving responsive
-    // AVIF/WebP sizes for each viewport.
-    // 75 remains available for small admin/interface thumbnails; storefront
-    // photography opts into 90 in the components below.
-    qualities: [75, 90],
-    // Next's defaults (8 deviceSizes x 8 imageSizes) generate far more
-    // variants than this site ever requests: source photography is capped at
-    // 1600px (scripts/prepare-media.mjs MAX_EDGE) or 1800px (Cloudinary's
-    // "full" transform, src/lib/cloudinary.ts), so device widths above ~1920
-    // are pure waste, and the layout never needs the full stock ladder of
-    // tiny imageSizes either (actual `fill` thumbnails use 14-112px, ~44-96
-    // for admin panels, ~400+ for cards/galleries). Trimming both arrays
-    // directly cuts the per-image variant count Vercel bills as
-    // transformations.
-    deviceSizes: [384, 640, 828, 1080, 1280, 1920],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256],
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-        pathname: cloudinaryCloudName ? `/${cloudinaryCloudName}/**` : "/**",
-      },
-    ],
+    // Every next/image in the app is served by src/lib/image-loader.ts, never
+    // by Vercel's /_next/image optimizer: once the plan's transformation
+    // allowance is used up that endpoint answers 402 for every size not
+    // already cached, and new product photos render as alt text. Cloudinary
+    // media is resized by Cloudinary; public/media photos use the pre-sized
+    // copies in public/m (scripts/build-media-variants.mjs, run by prebuild).
+    loader: "custom",
+    loaderFile: "./src/lib/image-loader.ts",
+    // The widths a srcset can ask for. Source photography is capped at 1600px
+    // (scripts/prepare-media.mjs MAX_EDGE), so nothing wider is useful, and a
+    // short ladder keeps the number of Cloudinary derivations per photo small.
+    // 128/384/640 are also the local copy widths (LOCAL_VARIANT_WIDTHS).
+    deviceSizes: [384, 640, 1080, 1600],
+    imageSizes: [128, 256],
   },
   // The /wholesale page was removed (Sept 2026) — "Ask on WhatsApp" is now the
   // one consistent CTA for resellers and retail customers alike. Redirect any

@@ -3,7 +3,7 @@
 import { ContentRegion } from "@/components/content/ContentRegion";
 
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
 import { formatINR } from "@/lib/catalog-format";

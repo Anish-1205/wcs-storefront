@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { useState } from "react";
 import { cld } from "@/lib/cloudinary";
 import { getDisplayPrice, formatPrice } from "@/lib/price";

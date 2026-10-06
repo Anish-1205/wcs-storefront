@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 

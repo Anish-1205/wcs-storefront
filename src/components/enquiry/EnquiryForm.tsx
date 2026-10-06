@@ -4,7 +4,7 @@ import { ContentRegion } from "@/components/content/ContentRegion";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import Link from "next/link";
 import { useCart } from "@/lib/cart/CartContext";
 import {

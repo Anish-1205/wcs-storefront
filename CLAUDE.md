@@ -27,6 +27,7 @@ supabase gen types typescript --local > src/lib/supabase/types.ts   # Regenerate
 
 ```bash
 node scripts/prepare-media.mjs "<source folder>"   # (re)build public/media from the raw photo/video library
+node scripts/build-media-variants.mjs                # (re)build public/m/<width>/**.webp, the pre-sized copies of public/media photos (also runs as prebuild)
 node scripts/optimize-video.mjs                      # re-encode public/media/**/*.mp4 (H.264 CRF 28, audio stripped)
 node scripts/prepare-logo.mjs "<logo file>"          # (re)build public/brand/** + src/app icons from the brand artwork
 node scripts/extract-colour-variants.mjs             # AI-extract colourway swatches from public/media/**/*colour-range*.jpg -> public/media/colour-variants.json (needs ANTHROPIC_API_KEY; degrades to no-op)
@@ -51,6 +52,8 @@ See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-dr
 **Rate limiting**: `src/lib/rate-limit.ts` wraps Upstash Redis (`Ratelimit.slidingWindow`, keyed by `x-forwarded-for`) — used on public-facing POST endpoints (`/api/inquiries`, `/api/subscribe`, `/api/whatsapp`) to throttle abuse.
 
 **Theming**: All colours are `hsl(var(--token))` (`globals.css`). Light is the base `:root`; dark re-declares the tokens under `:root[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`. A pre-paint inline script in `src/app/layout.tsx` sets `data-theme` from `localStorage['wcs.theme']` or the device preference; `ThemeToggle` (storefront navbar + admin) flips it. Don't hardcode hex or `bg-white`/`text-ivory` in components — use tokens (`bg-card`, `text-primary-foreground`, …). The brand logo ships as light/dark PNG pairs (`public/brand/`, built by `scripts/prepare-logo.mjs`) rendered by `<BrandMark>` and toggled by `.brand-light`/`.brand-dark` in `globals.css` — same three-selector pattern as the tokens.
+
+**Images**: every `next/image` goes through the custom loader `src/lib/image-loader.ts` (`images.loaderFile`) — Cloudinary URLs get `f_auto,q_auto,w_<n>,c_limit` (chained after any existing transformation; video URLs become poster frames), `public/media` photos map to the pre-sized WebP copies in `public/m/<128|384|640>/`, anything else passes through. Nothing may use Vercel's `/_next/image` optimizer (Hobby quota runs out and it answers 402). Public components import `SafeImage` (`src/components/media/SafeImage.tsx`) instead of `next/image` so a failed image shows a neutral box, not alt text. After adding photos to `public/media`, run `node scripts/build-media-variants.mjs` and commit `public/m` (a vitest guard fails otherwise).
 
 **Validation**: Zod schemas in `src/lib/validation.ts` are the source of truth for input shapes on both API routes and admin forms/actions — validate at the API boundary, not just in the UI.
 

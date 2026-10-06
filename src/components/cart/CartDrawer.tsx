@@ -3,7 +3,7 @@
 import { ContentRegion } from "@/components/content/ContentRegion";
 
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage as Image } from "@/components/media/SafeImage";
 import { useEffect, useRef } from "react";
 import { X, Minus, Plus } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
