@@ -21,6 +21,19 @@ import {
 } from "@/lib/whatsapp-enrichment";
 
 export const runtime = "nodejs";
+// Explicit so the limit is a decision, not a plan default. The inbox lease
+// (migration 028, 2 minutes) is sized to outlive this.
+export const maxDuration = 60;
+
+// No new message is started after this point in an invocation, leaving the
+// rest of maxDuration for the one in hand (a video download + upload, or the
+// AI calls behind a finalize) to finish. Whatever is left is drained by the
+// next delivery or message from that sender.
+const DRAIN_BUDGET_MS = 35_000;
+const DRAIN_POLL_MS = 400;
+const MAX_DRAIN_STEPS = 60;
+const MAX_DRAIN_POLLS = Math.floor(DRAIN_BUDGET_MS / DRAIN_POLL_MS);
+const MAX_REPLY_ATTEMPTS = 5;
 
 const GRAPH_API_VERSION = "v20.0";
 
@@ -177,8 +190,8 @@ type InboxMessage = {
   raw_message: WhatsAppMessage;
 };
 type ClaimedMessage = {
-  done?: boolean;
-  busy?: boolean;
+  idle?: boolean;
+  in_flight?: boolean;
   token: string;
   attempts: number;
   asset: PendingMediaItem | null;
@@ -477,11 +490,9 @@ async function rpc<T>(supabase: ReturnType<typeof createAdminClient>, name: stri
   return data as T;
 }
 
-async function processMessage(supabase: ReturnType<typeof createAdminClient>, messageId: string) {
-  const claimed = await rpc<ClaimedMessage>(supabase, "claim_whatsapp_message", { p_message_id: messageId });
-  if (claimed.done) return;
-  if (claimed.busy) throw new Error("WhatsApp message is queued behind an unfinished delivery");
+async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claimed: ClaimedMessage) {
   const m = claimed.payload;
+  const messageId = m.message_id;
   try {
     let asset = claimed.asset;
     if (m.kind && m.media_id && !asset) {
@@ -501,7 +512,7 @@ async function processMessage(supabase: ReturnType<typeof createAdminClient>, me
     await rpc(supabase, "complete_whatsapp_message", { p_message_id: messageId, p_token: claimed.token, p_plan: plan });
   } catch (error) {
     // If recording this failure also fails, the committed claim remains visible
-    // and becomes reclaimable after its lease expires. Never acknowledge success.
+    // and becomes reclaimable after its lease expires.
     await rpc(supabase, "fail_whatsapp_message", { p_message_id: messageId, p_token: claimed.token,
       p_error: error instanceof Error ? error.message : String(error) }).catch((recordError) =>
         reportError(recordError, { scope: "whatsapp-failure-record", messageId }));
@@ -509,14 +520,63 @@ async function processMessage(supabase: ReturnType<typeof createAdminClient>, me
   }
 }
 
-async function deliverReply(supabase: ReturnType<typeof createAdminClient>, messageId: string) {
+/**
+ * Send every reply that is due for this sender. Replies are leased in SQL, so
+ * concurrent invocations never double-send, and a failed send is retried a
+ * bounded number of times by later drains. Never throws: a reply that cannot
+ * be delivered must not take the webhook (or the rest of the queue) with it.
+ */
+async function deliverReplies(supabase: ReturnType<typeof createAdminClient>, sender: string) {
+  try {
+    const due = await rpc<{ message_id: string; sender_phone: string; reply: string; state: string; last_error: string | null }[]>(
+      supabase, "claim_whatsapp_replies", { p_sender_phone: sender });
+    for (const item of due ?? []) {
+      if (item.state === "dead") {
+        reportError(new Error(`WhatsApp message dead-lettered: ${item.last_error ?? "unknown error"}`),
+          { scope: "whatsapp-dead-letter", messageId: item.message_id });
+      }
+      let sent = false;
+      try {
+        await sendWhatsAppReply(item.sender_phone, item.reply);
+        sent = true;
+      } catch (error) {
+        reportError(error, { scope: "whatsapp-reply", messageId: item.message_id });
+      }
+      await rpc(supabase, "finish_whatsapp_reply", { p_message_id: item.message_id, p_sent: sent });
+    }
+  } catch (error) {
+    reportError(error, { scope: "whatsapp-reply" });
+  }
+}
+
+/**
+ * Work through everything runnable for a sender — not just the messages this
+ * delivery carried. A message left behind by a busy, failed or killed
+ * invocation is picked up here by whichever delivery comes next, instead of
+ * waiting on Meta to redeliver that exact message. Returns whether another
+ * worker is still mid-message for this sender.
+ */
+async function drainSender(supabase: ReturnType<typeof createAdminClient>, sender: string, deadline: number) {
+  for (let step = 0; step < MAX_DRAIN_STEPS && Date.now() < deadline; step++) {
+    const claimed = await rpc<ClaimedMessage>(supabase, "claim_next_whatsapp_message", { p_sender_phone: sender });
+    if (claimed.idle) return Boolean(claimed.in_flight);
+    try {
+      await runClaimed(supabase, claimed);
+    } catch (error) {
+      reportError(error, { scope: "whatsapp-processing", messageId: claimed.payload.message_id });
+    }
+    await deliverReplies(supabase, sender);
+  }
+  return false;
+}
+
+/** True once none of these messages still needs a redelivery to make progress. */
+async function isSettled(supabase: ReturnType<typeof createAdminClient>, messageIds: string[]) {
   const { data, error } = await supabase.from("whatsapp_inbox")
-    .select("sender_phone, reply, reply_sent, state").eq("message_id", messageId).maybeSingle();
-  if (error) throw error;
-  if (data?.state !== "done" || !data.reply || data.reply_sent) return;
-  await sendWhatsAppReply(data.sender_phone, data.reply);
-  const { error: saveError } = await supabase.from("whatsapp_inbox").update({ reply_sent: true }).eq("message_id", messageId);
-  if (saveError) throw saveError;
+    .select("message_id, state, reply, reply_sent, reply_attempts").in("message_id", messageIds);
+  if (error) throw new PipelineStageError("db_write", `inbox status: ${error.message}`);
+  return (data ?? []).every((row) => (row.state === "done" || row.state === "dead")
+    && (!row.reply || row.reply_sent || row.reply_attempts >= MAX_REPLY_ATTEMPTS));
 }
 
 export async function GET(req: Request) {
@@ -571,17 +631,26 @@ export async function POST(req: Request) {
     if (!messages.length) return NextResponse.json({ ok: true });
     const supabase = createAdminClient();
     await rpc(supabase, "enqueue_whatsapp_messages", { p_messages: messages });
-    let failed = false;
-    for (const message of messages) {
-      try {
-        await processMessage(supabase, message.message_id);
-        await deliverReply(supabase, message.message_id);
-      } catch (error) {
-        failed = true;
-        reportError(error, { scope: "whatsapp-processing", messageId: message.message_id });
+    // The messages are durable from here on. Everything below is best-effort
+    // progress: a 503 only asks Meta to redeliver as a backup driver.
+    const deadline = Date.now() + DRAIN_BUDGET_MS;
+    const messageIds = messages.map((message) => message.message_id);
+    const senders = [...new Set(messages.map((message) => message.sender_phone))];
+    let settled = false;
+    for (let polls = 0; ; polls++) {
+      let inFlight = false;
+      for (const sender of senders) {
+        inFlight = (await drainSender(supabase, sender, deadline)) || inFlight;
+        await deliverReplies(supabase, sender);
       }
+      settled = await isSettled(supabase, messageIds);
+      // Only wait when another invocation is mid-message for this sender (a
+      // finalize text arriving while its photos are still uploading); a queue
+      // parked on a retry backoff is left to the next delivery.
+      if (settled || !inFlight || polls >= MAX_DRAIN_POLLS || Date.now() + DRAIN_POLL_MS >= deadline) break;
+      await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
     }
-    return NextResponse.json(failed ? { error: "Messages retained for retry" } : { ok: true }, { status: failed ? 503 : 200 });
+    return NextResponse.json(settled ? { ok: true } : { error: "Messages retained for retry" }, { status: settled ? 200 : 503 });
   } catch (error) {
     reportError(error, { scope: "whatsapp-receipt" });
     return NextResponse.json({ error: "Could not accept messages" }, { status: 503 });

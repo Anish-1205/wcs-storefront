@@ -1,6 +1,6 @@
-# P0 audit fixes � 2026-10-04
+# P0 audit fixes � 2026-10-04
 
-Scope: F01, F02/F03/F04, F11 (review lookup failure), F14, F19/F21 and F24 only. Existing user edits were preserved. No production database, deployment or external provider data was modified. P1�P3 remain outside this change.
+Scope: F01, F02/F03/F04, F11 (review lookup failure), F14, F19/F21 and F24 only. Existing user edits were preserved. No production database, deployment or external provider data was modified. P1�P3 remain outside this change.
 
 ## Changes and regression evidence
 
@@ -41,6 +41,8 @@ node --env-file=.env.local scripts/replay-whatsapp.mjs "<message-id>"
 ```
 
 The script reads the configured Supabase inbox and posts signed original messages to `NEXT_PUBLIC_SITE_URL`, retaining their IDs. It replays unfinished predecessors for that sender first, stops on a failed replay and paginates by sequence. It does not reset product associations or generate replacement IDs. This operator command was syntax-checked, not run against a deployed service.
+
+**Superseded by migration 028 where they differ — read this paragraph first.** The inbox is no longer strict per-sender FIFO and no longer depends on Meta redelivering each message. Ordering is by dependency only: media waits on nothing, a finalize waits for the media in its own batch, a numbered photo for its batch's finalize. Every webhook drains whatever is runnable for its sender (`claim_next_whatsapp_message`), so the next delivery or message picks up work left by a busy, failed or killed invocation. A failure backs off (5s × attempt); after 5 attempts — including leases that expired because the function was killed — the message becomes `dead`, stops blocking its batch and replies to the admin with what to resend. Leases are 2 minutes (the route sets `maxDuration = 60`). Replies are leased (`claim_whatsapp_replies` / `finish_whatsapp_reply`), so they are neither double-sent by concurrent invocations nor retried more than 5 times. A finalize whose batch gains a photo while it is building is requeued without spending an attempt; a photo arriving after its listing exists is appended to it; a finalize that found no media can never be joined by later media. A numbered photo with no listing is answered (`done` with an explanatory reply) rather than left failing. There is still no scheduled worker: a parked retry resumes on the sender's next message or Meta's redelivery.
 
 An active claim is not stolen. After an interrupted worker's ten-minute lease expires, a retry obtains a new token; the old token cannot checkpoint or commit. A failed commit can retry immediately. If an upload succeeded but its checkpoint failed, the retry looks up the deterministic Cloudinary public ID before downloading from Meta again. This follows Cloudinary's documented [duplicate-upload behavior](https://cloudinary.com/documentation/upload_images#avoiding_duplicate_uploads) and [asset lookup API](https://cloudinary.com/documentation/admin_api#get_resources).
 
