@@ -11,12 +11,27 @@ await root.query(`create database ${name}`);
 const db = new Client({ ...config, database: name });
 const other = new Client({ ...config, database: name });
 await db.connect(); await other.connect();
+// enqueue_whatsapp_messages contains a regroup failure rather than lose a message; here any such warning is a bug.
+const warnings = [];
+for (const client of [db, other]) client.on("notice", (n) => { if (n.severity === "WARNING") warnings.push(n.message); });
 async function rpc(fn, args) {
   return (await db.query(`select ${fn}(${args.map((_,i)=>`$${i+1}`).join(",")}) as result`, args)).rows[0].result;
 }
 let clock = Date.parse("2026-10-04T00:00:00Z");
 // Each message is sent a second after the last unless a send time is given: batch membership follows message_timestamp.
-const m = (id, mode, caption="", sender="test-admin", at=(clock+=1000)) => ({ message_id:id,sender_phone:sender,mode,caption,message_timestamp:new Date(at).toISOString(),media_id:`media-${id}`,public_id:`asset-${id}`,raw_message:{id} });
+const m = (id, mode, caption="", sender="test-admin", at=(clock+=1000), extra={}) => ({ message_id:id,sender_phone:sender,mode,caption,message_timestamp:new Date(at).toISOString(),media_id:`media-${id}`,public_id:`asset-${id}`,raw_message:{id},...extra });
+/** WhatsApp time passes without anything being sent. */
+const pause = (seconds) => { clock += seconds*1000; };
+const sweep = (sender=null) => rpc("whatsapp_sweep", [sender]);
+const batchOf = async (id) => (await db.query("select b.* from whatsapp_batches b join whatsapp_inbox i on i.batch_id=b.id where i.message_id=$1",[id])).rows[0];
+/** Upload every claimable photo/video for a sender. */
+const upload = async (sender) => { for (;;) { const job=await claimNext(sender); if (job.idle || job.mode!=="media") return job; await checkpoint(job.message_id,job); await complete(job.message_id,job); } };
+/** Let time pass for a sender's open messages and notices without sleeping. */
+const age = async (sender, interval) => {
+  await db.query("update whatsapp_inbox set created_at=created_at-$2::interval where sender_phone=$1",[sender,interval]);
+  await db.query("update whatsapp_batches set asked_at=asked_at-$2::interval where sender_phone=$1",[sender,interval]);
+  await db.query("update whatsapp_notices set not_before=not_before-$2::interval where sender_phone=$1",[sender,interval]);
+};
 const enqueue = (messages) => rpc("enqueue_whatsapp_messages", [JSON.stringify(messages)]);
 const claim = (id) => rpc("claim_whatsapp_message", [id]);
 const claimNext = (sender) => rpc("claim_next_whatsapp_message", [sender]);
@@ -120,7 +135,7 @@ try {
   assert.equal((await claim("legacy")).done,true);
   assert.equal((await db.query("select count(*) from whatsapp_batches")).rows[0].count,batchCount);
   // A failure at the last write must roll back products, variants, images and session.
-  await enqueue([m("late-failure","finalize","Late","late-admin")]);
+  await enqueue([m("late-failure","finalize","Late","late-admin",undefined,{kind:"image"})]);
   const late=await claim("late-failure"); await checkpoint("late-failure",late);
   await db.query(`create function fail_last_ingest() returns trigger language plpgsql as $$begin
     if new.message_id='late-failure' then raise exception 'injected late write'; end if; return new; end$$;
@@ -135,26 +150,38 @@ try {
   const retryLate=await claim("late-failure"); await complete("late-failure",retryLate,plan("late-product",[retryLate.asset]));
   console.log("PASS F03: failure at final receipt write rolls back every logical effect; checkpoint survives replay");
   // ---- Migration 028: no head-of-line blocking, drain, dead-letter, leased replies ----
-  // The production sequence: description first, then photos, then the description again.
+  // Description first (029): parked instead of answered "No photos"; its photos are still never queued behind each other.
   await enqueue([m("p-text-1","finalize","Silk","prod-admin")]);
-  const pText1=await claimNext("prod-admin"); assert.equal(pText1.message_id,"p-text-1"); assert.deepEqual(pText1.pending_media,[]);
-  await complete("p-text-1",pText1,{variants:[],reply:"No photos"});
+  assert.deepEqual(await claimNext("prod-admin"),{idle:true,in_flight:false});
+  assert.equal((await batchOf("p-text-1")).status,"awaiting_media");
+  assert.equal(await rpc("whatsapp_settled",[["p-text-1"]]),true); // parked: nothing for Meta to redeliver
   await enqueue([m("p1","media","","prod-admin"),m("p2","media","","prod-admin")]);
   // Media needs nothing but itself: p2 is claimable while p1 is still in flight.
   const p2=await claim("p2"); const p1=await claim("p1"); assert.ok(p1.token&&p2.token);
-  await enqueue([m("p-text-2","finalize","Silk","prod-admin")]);
   assert.deepEqual(await claimNext("prod-admin"),{idle:true,in_flight:true});
   for (const [id,job] of [["p1",p1],["p2",p2]]) { await checkpoint(id,job); await complete(id,job); }
-  const pText2=await claimNext("prod-admin"); assert.equal(pText2.message_id,"p-text-2");
-  assert.deepEqual(pText2.pending_media.map(x=>x.message_id),["p1","p2"]);
-  await complete("p-text-2",pText2,plan("prod-listing",pText2.pending_media));
-  const prodRows=Object.fromEntries((await db.query("select message_id,batch_id from whatsapp_inbox where sender_phone='prod-admin'")).rows.map(r=>[r.message_id,r.batch_id]));
-  assert.notEqual(prodRows["p1"],prodRows["p-text-1"]); assert.equal(prodRows["p1"],prodRows["p2"]); assert.equal(prodRows["p1"],prodRows["p-text-2"]);
+  // Uploaded but still inside the quiet period: the description keeps waiting.
+  assert.deepEqual(await sweep("prod-admin"),["prod-admin"]);
   assert.deepEqual(await claimNext("prod-admin"),{idle:true,in_flight:false});
-  console.log("PASS 028: text, photos, text builds one listing in a fresh batch; media is never queued behind media");
+  const wake=await rpc("whatsapp_next_wake",["prod-admin"]); assert.ok(wake>40&&wake<=45,`quiet period due in ${wake}s`);
+  await age("prod-admin","46 seconds"); await sweep("prod-admin");
+  const pText1=await claimNext("prod-admin"); assert.equal(pText1.message_id,"p-text-1");
+  assert.deepEqual(pText1.pending_media.map(x=>x.message_id),["p1","p2"]);
+  assert.equal(pText1.grouping,"2 sent after your description");
+  await complete("p-text-1",pText1,plan("prod-listing",pText1.pending_media,{reply:"First"}));
+  pause(60);
+  await enqueue([m("p3","media","","prod-admin"),m("p-text-2","finalize","Cotton","prod-admin")]);
+  const pText2=await upload("prod-admin"); assert.equal(pText2.message_id,"p-text-2");
+  assert.deepEqual(pText2.pending_media.map(x=>x.message_id),["p3"]); assert.equal(pText2.grouping,"1 sent before your description");
+  await complete("p-text-2",pText2,plan("prod-listing-2",pText2.pending_media,{reply:"Second"}));
+  const prodRows=Object.fromEntries((await db.query("select message_id,batch_id from whatsapp_inbox where sender_phone='prod-admin'")).rows.map(r=>[r.message_id,r.batch_id]));
+  assert.equal(prodRows["p1"],prodRows["p-text-1"]); assert.equal(prodRows["p1"],prodRows["p2"]); assert.equal(prodRows["p3"],prodRows["p-text-2"]);
+  assert.notEqual(prodRows["p1"],prodRows["p3"]);
+  assert.deepEqual(await claimNext("prod-admin"),{idle:true,in_flight:false});
+  console.log("PASS 029: description first is parked, takes the photos sent after it and closes on the quiet period; media is never queued behind media");
   // Replies are leased: one claimer gets them, a second gets nothing until the lease lapses.
   const due=await rpc("claim_whatsapp_replies",["prod-admin"]);
-  assert.deepEqual(due.map(r=>[r.message_id,r.reply,r.state]),[["p-text-1","No photos","done"],["p-text-2","Created","done"]]);
+  assert.deepEqual(due.map(r=>[r.message_id,r.reply,r.state]),[["p-text-1","First","done"],["p-text-2","Second","done"]]);
   assert.deepEqual(await rpc("claim_whatsapp_replies",["prod-admin"]),[]);
   await rpc("finish_whatsapp_reply",["p-text-1",true]); await rpc("finish_whatsapp_reply",["p-text-2",false]);
   assert.deepEqual(await rpc("claim_whatsapp_replies",["prod-admin"]),[]); // a failed send backs off
@@ -163,10 +190,12 @@ try {
   await db.query("update whatsapp_inbox set reply_attempts=5,reply_lease_until=null where message_id='p-text-2'");
   assert.deepEqual(await rpc("claim_whatsapp_replies",["prod-admin"]),[]); // bounded
   console.log("PASS 028: replies are leased, retried with backoff and bounded");
-  // An empty finalize is never a join target, even for media stamped in the same second.
+  // A description that timed out with nothing is never a join target, even for media stamped in its own second.
   const sameSecond=(clock+=1000);
   await enqueue([m("s-text","finalize","Silk","same-admin",sameSecond)]);
-  const sText=await claimNext("same-admin"); await complete("s-text",sText,{variants:[],reply:"No photos"});
+  await age("same-admin","11 minutes"); await sweep("same-admin");
+  assert.equal((await batchOf("s-text")).status,"closed_empty");
+  assert.match((await row("s-text")).reply,/within 10 minutes, so no listing was created/);
   await enqueue([m("s-photo","media","","same-admin",sameSecond)]);
   assert.notEqual((await row("s-photo")).batch_id,(await row("s-text")).batch_id);
   // A straggler landing while the finalize is building: requeued with the attempt refunded, then rebuilt with it.
@@ -225,10 +254,103 @@ try {
   const nOrphan=await claimNext("killed-admin"); await checkpoint("n-orphan",nOrphan); await complete("n-orphan",nOrphan,{reply:"Saved photo 3."});
   assert.match((await row("n-orphan")).reply,/Photo 3 was not added/);
   console.log("PASS 028: retry limit dead-letters with a reply, including killed workers; nothing blocks forever");
+  // ---- Migration 029: grouping by description ----
+  const reasons = async (sender) => Object.fromEntries((await db.query("select i.message_id,i.assignment_reason,i.confidence,b.description_id from whatsapp_inbox i join whatsapp_batches b on b.id=i.batch_id where i.sender_phone=$1 and i.mode='media'",[sender])).rows.map(r=>[r.message_id,[r.description_id,r.assignment_reason,r.confidence]]));
+  // The production incident, with the pause that was there: D1, album A, 13s, album B, D2.
+  await enqueue([m("i-d1","finalize","Bandhej","inc-admin"),m("i-a1","media","","inc-admin"),m("i-a2","media","","inc-admin")]);
+  pause(13);
+  await enqueue([m("i-b1","media","","inc-admin"),m("i-b2","media","","inc-admin")]);
+  pause(6);
+  await enqueue([m("i-d2","finalize","Bandhej","inc-admin")]);
+  assert.deepEqual(await reasons("inc-admin"),{"i-a1":["i-d1","after_description","high"],"i-a2":["i-d1","after_description","high"],
+    "i-b1":["i-d2","before_description","high"],"i-b2":["i-d2","before_description","high"]});
+  const iD1=await upload("inc-admin"); assert.equal(iD1.message_id,"i-d1"); assert.deepEqual(iD1.pending_media.map(x=>x.message_id),["i-a1","i-a2"]);
+  await complete("i-d1",iD1,plan("incident-a",iD1.pending_media));
+  const iD2=await upload("inc-admin"); assert.equal(iD2.message_id,"i-d2"); assert.deepEqual(iD2.pending_media.map(x=>x.message_id),["i-b1","i-b2"]);
+  // A plan can still never reach across into the other listing's media.
+  await assert.rejects(complete("i-d2",iD2,plan("incident-b",[...iD2.pending_media,asset("i-a1")])),/does not belong to this batch/);
+  const iD2b=await (async()=>{ await fail("i-d2",iD2); await elapse("i-d2"); return claimNext("inc-admin"); })();
+  await complete("i-d2",iD2b,plan("incident-b",iD2b.pending_media));
+  assert.deepEqual((await db.query("select slug,count(*)::int as media from whatsapp_listing_audit where slug like 'incident-%' and mode='media' group by slug order by slug")).rows,
+    [{slug:"incident-a",media:2},{slug:"incident-b",media:2}]);
+  console.log("PASS 029: D1, album, pause, album, D2 gives each description its own album, auditable per message");
+  // The same with no pause: one burst between two descriptions is never guessed. Delivered as two racing transactions.
+  const q=[m("q-d1","finalize","First","ask-admin"),m("q-m1","media","","ask-admin"),m("q-m2","media","","ask-admin"),m("q-m3","media","","ask-admin"),m("q-d2","finalize","Second","ask-admin")];
+  await Promise.all([enqueue([q[0],q[2],q[4]]),other.query("select enqueue_whatsapp_messages($1)",[JSON.stringify([q[1],q[3]])])]);
+  await enqueue(q); // every webhook redelivered: nothing changes
+  assert.deepEqual([(await batchOf("q-d1")).status,(await batchOf("q-d2")).status],["awaiting_confirmation","awaiting_confirmation"]);
+  assert.deepEqual(Object.values(await reasons("ask-admin")).map(r=>r.slice(1)),[["ambiguous","none"],["ambiguous","none"],["ambiguous","none"]]);
+  assert.equal((await upload("ask-admin")).idle,true); // photos upload; neither description can run
+  assert.deepEqual(await rpc("claim_whatsapp_replies",["ask-admin"]),[]); // held a moment, so it counts the whole album
+  await age("ask-admin","5 seconds");
+  const asked=await rpc("claim_whatsapp_replies",["ask-admin"]);
+  assert.deepEqual(asked.map(r=>r.state),["notice"]); assert.match(asked[0].reply,/then 3 photo\(s\)\/video\(s\), then description 2 \("Second"\)/);
+  await rpc("finish_whatsapp_reply",[asked[0].message_id,true]);
+  assert.deepEqual(await rpc("claim_whatsapp_replies",["ask-admin"]),[]);
+  assert.equal((await db.query("select count(*)::int as n from whatsapp_notices where sender_phone='ask-admin'")).rows[0].n,1);
+  await age("ask-admin","46 seconds"); await sweep("ask-admin"); // a quiet period does not answer a question
+  assert.equal((await claimNext("ask-admin")).idle,true);
+  await enqueue([m("q-answer","finalize","2","ask-admin")]);
+  assert.equal((await row("q-answer")).mode,"answer");
+  assert.deepEqual(await reasons("ask-admin"),{"q-m1":["q-d2","confirmed_second","confirmed"],"q-m2":["q-d2","confirmed_second","confirmed"],"q-m3":["q-d2","confirmed_second","confirmed"]});
+  assert.match((await row("q-d1")).reply,/No listing was created for "First"/);
+  const qD2=await claimNext("ask-admin"); assert.equal(qD2.message_id,"q-d2"); assert.equal(qD2.grouping,"3 you confirmed");
+  await complete("q-d2",qD2,plan("asked-listing",qD2.pending_media));
+  await enqueue([m("q-stray","finalize","3","ask-admin")]);
+  assert.match((await row("q-stray")).reply,/no question waiting/);
+  console.log("PASS 029: one burst between two descriptions is held and asked about once; the answer decides; racing deliveries converge");
+  // No answer in 10 minutes: the contested media becomes its own draft, mixed into nothing.
+  await enqueue([m("t-d1","finalize","First","aside-admin"),m("t-v","media","","aside-admin",undefined,{kind:"video"}),m("t-m","media","","aside-admin"),m("t-d2","finalize","Second","aside-admin")]);
+  for (const id of ["t-v","t-m"]) { const job=await claim(id); await rpc("checkpoint_whatsapp_asset",[id,job.token,JSON.stringify({...asset(id),kind:id==="t-v"?"video":"image"})]); await complete(id,job); }
+  await age("aside-admin","11 minutes"); await sweep("aside-admin");
+  const aside=(await db.query("select p.name,p.status,p.slug,array_agg(i.image_url order by i.display_order) as urls,array_agg(i.is_primary order by i.display_order) as prim,array_agg(i.media_type order by i.display_order) as kinds from products p join product_variants v on v.product_id=p.id join variant_images i on i.variant_id=v.id where p.id=(select product_id from whatsapp_batches where sender_phone='aside-admin' and status='unassigned') group by p.id")).rows[0];
+  assert.equal(aside.name,"Unassigned WhatsApp media"); assert.equal(aside.status,"draft"); assert.match(aside.slug,/^unassigned-whatsapp-media-/);
+  assert.deepEqual([aside.urls,aside.prim,aside.kinds],[[asset("t-v").url,asset("t-m").url],[false,true],["video","image"]]); // the primary is the photo, not the video
+  assert.deepEqual([(await row("t-d1")).state,(await row("t-d2")).state],["done","done"]);
+  assert.equal((await db.query("select count(*)::int as n from products where slug in ('t-d1','t-d2')")).rows[0].n,0);
+  assert.ok((await rpc("claim_whatsapp_replies",["aside-admin"])).some(r=>/saved as the draft "Unassigned WhatsApp media"/.test(r.reply)));
+  // Photos that never get a description are set aside after 30 minutes instead of joining the next listing.
+  await enqueue([m("o1","media","","orphan-admin"),m("o2","media","","orphan-admin")]); await upload("orphan-admin");
+  await age("orphan-admin","31 minutes"); pause(31*60);
+  await enqueue([m("o3","media","","orphan-admin"),m("o-text","finalize","Silk","orphan-admin")]);
+  assert.deepEqual(await reasons("orphan-admin"),{o1:[null,"unassigned","none"],o2:[null,"unassigned","none"],o3:["o-text","before_description","high"]});
+  assert.equal((await db.query("select count(*)::int as n from whatsapp_batches where sender_phone='orphan-admin' and status='unassigned' and product_id is not null")).rows[0].n,1);
+  console.log("PASS 029: unanswered questions and stale photos become an 'Unassigned WhatsApp media' draft; nothing is mixed or lost");
+  // Explicit signals win: a reply to a photo owns that photo's album; a caption owns the album around it.
+  await enqueue([m("x-a1","media","","explicit-admin"),m("x-a2","media","","explicit-admin")]);
+  pause(20);
+  await enqueue([m("x-b1","media","","explicit-admin")]);
+  pause(3);
+  await enqueue([m("x-reply","finalize","Silk","explicit-admin",undefined,{raw_message:{id:"x-reply",context:{id:"x-a2"}}})]);
+  assert.deepEqual(await reasons("explicit-admin"),{"x-a1":["x-reply","reply_to_media","explicit"],"x-a2":["x-reply","reply_to_media","explicit"],"x-b1":[null,"awaiting_description","provisional"]});
+  pause(60);
+  await enqueue([m("x-c1","media","","explicit-admin"),m("x-cap","finalize","Cotton","explicit-admin",undefined,{kind:"image"})]);
+  await enqueue([m("x-c2","media","","explicit-admin")]); // the rest of the captioned album, a moment later
+  const explicit=await reasons("explicit-admin");
+  assert.deepEqual([explicit["x-c1"],explicit["x-c2"]],[["x-cap","caption_album","explicit"],["x-cap","straggler","high"]]);
+  assert.deepEqual(explicit["x-b1"],[null,"awaiting_description","provisional"]); // never swept into a listing it was not sent with
+  console.log("PASS 029: reply-to-photo and captions assign explicitly");
+  // A batch grouped before 029 keeps working: the migration is replayable and leaves it closed with 028's straggler window.
+  const legacyAt=new Date(clock+=1000).toISOString();
+  await db.query(`with b as (insert into whatsapp_batches(sender_phone,sealed) values('legacy-admin',true) returning id)
+    insert into whatsapp_inbox(message_id,sender_phone,batch_id,payload,mode) select x.id,'legacy-admin',b.id,jsonb_build_object('message_id',x.id,'sender_phone','legacy-admin','mode',x.mode,'caption','Old','message_timestamp',$1::text),x.mode
+      from b,(values('l-photo','media'),('l-text','finalize')) x(id,mode)`,[legacyAt]);
+  const before029=(await db.query("select id,status,frozen_at,claim_to,summary from whatsapp_batches where status is not null order by sequence")).rows;
+  await db.query(readFileSync("supabase/migrations/029_whatsapp_grouping.sql","utf8"));
+  assert.deepEqual((await db.query("select id,status,frozen_at,claim_to,summary from whatsapp_batches where status is not null and sender_phone<>'legacy-admin' order by sequence")).rows,before029);
+  const legacy=await batchOf("l-text"); assert.equal(legacy.status,"legacy"); assert.ok(legacy.frozen_at); assert.equal(legacy.claim_to.toISOString(),legacyAt);
+  const lText=await upload("legacy-admin"); assert.equal(lText.message_id,"l-text"); assert.deepEqual(lText.pending_media.map(x=>x.message_id),["l-photo"]);
+  await complete("l-text",lText,plan("legacy-listing",lText.pending_media));
+  await enqueue([m("l-late","media","","legacy-admin",Date.parse(legacyAt)-5000)]);
+  assert.equal((await row("l-late")).batch_id,legacy.id);
+  console.log("PASS 029: replaying the migration changes nothing; pre-029 batches stay closed and keep their straggler window");
+  assert.deepEqual(warnings,[]);
   // Function/table/sequence grants work with the real service_role, not only the owner.
   await db.query("set role service_role");
-  await enqueue([m("service","media","","service-admin")]);
+  await enqueue([m("service","media","","service-admin"),m("service-text","finalize","Silk","service-admin")]);
   const service=await claim("service"); await checkpoint("service",service); await complete("service",service);
+  await sweep(); await rpc("whatsapp_next_wake",["service-admin"]); await rpc("claim_whatsapp_replies",["service-admin"]);
+  assert.equal((await db.query("select count(*)::int as n from whatsapp_listing_audit where sender_phone='service-admin'")).rows[0].n,2);
   await db.query("reset role");
   console.log("PASS: crashed workers reclaimable with fenced checkpoints");
   for (const role of ["anon","authenticated"]) {
@@ -236,6 +358,10 @@ try {
     await assert.rejects(db.query("select * from whatsapp_inbox"),/permission denied/);
     await assert.rejects(db.query("select claim_whatsapp_message('a')"),/permission denied/);
     await assert.rejects(db.query("select save_storefront_page_draft('home','{}')"),/permission denied/);
+    await assert.rejects(db.query("select * from whatsapp_notices"),/permission denied/);
+    await assert.rejects(db.query("select * from whatsapp_listing_audit"),/permission denied/);
+    await assert.rejects(db.query("select whatsapp_sweep(null)"),/permission denied/);
+    await assert.rejects(db.query("select whatsapp_regroup('x')"),/permission denied/);
     await db.query("reset role");
   }
   console.log("PASS: private inbox and new RPC permissions");

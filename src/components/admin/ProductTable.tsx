@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import { Pagination } from "./Pagination";
-import { cld } from "@/lib/cloudinary";
+import { MediaThumb } from "./MediaThumb";
 import {
   updateProductStatus,
   updateProductDetails,
@@ -324,7 +323,7 @@ export function ProductTable({ rows, query, total, categories, signalError, list
                 <td className="px-4 py-3">
                   <div className="relative h-16 w-12 overflow-hidden rounded-sm border border-border bg-secondary">
                     {r.thumbnail_url ? (
-                      <Image src={cld(r.thumbnail_url, "thumbnail")} alt={r.name} fill sizes="48px" className="object-cover" />
+                      <MediaThumb url={r.thumbnail_url} alt={r.name} sizes="48px" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">No image</div>
                     )}

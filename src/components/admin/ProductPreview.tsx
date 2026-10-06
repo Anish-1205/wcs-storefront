@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
+import { MediaThumb } from "./MediaThumb";
 import { pickPreviewHero, previewMediaFor } from "@/lib/variant-images";
 import { formatPrice, getDisplayPrice } from "@/lib/price";
 import { StatusBadge } from "./StatusBadge";
@@ -62,13 +61,13 @@ export function ProductPreview({
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm border border-border bg-muted">
         {hero ? (
           <>
-            <Image
+            <MediaThumb
               key={hero.image_url}
-              src={hero.isVideo ? cldVideoThumbnail(hero.image_url) : cld(hero.image_url, "card")}
+              url={hero.image_url}
+              isVideo={hero.isVideo}
+              transform="card"
               alt={name.trim() || "Product preview"}
-              fill
               sizes="(min-width: 1280px) 22rem, 100vw"
-              className="object-cover"
             />
             {hero.isVideo && (
               <span className="absolute left-2 top-2 rounded-sm bg-background/85 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-foreground">
@@ -104,13 +103,7 @@ export function ProductPreview({
                   isActive ? "border-primary" : "border-border opacity-70 hover:opacity-100"
                 }`}
               >
-                <Image
-                  src={m.isVideo ? cldVideoThumbnail(m.image_url) : cld(m.image_url, "thumbnail")}
-                  alt=""
-                  fill
-                  sizes="44px"
-                  className="object-cover"
-                />
+                <MediaThumb url={m.image_url} isVideo={m.isVideo} alt="" sizes="44px" />
               </button>
             );
           })}

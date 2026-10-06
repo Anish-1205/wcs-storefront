@@ -180,14 +180,56 @@ pipeline in `docs/import-pipeline.md`); this is the one-time setup:
    products this way, digits only, comma-separated (e.g. the owner's/mom's
    WhatsApp number). Anyone else's messages are silently ignored.
 8. Redeploy with all five vars set.
+9. Set `CRON_SECRET` (any long random string). It protects
+   `/api/whatsapp/sweep`, the scheduler entry point that applies the
+   grouping deadlines below and resumes work a killed function left behind.
+   `vercel.json` calls it once a day — the most a Hobby plan allows.
 
-**How to use it (send a photo to the business number):**
+**How messages are grouped into drafts (migration 029).** A draft is one
+description plus the photos/videos that belong to it, decided from WhatsApp's
+own send timestamps, not arrival order:
 
-- **First photo of a new saree** — caption it
-  `description | price | fabric`, e.g.
+- Photos first, then the description: created at once.
+- Description first: acknowledged, then created 45 s after the last
+  photo/video arrives (or when the next description arrives). With no media at
+  all it is dropped after 10 minutes with a reply asking for a resend.
+- A caption on a photo, or a description sent as a reply to a photo, owns that
+  album outright.
+- Two descriptions around the same photos with no clear pause: nothing is
+  created; the bot asks and waits for `1`, `2` or `3`. No answer in 10 minutes
+  (or photos with no description for 30 minutes) saves the photos as a draft
+  named "Unassigned WhatsApp media".
+
+Every reply says how many photos went in and why. To audit a draft later:
+`select * from whatsapp_listing_audit where slug = '<slug>' order by message_ts;`
+
+**What fires the deadlines.** The webhook function stays alive after
+answering Meta and closes the 45 s quiet period itself. The 10- and 30-minute
+deadlines are applied by whatever comes first: the sender's next message, or a
+call to `/api/whatsapp/sweep`. On Hobby that cron is daily, so an unanswered
+question or a description with no photos is normally resolved by the next
+message instead. For a per-minute scheduler without upgrading Vercel, run this
+once in the Supabase SQL Editor (it stores the secret in Vault, not in a
+migration):
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select vault.create_secret('<the CRON_SECRET value>', 'whatsapp_sweep_secret');
+select cron.schedule('whatsapp-sweep', '* * * * *', $$
+  select net.http_get(
+    url := 'https://<your-domain>/api/whatsapp/sweep',
+    headers := jsonb_build_object('Authorization', 'Bearer ' ||
+      (select decrypted_secret from vault.decrypted_secrets where name = 'whatsapp_sweep_secret')))
+$$);
+```
+
+**How to use it (send photos to the business number):**
+
+- **A new saree** — forward its photos/videos and send
+  `description | price | fabric` as a text, before or after them, e.g.
   `Red silk saree with gold border | 2500 | Silk`. Price and fabric are
-  optional (a bare description still creates the product — WhatsApp replies
-  saying what's missing so you can add it in admin later).
+  optional. A caption on one of the photos works the same way.
 - **More photos of the same saree** — caption each with just a number:
   `2`, `3`, `4`, in the order they should appear.
 - Every product created this way is a `draft` — an admin reviews and

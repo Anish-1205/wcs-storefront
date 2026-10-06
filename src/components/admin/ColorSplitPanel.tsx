@@ -10,10 +10,9 @@
  * uploaded or deleted — the photos are only reassigned between variants.
  */
 
-import Image from "next/image";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { cld } from "@/lib/cloudinary";
+import { MediaThumb } from "./MediaThumb";
 import {
   applyColorSplit,
   listColorSplitCandidates,
@@ -236,15 +235,7 @@ export function ColorSplitPanel() {
                               key={id}
                               className="relative h-14 w-11 overflow-hidden rounded-sm border border-border bg-secondary"
                             >
-                              {url && (
-                                <Image
-                                  src={cld(url, "thumbnail")}
-                                  alt={group.color}
-                                  fill
-                                  sizes="44px"
-                                  className="object-cover"
-                                />
-                              )}
+                              {url && <MediaThumb url={url} alt={group.color} sizes="44px" />}
                             </div>
                           );
                         })}

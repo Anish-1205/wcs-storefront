@@ -52,6 +52,21 @@ export function cldVideoThumbnail(url: string | null | undefined): string {
 }
 
 /**
+ * Whether a stored media URL is one the site can show: a Cloudinary delivery
+ * URL on our own cloud whose resource type matches the media kind. An image
+ * renders as-is (through `cld`); a video renders through the poster frame
+ * `cldVideoThumbnail` derives. Anything else would show as a broken image.
+ */
+export function isRenderableCloudinaryUrl(url: string | null | undefined, kind: "image" | "video", cloudName: string): boolean {
+  if (!url || !cloudName) return false;
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return false; }
+  const prefix = `/${cloudName}/${kind}/upload/`;
+  return parsed.protocol === "https:" && parsed.hostname === "res.cloudinary.com"
+    && parsed.pathname.startsWith(prefix) && /.[a-z0-9]+$/i.test(parsed.pathname.slice(prefix.length));
+}
+
+/**
  * Build a signed-upload payload (SERVER ONLY).
  * Called from /api/upload (and the import pipeline's /api/import/sign) after
  * the admin session is verified. The API secret is used here only for SHA-1

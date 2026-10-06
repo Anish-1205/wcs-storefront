@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
+import { MediaThumb } from "./MediaThumb";
 import { cn } from "@/lib/utils";
 import { isVideoMedia, reindexImages, type UploadedImage } from "@/lib/variant-images";
 
@@ -207,10 +206,10 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
               title={isVideo ? "Video (from WhatsApp)" : undefined}
               className="relative h-24 w-20 cursor-grab overflow-hidden rounded-sm border border-border active:cursor-grabbing"
             >
-              <Image
-                src={isVideo ? cldVideoThumbnail(img.image_url) : cld(img.image_url, "thumbnail")}
+              <MediaThumb
+                url={img.image_url}
+                isVideo={isVideo}
                 alt={isVideo ? "variant video" : "variant"}
-                fill
                 sizes="80px"
                 className="pointer-events-none object-cover"
               />

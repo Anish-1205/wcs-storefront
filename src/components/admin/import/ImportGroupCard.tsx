@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
+import { MediaThumb } from "@/components/admin/MediaThumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,10 +151,8 @@ export function ImportGroupCard({ group, assets, classification, collections, ot
         {sortedAssets.map((asset) => (
           <div key={asset.id} className="w-24 space-y-1">
             <div className="relative h-24 w-24 overflow-hidden rounded-sm border border-border">
-              {asset.kind === "image" && asset.cloudinary_secure_url ? (
-                <Image src={cld(asset.cloudinary_secure_url, "thumbnail")} alt="" fill sizes="96px" className="object-cover" />
-              ) : asset.kind === "video" && asset.cloudinary_secure_url ? (
-                <Image src={cldVideoThumbnail(asset.cloudinary_secure_url)} alt="" fill sizes="96px" className="object-cover" />
+              {(asset.kind === "image" || asset.kind === "video") && asset.cloudinary_secure_url ? (
+                <MediaThumb url={asset.cloudinary_secure_url} isVideo={asset.kind === "video"} alt="" sizes="96px" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-secondary text-[10px] text-muted-foreground">
                   {asset.kind === "video" ? "video" : asset.upload_status}

@@ -44,7 +44,7 @@ export default async function AdminProductsPage(props: {
   let listQuery = admin
     .from("products")
     .select(
-      "id, name, slug, status, is_featured, product_code, source, category_id, created_at, updated_at, category:categories(name), product_variants(id, status, display_order, variant_images(image_url, is_primary, display_order))" + (query.signal ? ",product_stock_signal!inner(availability)" : ""),
+      "id, name, slug, status, is_featured, product_code, source, category_id, created_at, updated_at, category:categories(name), product_variants(id, status, display_order, variant_images(image_url, media_type, is_primary, display_order))" + (query.signal ? ",product_stock_signal!inner(availability)" : ""),
       { count: "exact" },
     );
 
@@ -109,9 +109,11 @@ export default async function AdminProductsPage(props: {
       (p.category as { name?: string } | null)?.name ?? null,
     variant_count: ((p.product_variants as unknown[]) ?? []).length,
     thumbnail_url:
-      ((p.product_variants as Array<{ variant_images?: Array<{ image_url: string; is_primary?: boolean; display_order?: number }> }> | undefined) ?? [])
+      // A photo always wins over a video for the list thumbnail, whatever is marked primary.
+      ((p.product_variants as Array<{ variant_images?: Array<{ image_url: string; media_type?: string | null; is_primary?: boolean; display_order?: number }> }> | undefined) ?? [])
         .flatMap((variant) => variant.variant_images ?? [])
-        .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || (a.display_order ?? 0) - (b.display_order ?? 0))[0]?.image_url ?? null,
+        .sort((a, b) => Number(a.media_type === "video") - Number(b.media_type === "video")
+          || Number(b.is_primary) - Number(a.is_primary) || (a.display_order ?? 0) - (b.display_order ?? 0))[0]?.image_url ?? null,
     created_at: p.created_at as string,
     updated_at: p.updated_at as string,
   }));

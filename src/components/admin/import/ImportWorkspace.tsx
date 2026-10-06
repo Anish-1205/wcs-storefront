@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { cld, cldVideoThumbnail } from "@/lib/cloudinary";
+import { MediaThumb } from "@/components/admin/MediaThumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { ImportAsset, ImportCollectionClassification, ImportProductGroup, ProductStatus, ReviewStatus } from "@/lib/supabase/types";
@@ -105,10 +104,8 @@ export function ImportWorkspace({ batchId, batchStatus, ungroupedAssets, groups,
             {ungroupedAssets.map((asset) => (
               <div key={asset.id} className="w-20 space-y-1">
                 <div className="relative h-20 w-20 overflow-hidden rounded-sm border border-border">
-                  {asset.kind === "image" && asset.cloudinary_secure_url ? (
-                    <Image src={cld(asset.cloudinary_secure_url, "thumbnail")} alt="" fill sizes="80px" className="object-cover" />
-                  ) : asset.kind === "video" && asset.cloudinary_secure_url ? (
-                    <Image src={cldVideoThumbnail(asset.cloudinary_secure_url)} alt="" fill sizes="80px" className="object-cover" />
+                  {(asset.kind === "image" || asset.kind === "video") && asset.cloudinary_secure_url ? (
+                    <MediaThumb url={asset.cloudinary_secure_url} isVideo={asset.kind === "video"} alt="" sizes="80px" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-card text-[10px] text-muted-foreground">
                       {asset.kind}
