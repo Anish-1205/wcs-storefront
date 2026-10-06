@@ -8,8 +8,11 @@ vi.mock("@/lib/report-error", () => ({ reportError: mocks.report }));
 import { POST } from "@/app/api/whatsapp/route";
 
 const phone = "919876543210";
-function message(id: string, caption = "", kind = "image") {
-  return { id, from: phone, timestamp: "1700000000", type: kind,
+// Each call gets a later timestamp than the last, like real WhatsApp sends —
+// 027's batch-join logic keys off message_timestamp, not call/arrival order.
+let nextTimestamp = 1700000000;
+function message(id: string, caption = "", kind = "image", timestamp = String(nextTimestamp++)) {
+  return { id, from: phone, timestamp, type: kind,
     ...(kind === "text" ? { text: { body: caption } } : { [kind]: { id: `media-${id}`, caption } }) };
 }
 function envelope(messages: unknown[]) {
@@ -27,13 +30,33 @@ function database() {
   let openBatch = 1;
   let token = 0;
   const failures = new Map<string, number>();
+  // A batch is joinable by plain media as long as it has no finalize job yet,
+  // or its finalize job's own message_timestamp is >= this media's timestamp
+  // — mirrors 027's timestamp-based enqueue_whatsapp_messages join condition.
+  // 'numbered' never joins the open (unsealed) batch — same as the real
+  // schema, it attaches to the latest *sealed* batch, or starts its own new
+  // sealed one if none exists yet.
+  let numberedBatch = 0;
+  function batchJoinable(batchId: number, mediaTimestamp: string): boolean {
+    const finalizeJob = [...jobs.values()].find((j) => j.batch === batchId && j.payload.mode === "finalize");
+    return !finalizeJob || Date.parse(finalizeJob.payload.message_timestamp) >= Date.parse(mediaTimestamp);
+  }
   const rpc = vi.fn(async (name: string, args: any) => {
     if ((failures.get(name) ?? 0) > 0) { failures.set(name, failures.get(name)! - 1); return { error: { message: "injected failure" }, data: null }; }
     if (name === "enqueue_whatsapp_messages") {
       for (const m of args.p_messages) {
         if (jobs.has(m.message_id)) continue;
-        jobs.set(m.message_id, { payload: m, batch: openBatch, state: "pending", attempts: 0, asset: null });
-        if (m.mode === "finalize") openBatch++;
+        let targetBatch: number;
+        if (m.mode === "numbered") {
+          // Joins the latest sealed batch (one whose finalize has been
+          // enqueued), else starts its own fresh sealed batch.
+          const sealedBatches = [...jobs.values()].filter((j) => j.payload.mode === "finalize").map((j) => j.batch);
+          targetBatch = sealedBatches.length ? Math.max(...sealedBatches) : ++numberedBatch + 1000;
+        } else {
+          if (!batchJoinable(openBatch, m.message_timestamp)) openBatch++;
+          targetBatch = openBatch;
+        }
+        jobs.set(m.message_id, { payload: m, batch: targetBatch, state: "pending", attempts: 0, asset: null });
       }
       return { error: null };
     }
@@ -41,9 +64,17 @@ function database() {
     if (name === "claim_whatsapp_message") {
       if (job.state === "done") return { data: { done: true } };
       const earlier = [...jobs.values()].slice(0, [...jobs.values()].indexOf(job));
-      if (job.state === "processing" || earlier.some((j) => j.payload.sender_phone === job.payload.sender_phone && j.state !== "done")) return { data: { busy: true } };
+      const siblingsUnfinished = [...jobs.values()].some((j) => j !== job && j.batch === job.batch && j.payload.mode === "media" && j.state !== "done");
+      // A media message never waits on a same-batch finalize ahead of it in
+      // sequence — see 027's claim_whatsapp_message comment on why that
+      // exemption prevents a straggler/finalize deadlock.
+      if (job.state === "processing"
+        || earlier.some((j) => j.payload.sender_phone === job.payload.sender_phone && j.state !== "done"
+          && !(job.payload.mode === "media" && j.payload.mode === "finalize" && j.batch === job.batch))
+        || (job.payload.mode === "finalize" && siblingsUnfinished)
+      ) return { data: { busy: true } };
       job.state = "processing"; job.attempts++; job.token = `token-${++token}`;
-      return { data: { ...job, pending_media: earlier.filter((j) => j.batch === job.batch && j.asset).map((j) => j.asset) } };
+      return { data: { ...job, pending_media: [...jobs.values()].filter((j) => j !== job && j.batch === job.batch && j.asset).map((j) => j.asset) } };
     }
     if (args.p_token !== job.token) return { error: { message: "stale worker" } };
     if (name === "checkpoint_whatsapp_asset") job.asset = args.p_asset;
@@ -68,6 +99,7 @@ let db: ReturnType<typeof database>;
 let uploads: number;
 beforeEach(() => {
   vi.clearAllMocks();
+  nextTimestamp = 1700000000;
   vi.stubEnv("WHATSAPP_APP_SECRET", "secret"); vi.stubEnv("WHATSAPP_ADMIN_NUMBERS", phone);
   for (const key of ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME"]) vi.stubEnv(key, "test");
   db = database(); mocks.client.mockReturnValue(db);
@@ -203,6 +235,27 @@ describe("durable WhatsApp route (F02/F03/F04)", () => {
     });
     expect((await POST(request(envelope([message("a", "Silk | 1200 | Silk")])))).status).toBe(200);
     expect(db.plans[0].variants[0].color).toBe("Default");
+  });
+  it("waits for a straggling photo that arrives after its finalize text instead of building the product without it", async () => {
+    // "a" (photo) and "late" (photo) were both sent before the finalize text
+    // "b" (WhatsApp's own message_timestamp says so), but "late" reaches this
+    // server after "b" — the out-of-order case a real multi-photo-then-caption
+    // upload hits when one photo's Meta download/Cloudinary upload is slower.
+    const payload = envelope([message("a"), message("b", "Silk saree | 1200", "text"), message("late", "", "image", "1700000000.5")]);
+    const first = await POST(request(payload));
+    expect(first.status).toBe(503); // finalize must wait on "late", not build without it
+    expect(db.plans.filter((p) => p.variants?.length)).toHaveLength(0);
+    expect(db.jobs.get("late").batch).toBe(db.jobs.get("a").batch); // joined the same batch, not orphaned
+    const second = await POST(request(payload));
+    expect(second.status).toBe(200);
+    const products = db.plans.filter((p) => p.variants?.length);
+    expect(products).toHaveLength(1);
+    expect(products[0].variants[0].media.map((m: any) => m.message_id).sort()).toEqual(["a", "late"]);
+  });
+  it("starts a fresh batch for media that arrives once the prior batch's finalize is already done", async () => {
+    expect((await POST(request(envelope([message("a"), message("b", "Silk | 1200", "text")])))).status).toBe(200);
+    expect((await POST(request(envelope([message("c")])))).status).toBe(200);
+    expect(db.jobs.get("c").batch).not.toBe(db.jobs.get("a").batch);
   });
   it("does not recreate products if reply delivery fails after commit", async () => {
     const original = global.fetch;
