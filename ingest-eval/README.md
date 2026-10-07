@@ -77,3 +77,11 @@ New-rubric-only rules added in Step 5 (they have no old-rubric counterpart, so t
 `state.analysisOverride` (see `curation.test.ts`) makes it misbehave on purpose: wrong names, injected instructions followed, no answer at all.
 
 Photos are synthetic 32x32 images (`lib/mocks.ts`): one body colour under a brightness pattern unique to the photo, four colour stripes for a collage, and the original's pattern for a recompressed near-duplicate. They exercise the real dHash, colour-match and multi-colour code, but they are not sarees: the pixel heuristics (near-duplicate threshold, collage guess without AI) are only proven on these.
+
+## Before/after table
+
+`ingest-eval/table.test.ts` re-scores two saved reports with today's rules under both rubrics and writes `reports/ingest-eval/table-<from>-<to>.txt` (no database needed):
+
+```
+INGEST_FROM=baseline INGEST_TO=latest npx vitest run --config vitest.ingest.config.ts ingest-eval/table.test.ts
+```
