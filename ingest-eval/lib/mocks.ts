@@ -7,7 +7,7 @@
  */
 import { createHash } from "node:crypto";
 import type { Client } from "pg";
-import type { AiProvider, ColorVariantSuggestion, ProductMetadataSuggestions } from "@/lib/ai/types";
+import type { AiProvider, ColorVariantSuggestion, ListingAnalysis, ProductMetadataSuggestions } from "@/lib/ai/types";
 import { nullAiProvider } from "@/lib/ai/null-provider";
 import { supabaseShim } from "./db";
 
@@ -28,6 +28,10 @@ export const state = {
   ai: "off" as "off" | "oracle",
   /** Meta media id -> truth. */
   truthByMedia: new Map<string, Truth>(),
+  /** Description text -> the listing it is the description of. */
+  listingByText: new Map<string, string>(),
+  /** How many times the single listing call was made, and what it was given. */
+  analysisCalls: [] as { text: string; images: number }[],
   /** Replies the admin would have received on WhatsApp, in send order. */
   replies: [] as string[],
   errors: [] as { scope?: string; message: string }[],
@@ -92,6 +96,21 @@ const oracle: AiProvider = {
     }));
     if (collage && list[0]) list[0].asset_client_upload_ids.unshift(collage);
     return list.length ? list : null;
+  },
+  async analyzeListing(input): Promise<ListingAnalysis | null> {
+    state.analysisCalls.push({ text: input.adminText, images: input.images.length });
+    const mine = state.listingByText.get(input.adminText);
+    const theirs = input.otherText ? state.listingByText.get(input.otherText) : undefined;
+    return {
+      images: input.images.map((image) => {
+        const truth = truthOfUrl(image.url);
+        return {
+          id: image.id, collage: truth?.role === "collage", shot_type: truth?.role === "collage" ? "other" : "full", quality: [],
+          belongs: truth?.listing === mine ? "this" : theirs && truth?.listing === theirs ? "other" : "neither",
+          belongs_confidence: 0.95,
+        };
+      }),
+    };
   },
 };
 

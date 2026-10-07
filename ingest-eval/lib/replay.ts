@@ -23,10 +23,13 @@ export type Expectation = {
   colours: string[]; name_require?: string[]; name_forbid?: string[];
   /** The text names nothing: the right result is the generic "Saree" and no description. */
   generic?: boolean;
+  /** Reasons that must be stored in products.needs_review_reasons. */
+  review?: string[];
 };
 export type Stream = {
   name: string; description: string; events: FixtureEvent[];
-  expect: { listings: Expectation[]; clear?: boolean; ambiguous?: boolean };
+  /** ask_without_ai: only the photos can tell, so with no AI the sender is asked instead (new rubric). */
+  expect: { listings: Expectation[]; clear?: boolean; ambiguous?: boolean; ask_without_ai?: boolean };
 };
 export type ReplayOptions = {
   ai: "off" | "oracle";
@@ -43,6 +46,7 @@ export type SnapProduct = {
   name: string; slug: string; status: string; description: string | null; fabric: string | null;
   priceMin: number | null; priceMax: number | null; highlights: string[]; categoryId: string | null;
   descriptionEvent: string | null; unassigned: boolean;
+  needsReview: boolean; reviewReasons: string[];
   variants: { color: string | null; order: number; images: SnapImage[] }[];
 };
 export type Snapshot = {
@@ -83,6 +87,9 @@ export async function replay(db: RunDb, stream: Stream, options: ReplayOptions):
   state.errors = [];
   state.failMedia.clear();
   state.truthByMedia.clear();
+  state.listingByText.clear();
+  state.analysisCalls = [];
+  for (const event of stream.events) if (event.type === "text" && event.text) state.listingByText.set(event.text, event.truth.listing);
   for (const event of stream.events) if (event.type !== "text") state.truthByMedia.set(mediaId(event.id), event.truth);
 
   const client = serverMock.createAdminClient();
@@ -144,7 +151,7 @@ export async function snapshot(db: RunDb, stream: Stream, lastProductAfter: numb
   };
   const products = (await pg.query(
     `select p.id, p.name, p.slug, p.status, p.description, p.fabric_type, p.base_price_min, p.base_price_max, p.highlights,
-            p.category_id, b.description_id, b.status as batch_status
+            p.category_id, p.needs_review, p.needs_review_reasons, b.description_id, b.status as batch_status
        from products p left join whatsapp_batches b on b.product_id=p.id order by p.created_at, p.id`)).rows;
   const media = (await pg.query(
     `select v.product_id, v.id as variant_id, v.color, v.display_order as vorder, i.image_url, i.media_type, i.is_primary, i.display_order as iorder
@@ -168,6 +175,7 @@ export async function snapshot(db: RunDb, stream: Stream, lastProductAfter: numb
         priceMin: p.base_price_min, priceMax: p.base_price_max, highlights: p.highlights ?? [], categoryId: p.category_id,
         descriptionEvent: p.description_id ? eventIdOf(p.description_id) : null,
         unassigned: p.batch_status === "unassigned" || p.name === "Unassigned WhatsApp media",
+        needsReview: !!p.needs_review, reviewReasons: p.needs_review_reasons ?? [],
         variants: [...variants.values()],
       };
     }),

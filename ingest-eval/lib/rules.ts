@@ -111,7 +111,9 @@ export function evaluate(stream: Stream, snap: Snapshot, ai: "off" | "oracle", r
   }
   findings.push(check("no_mixing", mixing));
 
-  if (clear) findings.push(check("no_question_asked", snap.questions.length ? [`admin was asked ${snap.questions.length} question(s)`] : []));
+  // Where only the photos can tell (an older burst before a listing's own), asking is the right answer without an AI.
+  const mayAsk = rubric === "new" && ai === "off" && stream.expect.ask_without_ai;
+  if (clear && !mayAsk) findings.push(check("no_question_asked", snap.questions.length ? [`admin was asked ${snap.questions.length} question(s)`] : []));
   if (ambiguous) return findings;
 
   // Media with no description must be set aside, together, in an Unassigned draft.
@@ -162,6 +164,11 @@ export function evaluate(stream: Stream, snap: Snapshot, ai: "off" | "oracle", r
     } else {
       findings.push(check(`${tag}name`, nameViolations(product.name, expect.name_forbid, expect.name_require, rubric), `"${product.name}"`));
       findings.push(check(`${tag}description`, descriptionViolations(product.description, raw, rubric)));
+    }
+
+    if (expect.review?.length && rubric === "new") {
+      const missing = expect.review.filter((reason) => !product.reviewReasons.includes(reason));
+      findings.push(check(`${tag}needs_review`, missing.map((reason) => `"${reason}" not recorded`), product.reviewReasons.join(",")));
     }
 
     if (ai === "oracle") {

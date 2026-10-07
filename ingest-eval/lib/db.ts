@@ -52,7 +52,8 @@ export function supabaseShim(pg: Client) {
 }
 
 function templateName() {
-  const hash = createHash("sha256");
+  // Bump when the bootstrap below changes, so the template is rebuilt.
+  const hash = createHash("sha256").update("bootstrap-2");
   for (const file of readdirSync(MIGRATIONS).sort()) hash.update(file).update(readFileSync(join(MIGRATIONS, file)));
   return `wcs_ingest_tpl_${hash.digest("hex").slice(0, 12)}`;
 }
@@ -84,8 +85,10 @@ export async function ensureTemplate(): Promise<string> {
         create function auth.uid() returns uuid language sql stable as $$select null::uuid$$;
         create function auth.role() returns text language sql stable as $$select current_user::text$$;
         grant usage on schema public,auth to anon,authenticated,service_role;
-        alter default privileges in schema public grant all on tables to service_role;
-        alter default privileges in schema public grant all on sequences to service_role;`);
+        -- As on Supabase: every new table starts out granted to all three API roles, so a migration's
+        -- own REVOKE and RLS are what keep a table private, and the tests can prove they do.
+        alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+        alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;`);
       for (const file of readdirSync(MIGRATIONS).sort()) await db.query(readFileSync(join(MIGRATIONS, file), "utf8"));
     } finally {
       await db.end();

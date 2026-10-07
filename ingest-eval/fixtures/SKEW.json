@@ -1,0 +1,190 @@
+{
+ "name": "SKEW",
+ "events": [
+  {
+   "id": "SKEW-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 1,
+   "text": "Venkatagiri cotton sarees with zari border 2300/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "SKEW-002",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "0e43618d815d43718d9cabf9f080b757f032f582eca1410bbb2859d7dd930ccc"
+  },
+  {
+   "id": "SKEW-003",
+   "type": "image",
+   "sent": 3,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "1acadaa5ffa8529fcb01a46edf0ee1af3a746d06eda1decf0a9edd796677978c"
+  },
+  {
+   "id": "SKEW-004",
+   "type": "image",
+   "sent": 3,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "06f37331ca31ded3513c501493035ef9ff351bb3a91ee7dbfe5f5777b67a2a0e"
+  },
+  {
+   "id": "SKEW-005",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "382947545badd0f9901108d22a817a2a784544a137fc1df5d5fc7e14408ea251"
+  },
+  {
+   "id": "SKEW-006",
+   "type": "image",
+   "sent": 5,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "f57184c68cd0d3d60c8da96525035a56247304afa261d4886bc293a2eafb24e6"
+  },
+  {
+   "id": "SKEW-007",
+   "type": "image",
+   "sent": 6,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "lemon",
+    "role": "photo"
+   },
+   "sha256": "0ef29d9bf3f0b74bb04785e47eda291498eef42b64040886073d4c7c77fa54ea"
+  },
+  {
+   "id": "SKEW-008",
+   "type": "image",
+   "sent": 25,
+   "arrive": 27,
+   "truth": {
+    "listing": "B",
+    "colour": "grey",
+    "role": "photo"
+   },
+   "sha256": "5a22dc5958e97c340acf9425d474eb70a7963eac6a60fafb9e9fb26e34ea65fd"
+  },
+  {
+   "id": "SKEW-009",
+   "type": "image",
+   "sent": 25,
+   "arrive": 29,
+   "truth": {
+    "listing": "B",
+    "colour": "grey",
+    "role": "photo"
+   },
+   "sha256": "f0634394f2a499f7cdd418aa8533970835be1041ee48ed6ba8a3f9fffdc07cc0"
+  },
+  {
+   "id": "SKEW-010",
+   "type": "image",
+   "sent": 25,
+   "arrive": 30,
+   "truth": {
+    "listing": "B",
+    "colour": "grey",
+    "role": "photo"
+   },
+   "sha256": "1bbbe5cb300c01301c101bce5634e6b741ee2745059d1b589690ef5cec6873a5"
+  },
+  {
+   "id": "SKEW-011",
+   "type": "image",
+   "sent": 25,
+   "arrive": 29,
+   "truth": {
+    "listing": "B",
+    "colour": "grey",
+    "role": "photo"
+   },
+   "sha256": "a5b931bd9786649a1f4a93df711056df55b05857f8d6ad16d1cbe5980b79fe98"
+  },
+  {
+   "id": "SKEW-012",
+   "type": "image",
+   "sent": 25,
+   "arrive": 30,
+   "truth": {
+    "listing": "B",
+    "colour": "grey",
+    "role": "photo"
+   },
+   "sha256": "0dbff8ac91afa7b1fd8704111d243625cbbc5714484ce125c4bd94615c7d1c35"
+  },
+  {
+   "id": "SKEW-013",
+   "type": "text",
+   "sent": 85,
+   "arrive": 88,
+   "text": "Narayanpet cotton sarees with contrast border 1900/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "A description stamped 2s BEFORE the photos it was forwarded with, then the next listing's photos 20s later whose description is a minute late.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "SKEW-001",
+    "price": 2300,
+    "colours": [
+     "lemon"
+    ],
+    "name_require": [
+     "Venkatagiri"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "SKEW-013",
+    "price": 1900,
+    "colours": [
+     "grey"
+    ],
+    "name_require": [
+     "Narayanpet"
+    ],
+    "review": [
+     "late_description"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

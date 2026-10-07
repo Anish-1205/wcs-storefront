@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Stream } from "./replay";
 
 const DIR = join(process.cwd(), "ingest-eval", "fixtures");
-const FIRST = ["F1", "F2", "F3F4", "F3F4_long", "F4", "F5", "MEDIA_ONLY", "DF1", "DF_late", "DF_two", "DF_ambiguous", "LATE_TEXT", "TIE_DF", "TIE_PF", "PF1", "PF_late"];
+const FIRST = ["F1", "F2", "F3F4", "F3F4_long", "F4", "F5", "MEDIA_ONLY", "DF1", "DF_late", "DF_two", "DF_ambiguous", "LATE_TEXT", "TIE_DF", "TIE_PF", "SKEW", "PF1", "PF_late"];
 
 /** Fixture streams, the five real-world shapes first. INGEST_ONLY=F1,F4 narrows the run. */
 export function loadStreams(): Stream[] {

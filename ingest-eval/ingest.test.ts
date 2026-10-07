@@ -21,7 +21,7 @@ import { loadStreams } from "./lib/streams";
 
 const SHUFFLES = Number(process.env.INGEST_SHUFFLES ?? 100);
 // Streams where something sent in the same second as something else can change the answer.
-const DEFAULT = ["F1", "F2", "F3F4", "F4", "F5", "DF1", "DF_two", "LATE_TEXT", "TIE_DF", "TIE_PF", "PF1"];
+const DEFAULT = ["F1", "F2", "F3F4", "F4", "F5", "DF1", "DF_two", "LATE_TEXT", "TIE_DF", "TIE_PF", "SKEW", "PF1"];
 const streams = loadStreams().filter((s) => process.env.INGEST_ONLY || DEFAULT.includes(s.name));
 
 /** mulberry32, so a failing shuffle can be reproduced from its index. */

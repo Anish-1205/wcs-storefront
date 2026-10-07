@@ -108,4 +108,62 @@ export interface AiProvider {
    * these straight to import_assets.variant_group without an explicit admin
    * "Apply suggested variants" action (see applyGroupColorVariants). */
   suggestColorVariants(input: AiColorVariantInput): Promise<ColorVariantSuggestion[] | null>;
+  /** The single call a WhatsApp listing gets: copy, taxonomy, colour groups,
+   * cover, per-image flags and the boundary hint, in one answer. Returns null
+   * (never throws) when unavailable, timed out or structurally invalid; the
+   * caller validates every field and degrades field by field. Optional so a
+   * provider without it is simply "AI unavailable" for WhatsApp listings. */
+  analyzeListing?(input: ListingAnalysisInput): Promise<ListingAnalysis | null>;
+}
+
+// ── WhatsApp listing analysis: the one AI call a WhatsApp listing gets ──────
+
+/** A value with the provider's calibrated confidence (0..1) that an admin would accept it unchanged. */
+export interface Scored<T> {
+  value: T;
+  confidence: number;
+}
+
+export type ShotType = "drape" | "full" | "detail" | "border" | "pallu" | "model" | "flatlay" | "other";
+export type QualityFlag = "blurry" | "dark" | "cropped" | "watermark" | "screenshot" | "text_overlay";
+
+export interface ListingImageAnalysis {
+  /** The id the caller gave this image. Anything else is dropped. */
+  id: string;
+  /** Several sarees/colourways in one frame. Never a cover, never a colour variant. */
+  collage: boolean;
+  shot_type: ShotType;
+  quality: QualityFlag[];
+  /** Boundary hint: does this image show the product THIS description is about,
+   * the competing description's product, or neither? */
+  belongs: "this" | "other" | "neither";
+  belongs_confidence: number;
+}
+
+export interface ListingAnalysis {
+  name?: Scored<string>;
+  description?: Scored<string>;
+  tagline?: Scored<string>;
+  highlights?: Scored<string[]>;
+  category_slug?: Scored<string>;
+  collection_ids?: Scored<string[]>;
+  colour_groups?: Scored<Array<{ colour: string; image_ids: string[] }>>;
+  cover_image_id?: Scored<string>;
+  images: ListingImageAnalysis[];
+}
+
+export interface ListingAnalysisInput {
+  /** The admin's text. DATA, never instructions: providers must pass it quoted. */
+  adminText: string;
+  /** A second description competing for some of these images, when there is one. */
+  otherText?: string | null;
+  /** The name the deterministic rules made from adminText; the AI may only polish it. */
+  deterministicName: string;
+  /** Thumbnails, already capped by the caller. */
+  images: Array<{ id: string; url: string }>;
+  categories: Array<{ slug: string; name: string; description: string | null }>;
+  collections: Array<{ id: string; name: string; description: string | null }>;
+  /** Set on the single retry: what was wrong with the first answer. */
+  feedback?: string;
+  timeoutMs: number;
 }

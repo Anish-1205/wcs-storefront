@@ -75,6 +75,11 @@ export interface Product {
   /** 'file_sync' = mirrored in from src/data/products.ts by syncFileProducts();
    * the storefront keeps reading the file, so edits to this row don't go live. */
   source: "admin" | "file_sync";
+  /** Set by WhatsApp ingestion when a draft needs a second look (migration 030);
+   * the reasons are codes such as "price_missing" or "late_description".
+   * Optional: absent on rows read before that migration is applied. */
+  needs_review?: boolean;
+  needs_review_reasons?: string[];
   created_at: string;
   updated_at: string;
 }

@@ -129,7 +129,7 @@ function f4(b, start, textLag, extra = []) {
   push({
     name: "F3F4", events: b.events,
     description: "6 indigo photos with no description, then F4 starts 25s later with its description 18s after its photos.",
-    expect: { listings: [{ key: "A", description: d.id, price: 4890, colours: ["purple"], ...F4_NAME }], clear: true },
+    expect: { listings: [{ key: "A", description: d.id, price: 4890, colours: ["purple"], ...F4_NAME }], clear: true, ask_without_ai: true },
   });
 }
 
@@ -267,6 +267,22 @@ const sameSecond = (b, sent, count, truth) => Array.from({ length: count }, () =
     expect: { listings: [
       { key: "A", description: a.id, price: 5200, colours: ["mustard"], name_require: ["Gadwal"] },
       { key: "B", description: second.id, price: 2700, colours: ["wine"], name_require: ["Kalamkari"] },
+    ], clear: true },
+  });
+}
+
+{ // WhatsApp stamps a text ahead of the photos forwarded with it (3 of 20 measured descriptions).
+  const b = builder("SKEW", 130);
+  const a = b.text(0, "Venkatagiri cotton sarees with zari border 2300/", { listing: "A", role: "description" });
+  b.burst(2, many(6, { listing: "A", colour: "lemon", role: "photo" }));
+  const t = b.burst(25, many(5, { listing: "B", colour: "grey", role: "photo" }));
+  const second = b.text(t + 60, "Narayanpet cotton sarees with contrast border 1900/", { listing: "B", role: "description" });
+  push({
+    name: "SKEW", events: b.events,
+    description: "A description stamped 2s BEFORE the photos it was forwarded with, then the next listing's photos 20s later whose description is a minute late.",
+    expect: { listings: [
+      { key: "A", description: a.id, price: 2300, colours: ["lemon"], name_require: ["Venkatagiri"] },
+      { key: "B", description: second.id, price: 1900, colours: ["grey"], name_require: ["Narayanpet"], review: ["late_description"] },
     ], clear: true },
   });
 }

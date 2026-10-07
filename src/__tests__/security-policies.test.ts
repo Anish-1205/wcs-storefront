@@ -98,6 +98,12 @@ describe("effective RLS state across all migrations", () => {
       "import_collection_classifications",
       "import_processing_jobs",
       "storefront_page_content_versions",
+      // Raw WhatsApp text (may hold a phone number) and the ingestion's own tables.
+      "product_source_texts",
+      "whatsapp_settings",
+      "whatsapp_inbox",
+      "whatsapp_batches",
+      "whatsapp_notices",
     ];
 
     const reachable = serverOnly.filter((table) =>
@@ -135,6 +141,35 @@ describe("effective RLS state across all migrations", () => {
       for (const [key, body] of surviving) {
         expect(body, `${key} is not owner-scoped`).toContain("auth.uid() = user_id");
       }
+    }
+  });
+});
+
+describe("the raw WhatsApp text stays admin-only", () => {
+  const migration = readFileSync(resolve("supabase/migrations/030_whatsapp_ordering_review.sql"), "utf8");
+  const storefront = [
+    "src/lib/queries.ts",
+    "src/lib/storefront-catalog.ts",
+    "src/lib/storefront-media.ts",
+    "src/lib/supabase/client.ts",
+  ].map((file) => readFileSync(resolve(file), "utf8"));
+
+  it("is not a column of products, which the public can read once published", () => {
+    // The storefront selects products with "*": any column there is public for a published product.
+    expect(migration).not.toMatch(/alter table (public\.)?products add column[^;]*source_text/i);
+    expect(migration).toMatch(/create table if not exists public\.product_source_texts/);
+  });
+
+  it("has RLS on, no policy, and no grant to anon or authenticated", () => {
+    expect(migration).toContain("alter table public.product_source_texts enable row level security");
+    expect(migration).toContain("revoke all on public.product_source_texts from public, anon, authenticated");
+    expect(migration).not.toMatch(/create policy[^;]*product_source_texts/i);
+  });
+
+  it("is not read by any storefront query", () => {
+    for (const source of storefront) {
+      expect(source).not.toContain("product_source_texts");
+      expect(source).not.toContain("source_text");
     }
   });
 });

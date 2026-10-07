@@ -6,6 +6,9 @@ import { describePriceFlag, toSafePrice } from "@/lib/whatsapp-price";
 import { slugify } from "@/lib/utils";
 import { reportError } from "@/lib/report-error";
 import { getAiProvider } from "@/lib/ai";
+import { ingestConfig } from "@/lib/whatsapp-config";
+import { requestAnalysis, type StoredAnalysis } from "@/lib/whatsapp-analysis";
+import { decideReview, type ReviewHint, type ReviewMedia } from "@/lib/whatsapp-review";
 import {
   enrichWhatsAppProduct,
   resolveWhatsAppColorVariants,
@@ -116,8 +119,72 @@ type ClaimedMessage = {
   pending_media: PendingMediaItem[];
   /** Why the listing holds this media (migration 029), e.g. "6 sent after your description". */
   grouping?: string | null;
+  /** Grouping facts per photo/video (migration 030). Absent before that migration. */
+  media_info?: MediaInfo[] | null;
+  /** Present when the listing holds media the grouping could not place: review it instead of building it. */
+  review?: { other: { message_id: string; text: string } | null } | null;
+  /** Seconds the description came after its photos, when it was late (migration 030). */
+  late_by?: number | null;
+  late_review_seconds?: number | null;
+  answer_timeout_seconds?: number | null;
+  /** The AI answer already obtained for this listing, if any. */
+  analysis?: StoredAnalysis | null;
   payload: InboxMessage;
 };
+type MediaInfo = {
+  message_id: string; reason: string | null; confidence: string | null; burst: number | null;
+  ts: number; decided: string | null; sha256: string | null;
+};
+type Taxonomy = { categories: CategoryOption[]; collections: CollectionOption[] };
+
+/** The closed lists the AI may choose a category and collections from. A failed lookup is an empty list, never an error. */
+async function loadTaxonomy(supabase: ReturnType<typeof createAdminClient>): Promise<Taxonomy> {
+  const [{ data: categoriesData, error: categoriesError }, { data: collectionsData, error: collectionsError }] =
+    await Promise.all([
+      supabase.from("categories").select("id, slug, name, description"),
+      supabase.from("collections").select("id, name, description"),
+    ]);
+  if (categoriesError) console.warn("whatsapp webhook: categories lookup failed, skipping auto-category", categoriesError.message);
+  if (collectionsError) console.warn("whatsapp webhook: collections lookup failed, skipping auto-tagging", collectionsError.message);
+  return { categories: (categoriesData ?? []) as CategoryOption[], collections: (collectionsData ?? []) as CollectionOption[] };
+}
+
+/**
+ * A listing holds media the grouping could not place on its own (two
+ * descriptions want the same burst, or an older burst sits before this
+ * description's own). One AI call, when there is an AI, looks at the photos;
+ * the outcome is a decision per photo or a question for the sender. With no
+ * usable answer the sender is asked: nothing is merged on a guess.
+ */
+async function reviewListing(supabase: ReturnType<typeof createAdminClient>, claimed: ClaimedMessage, pending: PendingMediaItem[]) {
+  const m = claimed.payload;
+  const config = ingestConfig();
+  const info = new Map((claimed.media_info ?? []).map((row) => [row.message_id, row]));
+  const media: ReviewMedia[] = pending.filter((item) => info.has(item.message_id)).map((item) => {
+    const row = info.get(item.message_id)!;
+    return { message_id: item.message_id, kind: item.kind, reason: row.reason, confidence: row.decided ? "decided" : row.confidence, ts: row.ts };
+  }).sort((a, b) => a.ts - b.ts || (a.message_id < b.message_id ? -1 : 1));
+  const byId = new Map(pending.map((item) => [item.message_id, item]));
+
+  let analysis: StoredAnalysis | null = null;
+  const aiProvider = getAiProvider();
+  if (aiProvider.isConfigured() && aiProvider.analyzeListing) {
+    const { categories, collections } = await loadTaxonomy(supabase);
+    analysis = await requestAnalysis({
+      provider: aiProvider, text: m.caption, otherText: claimed.review?.other?.text ?? null,
+      deterministicName: deriveProductName(parseCollectionMessage(m.caption).description),
+      items: media.map((item) => ({ message_id: item.message_id, kind: item.kind, url: byId.get(item.message_id)!.url })),
+      categories, collections, config,
+    });
+  }
+  const hints = analysis ? new Map<string, ReviewHint>(analysis.result.images.map((image) =>
+    [analysis!.ids[image.id], { belongs: image.belongs, confidence: image.belongs_confidence }])) : null;
+  const outcome = decideReview({
+    descriptionId: m.message_id, text: m.caption, other: claimed.review?.other ?? null, media, hints,
+    threshold: config.boundaryConfidence, answerTimeoutSeconds: claimed.answer_timeout_seconds ?? 600,
+  });
+  return { ...outcome, ...(analysis ? { analysis } : {}) };
+}
 
 async function downloadMediaFromMeta(
   mediaId: string,
@@ -306,6 +373,7 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
 
 async function buildProductPlan(
   supabase: ReturnType<typeof createAdminClient>, text: string, pending: PendingMediaItem[], grouping?: string | null,
+  claimed?: ClaimedMessage,
 ) {
   // A description only runs once its listing is closed with media (migration
   // 029), so this is the case where none of that media could be saved.
@@ -381,10 +449,17 @@ async function buildProductPlan(
     review.push("name_generic");
     checks.push(`nothing in the text said what kind of saree it is, so it is just called "${GENERIC_NAME}"`);
   }
+  // Assigned, not asked about: a lone description that came well after its photos.
+  if (claimed?.late_by != null && claimed.late_by > (claimed.late_review_seconds ?? 30)) {
+    review.push("late_description");
+    checks.push("the description came a while after the photos, so make sure they belong together");
+  }
   return { name, slug: slugBase, code: codeBase, description: describeFromAdminText(description), price: toSafePrice(price),
     fabric_type: enrichment.fabricType, category_id: enrichment.categoryId,
     highlights: enrichment.highlights, collection_ids: enrichment.collectionIds, variants,
     needs_review: review,
+    // Admin-only (product_source_texts): the raw text can hold a phone number.
+    source_text: text,
     reply: `Created "${name}" with ${pending.length} photo(s)/video(s)${grouping ? ` (${grouping})` : ""}. Review it in the admin panel.${checks.length ? ` Please check: ${checks.join("; ")}.` : ""}`,
   };
 }
@@ -416,8 +491,13 @@ async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claime
       await rpc(supabase, "checkpoint_whatsapp_asset", { p_message_id: messageId, p_token: claimed.token,
         p_asset: { ...asset, public_id: uploaded.publicId ?? m.public_id } });
     }
+    if (m.mode === "finalize" && claimed.review) {
+      const outcome = await reviewListing(supabase, claimed, [...claimed.pending_media, ...(asset ? [asset] : [])]);
+      await rpc(supabase, "resolve_whatsapp_review", { p_message_id: messageId, p_token: claimed.token, p_outcome: outcome });
+      return;
+    }
     const plan = m.mode === "finalize"
-      ? await buildProductPlan(supabase, m.caption, [...claimed.pending_media, ...(asset ? [asset] : [])], claimed.grouping)
+      ? await buildProductPlan(supabase, m.caption, [...claimed.pending_media, ...(asset ? [asset] : [])], claimed.grouping, claimed)
       : { reply: m.mode === "numbered" ? `Saved photo ${m.caption}.` : null };
     await rpc(supabase, "complete_whatsapp_message", { p_message_id: messageId, p_token: claimed.token, p_plan: plan });
   } catch (error) {

@@ -5,7 +5,7 @@ Replays invented, messy WhatsApp traffic through the shipped ingestion path on a
 ```
 node ingest-eval/build-fixtures.mjs   # regenerate ingest-eval/fixtures/*.json (deterministic)
 npm run eval:ingest                   # replay every fixture, print the report (never fails on a rule)
-npm run test:ingest                   # guarantees: same-second shuffle x100, replay twice (needs the cluster)
+npm run test:ingest                   # guarantees: same-second shuffle x100, replay twice, questions and answers, admin-only data (needs the cluster)
 node ingest-eval/print-report.mjs baseline --only=F1,F4   # re-read a saved report
 ```
 
@@ -41,6 +41,7 @@ Event streams: `{ id, type, sent, arrive, text?, sha256?, truth }`, in whole sec
 | DF1, DF_late, DF_two, DF_ambiguous | description first |
 | LATE_TEXT | description 17s after its photos, after an open description-first listing |
 | TIE_DF, TIE_PF | a description sharing its second with its whole photo burst |
+| SKEW | a description stamped 2s BEFORE the photos it was forwarded with (3 of 20 measured descriptions), then the next listing's photos, whose description is a minute late |
 | PF1, PF_late | photos first |
 | TXT01-15 | messy descriptions (caps, emoji, Hinglish/Telugu-English, typos, no price, two prices, price mid-text, trailing phone number, decimal) with one photo |
 
@@ -57,3 +58,7 @@ Three rules changed between the baseline and Step 2. Nothing else did; re-scorin
 1. **Name length: 3-8 words became 2-8.** "Paithani Saree" is a correct name for "paithani sarees 7490"; a third word could only be invented. Affects TXT07, TXT12, TXT13 (AI off).
 2. **Text that names nothing (`expect.generic`, TXT11).** Old: judged like any other listing, so it could never pass. New: with AI off the name must be exactly "Saree" and the description empty (flagged for review); with AI on, the usual name rules apply and the description must still be empty.
 3. **Description: the "copies N words verbatim from the admin's text" rule was removed.** Step 2's contract is that a description is made only from the admin's own words, so a long shared run is the intended result. Still failing: the whole text returned unchanged, prices/phone numbers, emoji, ALL CAPS, urgency wording, repeated punctuation, no capital/full stop. In the old rubric the shared-run threshold is reconstructed as 8 consecutive words (the original constant was not kept; the one recorded hit was a 10-word run on TXT05).
+
+A fourth change came with Step 3 (and is the only one since):
+
+4. **A question is allowed where only the photos can tell (`expect.ask_without_ai`, F3F4), when there is no AI.** Old: `no_question_asked` applied to F3F4 in both modes, which could only pass by merging or separating on timing alone. New: with AI off, asking about the older burst is the correct answer (it is still never merged without a reply); with AI on, no question is allowed. Also new in Step 3: `needs_review` is checked where a fixture expects a stored reason (`expect.review`), new rubric only.
