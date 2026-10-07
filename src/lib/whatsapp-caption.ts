@@ -1,4 +1,5 @@
 import { enforceNameStyle } from "@/lib/ai/style-guide";
+import { parsePrice, parsePriceField, type PriceFlag } from "@/lib/whatsapp-price";
 
 export const NEW_PRODUCT_CAPTION_HINT =
   "description | price | fabric — e.g. Red silk saree with gold border | 2500 | Silk";
@@ -13,58 +14,50 @@ export function parseProductCaption(raw: string): {
   description: string;
   price: number | null;
   fabric: string | null;
+  /** Present only when the price needs a second look (see whatsapp-price.ts). */
+  needsReview?: PriceFlag[];
 } {
   const [descriptionPart, pricePart, fabricPart] = raw.split("|").map((part) => part.trim());
-
-  const priceDigits = (pricePart ?? "").replace(/[^\d.]/g, "");
-  const parsedPrice = priceDigits ? Number(priceDigits) : NaN;
-  const price = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
+  const { price, flags } = parsePriceField(pricePart);
 
   return {
     description: descriptionPart || raw,
     price,
     fabric: fabricPart || null,
+    ...(flags.length ? { needsReview: flags } : {}),
   };
 }
 
-// Matches a trailing price at the very end of a free-text message, e.g.
-// "...Benarasi sarees, hurry! 4900", "...4,900/-", "...₹4900", "...Rs 4900".
-const TRAILING_PRICE_RE = /(?:₹|rs\.?|inr)?\s*([\d][\d,]*(?:\.\d+)?)\s*(?:\/-|\/)?\s*$/i;
-
 /**
- * Parses the ONE finalizing text message in the new "media first, one
- * description last" flow — free-flowing prose ending in the price, e.g.
- * "Exquisite Kanjivaram-style Tissue Benarasi sarees... 4900". Falls back to
- * the older `description | price | fabric` format verbatim whenever the text
- * contains a "|", so that style keeps working unchanged. Fabric isn't
- * reliably extractable from free prose, so it's left null in free-text mode
- * — an admin can fill it in later.
+ * Parses the ONE finalizing text message in the "media first, one
+ * description last" flow — free-flowing prose that carries a price somewhere,
+ * e.g. "Exquisite Kanjivaram-style Tissue Benarasi sarees... 4900", "5500/- hurry",
+ * "price 1800 rs only dm for order", or a price alone on its own line. The price
+ * rules (range, phone numbers, decimals, two prices) live in whatsapp-price.ts and
+ * guarantee `price` is null or a whole rupee amount the database can store; a
+ * doubtful price comes back as null plus `needsReview`. Falls back to the older
+ * `description | price | fabric` format verbatim whenever the text contains a "|",
+ * so that style keeps working unchanged. Fabric isn't reliably extractable from
+ * free prose, so it's left null in free-text mode — an admin can fill it in later.
  */
 export function parseCollectionMessage(raw: string): {
   description: string;
   price: number | null;
   fabric: string | null;
+  needsReview?: PriceFlag[];
 } {
   const trimmed = raw.trim();
   if (trimmed.includes("|")) {
     return parseProductCaption(trimmed);
   }
 
-  const match = trimmed.match(TRAILING_PRICE_RE);
-  if (match?.[1] != null && typeof match.index === "number") {
-    const digits = match[1].replace(/,/g, "");
-    const price = Number(digits);
-    if (Number.isFinite(price) && price > 0) {
-      const description = trimmed
-        .slice(0, match.index)
-        .trim()
-        .replace(/[.,;:\-–—]+$/, "")
-        .trim();
-      return { description: description || trimmed, price, fabric: null };
-    }
-  }
-
-  return { description: trimmed, price: null, fabric: null };
+  const { price, flags, rest } = parsePrice(trimmed);
+  return {
+    description: rest || trimmed,
+    price,
+    fabric: null,
+    ...(flags.length ? { needsReview: flags } : {}),
+  };
 }
 
 const MAX_NAME_LENGTH = 60;

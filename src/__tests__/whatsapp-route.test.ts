@@ -485,6 +485,19 @@ describe("durable WhatsApp route (F02/F03/F04)", () => {
     expect(mediaOf(products()[1])).toEqual(["d"]);
     expect(products()[0].price).toBe(1200);
   });
+  it("never lets a price break a listing: it reaches the database as a safe integer, and the admin is told what to check", async () => {
+    expect(await send(message("a"), text("b", "Soft organza sarees with floral print 4900.50"),
+      message("c"), text("d", "Tissue sarees 2 pcs combo 6490/ whatsapp 9876543210"),
+      message("e"), text("f", "Silk saree 4500/- or 5500/-"))).toBe(200);
+    const [rounded, phone, two] = products();
+    expect(rounded).toMatchObject({ price: 4901, needs_review: ["price_rounded"] });
+    expect(rounded.reply).toMatch(/Please check: the price had paise/);
+    expect(phone).toMatchObject({ price: 6490, needs_review: [] });
+    expect(phone.reply).not.toMatch(/Please check/);
+    expect(two).toMatchObject({ price: null, needs_review: ["two_prices"] });
+    for (const plan of [rounded, phone, two]) expect(plan.price === null || Number.isInteger(plan.price)).toBe(true);
+    for (const id of ["b", "d", "f"]) expect(db.jobs.get(id).state).toBe("done");
+  });
   it("deduplicates simultaneous deliveries before external side effects, and replies once", async () => {
     const payload = envelope([message("a", "Silk saree | 1200")]);
     const statuses = await Promise.all([POST(request(payload)), POST(request(payload))]);

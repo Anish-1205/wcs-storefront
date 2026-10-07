@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { isRenderableCloudinaryUrl, signUpload } from "@/lib/cloudinary";
 import { deriveProductName, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
+import { describePriceFlag, toSafePrice } from "@/lib/whatsapp-price";
 import { slugify } from "@/lib/utils";
 import { reportError } from "@/lib/report-error";
 import { getAiProvider } from "@/lib/ai";
@@ -308,7 +309,7 @@ async function buildProductPlan(
   // A description only runs once its listing is closed with media (migration
   // 029), so this is the case where none of that media could be saved.
   if (!pending.length) return { variants: [], reply: "No photos or videos could be saved for this description, so no listing was created. Please send the photos/videos and the description again." };
-  const { description, price, fabric } = parseCollectionMessage(text);
+  const { description, price, fabric, needsReview = [] } = parseCollectionMessage(text);
   const imageItems = pending.filter((item) => item.kind === "image");
 
   const aiProvider = getAiProvider();
@@ -371,10 +372,14 @@ async function buildProductPlan(
       is_primary: index === (firstImage < 0 ? 0 : firstImage), display_order: index + 1,
     })) };
   }).filter((v) => v.media.length);
-  return { name, slug: slugBase, code: codeBase, description, price,
+  // A price never costs a listing: whatever reaches the database is a whole rupee amount in range, or null.
+  // The reasons travel in the plan (the SQL ignores unknown keys) and in the reply to the admin.
+  const checks = needsReview.map(describePriceFlag);
+  return { name, slug: slugBase, code: codeBase, description, price: toSafePrice(price),
     fabric_type: enrichment.fabricType, category_id: enrichment.categoryId,
     highlights: enrichment.highlights, collection_ids: enrichment.collectionIds, variants,
-    reply: `Created "${name}" with ${pending.length} photo(s)/video(s)${grouping ? ` (${grouping})` : ""}. Review it in the admin panel.`,
+    needs_review: needsReview,
+    reply: `Created "${name}" with ${pending.length} photo(s)/video(s)${grouping ? ` (${grouping})` : ""}. Review it in the admin panel.${checks.length ? ` Please check: ${checks.join("; ")}.` : ""}`,
   };
 }
 
