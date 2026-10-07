@@ -775,7 +775,7 @@ describe.each(deliveries)("grouping by description (%s)", (_name, deliver) => {
     // "2": they belong to the second description.
     expect(await send(text("answer", "2"))).toBe(200);
     expect(products().map(mediaOf)).toEqual([ids(ab)]);
-    expect(products()[0].description).toContain("Second description");
+    expect(products()[0].description).toBe("Second description.");
     expect(db.jobs.get("m1")).toMatchObject({ reason: "confirmed_second", confidence: "confirmed" });
     expect(db.jobs.get("d1")).toMatchObject({ state: "done", reply: expect.stringContaining("No listing was created") });
     expect(replies.at(-1)).toContain("(12 you confirmed)");

@@ -12,7 +12,8 @@ function textResponse(payload: unknown) {
 
 describe("null provider — the guaranteed fallback when AI is unavailable", () => {
   it("never blocks the import pipeline: always resolves empty/null, never throws", async () => {
-    expect(nullAiProvider.isConfigured()).toBe(true);
+    // Not configured: callers take their deterministic path, but every method still resolves empty.
+    expect(nullAiProvider.isConfigured()).toBe(false);
     await expect(nullAiProvider.suggestProductMetadata({ adminDescription: null, imageUrls: [] })).resolves.toBeNull();
     await expect(
       nullAiProvider.classifyCollection({ adminDescription: null, imageUrls: [], existingCollections: [] }),

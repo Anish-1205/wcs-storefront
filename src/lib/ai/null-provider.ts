@@ -10,7 +10,10 @@ import type { AiProvider } from "./types";
 export const nullAiProvider: AiProvider = {
   name: "none",
   isConfigured() {
-    return true; // always "ready" — it just does nothing.
+    // Not configured, so callers take their deterministic path instead of an AI path that cannot answer
+    // (WhatsApp naming used to compose a generic name from an empty AI answer). Its methods still return
+    // null/[] so a caller that skips the check keeps working.
+    return false;
   },
   async suggestProductMetadata() {
     return null;

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { isRenderableCloudinaryUrl, signUpload } from "@/lib/cloudinary";
-import { deriveProductName, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
+import { deriveProductName, GENERIC_NAME, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
+import { describeFromAdminText } from "@/lib/whatsapp-text";
 import { describePriceFlag, toSafePrice } from "@/lib/whatsapp-price";
 import { slugify } from "@/lib/utils";
 import { reportError } from "@/lib/report-error";
@@ -374,11 +375,16 @@ async function buildProductPlan(
   }).filter((v) => v.media.length);
   // A price never costs a listing: whatever reaches the database is a whole rupee amount in range, or null.
   // The reasons travel in the plan (the SQL ignores unknown keys) and in the reply to the admin.
+  const review: string[] = [...needsReview];
   const checks = needsReview.map(describePriceFlag);
-  return { name, slug: slugBase, code: codeBase, description, price: toSafePrice(price),
+  if (name === GENERIC_NAME) {
+    review.push("name_generic");
+    checks.push(`nothing in the text said what kind of saree it is, so it is just called "${GENERIC_NAME}"`);
+  }
+  return { name, slug: slugBase, code: codeBase, description: describeFromAdminText(description), price: toSafePrice(price),
     fabric_type: enrichment.fabricType, category_id: enrichment.categoryId,
     highlights: enrichment.highlights, collection_ids: enrichment.collectionIds, variants,
-    needs_review: needsReview,
+    needs_review: review,
     reply: `Created "${name}" with ${pending.length} photo(s)/video(s)${grouping ? ` (${grouping})` : ""}. Review it in the admin panel.${checks.length ? ` Please check: ${checks.join("; ")}.` : ""}`,
   };
 }

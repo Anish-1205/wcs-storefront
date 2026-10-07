@@ -21,6 +21,7 @@ describe("enforceNameStyle — the catalogue naming convention, enforced in code
     const result = enforceNameStyle(
       "Exquisite Kanjivaram-style Tissue Benarasi sarees with rich pallu, hurry limited stock 4900",
     );
+    // enforceNameStyle is the shared convention and keeps the spelling; the WhatsApp path normalises it first.
     expect(result).toBe("Kanjivaram-Style Tissue Benarasi Saree with Pallu");
   });
 
@@ -163,7 +164,7 @@ describe("normalizeHighlights", () => {
 describe("deriveProductName — the no-AI WhatsApp path follows the same convention", () => {
   it("styles a free-text description instead of truncating it verbatim", () => {
     expect(deriveProductName("Exquisite Kanjivaram-style Tissue Benarasi sarees with rich pallu, hurry")).toBe(
-      "Kanjivaram-Style Tissue Benarasi Saree with Pallu",
+      "Kanjivaram-Style Tissue Banarasi Saree with Pallu",
     );
   });
 

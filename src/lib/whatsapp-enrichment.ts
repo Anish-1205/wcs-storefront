@@ -1,5 +1,6 @@
 import type { AiProvider } from "@/lib/ai/types";
 import { normalizeHighlights, resolveProductName } from "@/lib/ai/style-guide";
+import { nameFromAdminText } from "@/lib/whatsapp-text";
 import { SUGGESTED_CONFIDENCE_THRESHOLD } from "@/lib/import/collection-classification";
 import { resolveColorVariantAssignment } from "@/lib/import/color-variants";
 
@@ -142,10 +143,10 @@ export async function enrichWhatsAppProduct(params: {
     fabricType,
     collectionIds: confidentCollections.map((c) => c.collection_id),
     collectionNames: confidentCollections.map((c) => validCollections.get(c.collection_id)!),
-    // One convention for every product, whichever batch created it: the AI's
-    // name if it survives the style rules, else one composed from the parts we
-    // actually know. `fabric` is only ever an admin-stated value here.
-    name: resolveProductName({
+    // The admin's own words lead (their fabric, weave and work words are never replaced); the AI's
+    // name and then a composed one are only for text that names nothing. One convention either
+    // way. `fabric` is only ever an admin-stated value here.
+    name: nameFromAdminText(params.description) ?? resolveProductName({
       aiName: metadata?.display_name?.value ?? metadata?.name?.value,
       colour: metadata?.colour?.value ?? null,
       fabric: fabricType,

@@ -1,4 +1,4 @@
-import { enforceNameStyle } from "@/lib/ai/style-guide";
+import { nameFromAdminText } from "@/lib/whatsapp-text";
 import { parsePrice, parsePriceField, type PriceFlag } from "@/lib/whatsapp-price";
 
 export const NEW_PRODUCT_CAPTION_HINT =
@@ -61,35 +61,28 @@ export function parseCollectionMessage(raw: string): {
 }
 
 const MAX_NAME_LENGTH = 60;
+/** What a listing is called when its text names nothing at all; the admin is asked to rename it. */
+export const GENERIC_NAME = "Saree";
 
 /**
- * Distils a short product name/title out of a longer description, so the
- * slug/product_code stay short and readable instead of encoding the entire
- * forwarded message. Deterministic (no AI call) — a whole product listing
- * hinges on this, so it must never depend on an external call succeeding.
+ * Distils a short product name out of the admin's text, so the slug/product_code stay short and
+ * readable instead of encoding the entire forwarded message. Deterministic (no AI call) — a whole
+ * product listing hinges on this, so it must never depend on an external call succeeding.
  *
- * Applies the same catalogue naming convention the AI is prompted with (see
- * src/lib/ai/style-guide.ts), so a listing created while AI is unavailable
- * still reads like the rest of the catalogue. Plain truncation remains the
- * last resort for text the style rules can't make anything of.
+ * The admin's own descriptors lead (see nameFromAdminText in whatsapp-text.ts): "Mulmul cotton"
+ * stays "Mulmul Cotton Saree", "Benarsi" becomes "Banarasi", hype is stripped. Text that names
+ * nothing ("Hii sir plz find new saree") becomes GENERIC_NAME; a lone code ("XYZ-113") is kept.
  */
 export function deriveProductName(description: string): string {
   const cleaned = description.replace(/\s+/g, " ").trim();
   if (!cleaned) return `Saree ${Date.now()}`;
 
-  const styled = enforceNameStyle(cleaned);
-  if (styled) return styled;
+  // Line breaks are clause breaks to the name logic, so it gets the text as the admin typed it.
+  const fromText = nameFromAdminText(description);
+  if (fromText) return fromText;
 
-  if (cleaned.length <= MAX_NAME_LENGTH) return cleaned;
-
-  const words = cleaned.split(" ");
-  let name = "";
-  for (const word of words) {
-    const next = name ? `${name} ${word}` : word;
-    if (next.length > MAX_NAME_LENGTH) break;
-    name = next;
-  }
-  return name || cleaned.slice(0, MAX_NAME_LENGTH).trim();
+  if (!/\s/.test(cleaned)) return cleaned.slice(0, MAX_NAME_LENGTH);
+  return GENERIC_NAME;
 }
 
 /** Uppercase, hyphenated SKU/product_code seed derived from a short name. */
