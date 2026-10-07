@@ -1,0 +1,152 @@
+{
+ "name": "DF_ambiguous",
+ "events": [
+  {
+   "id": "DF_ambiguous-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 3,
+   "text": "Kota doria sarees with gota border 2900/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF_ambiguous-002",
+   "type": "image",
+   "sent": 2,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "4c39fe95ff40d59d75fca94f761315e54e5011dc3ce09647db7300a2dd771b90"
+  },
+  {
+   "id": "DF_ambiguous-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "5196289873315d0d26d6235e27e8fc0dea39c939715e111452648c008e2b0e17"
+  },
+  {
+   "id": "DF_ambiguous-004",
+   "type": "image",
+   "sent": 2,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "38b74d76c73d59cbc767c42fecb3179a2ee8086bfe4e299c30973fb31de77285"
+  },
+  {
+   "id": "DF_ambiguous-005",
+   "type": "image",
+   "sent": 3,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "15d937fd327a06a2d7915d8a412f49e1bfcd6537d4fbffe726a5ffc6830f7f31"
+  },
+  {
+   "id": "DF_ambiguous-006",
+   "type": "image",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "2b3377288a85515bfdccc844e1ce03e6ed13fa0c34a8f7fc0595bed043472524"
+  },
+  {
+   "id": "DF_ambiguous-007",
+   "type": "text",
+   "sent": 9,
+   "arrive": 11,
+   "text": "Pochampally ikat sarees in pure cotton 2100/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF_ambiguous-008",
+   "type": "image",
+   "sent": 11,
+   "arrive": 13,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "3c73d005cd4462b4cede3edeed1602f24652e043b8c2c8b28d31d09f690e362c"
+  },
+  {
+   "id": "DF_ambiguous-009",
+   "type": "image",
+   "sent": 11,
+   "arrive": 15,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "36af314a22791368532478fca2f39cbe64938b19bf7854041c96808e52c9a751"
+  },
+  {
+   "id": "DF_ambiguous-010",
+   "type": "image",
+   "sent": 12,
+   "arrive": 16,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "6d0866c45f6df3a54d983280a0ca7f5606b279d8067cad306d4fb3817af6bf75"
+  },
+  {
+   "id": "DF_ambiguous-011",
+   "type": "image",
+   "sent": 12,
+   "arrive": 14,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "f58c1702861c69a790542a388cbd11a36c74a7019441083269b05b7c24b6456f"
+  },
+  {
+   "id": "DF_ambiguous-012",
+   "type": "image",
+   "sent": 13,
+   "arrive": 17,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "5747d20c2a47225a891b182a633359124517e115777868e995e8b752e591cf4e"
+  }
+ ],
+ "description": "Two descriptions with one burst squeezed between them: genuinely ambiguous. Asking is fine; merging on a guess is not.",
+ "expect": {
+  "listings": [],
+  "ambiguous": true
+ }
+}

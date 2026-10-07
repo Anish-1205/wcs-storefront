@@ -1,0 +1,41 @@
+{
+ "name": "TXT14",
+ "events": [
+  {
+   "id": "TXT14-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "6f2a7e47b1c67d318acc45ad8b2a2d926ade1801333ef3b4df604daab48d0fd0"
+  },
+  {
+   "id": "TXT14-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "Mysore silk crepe saree — 5,900/- ₹",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — currency symbol after the number.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT14-002",
+    "price": 5900,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

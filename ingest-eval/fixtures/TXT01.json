@@ -1,0 +1,41 @@
+{
+ "name": "TXT01",
+ "events": [
+  {
+   "id": "TXT01-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "b9039bfab991517efac20260621dd3d83cca246da95323b04f0ee1cd0c2d7859"
+  },
+  {
+   "id": "TXT01-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "RED KANJIVARAM SILK SAREES!!! 🔥🔥 only 5500/- hurry stock limited",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — caps, emoji, words after the price.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT01-002",
+    "price": 5500,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

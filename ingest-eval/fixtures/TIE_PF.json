@@ -1,0 +1,151 @@
+{
+ "name": "TIE_PF",
+ "events": [
+  {
+   "id": "TIE_PF-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "20be55256ae5f5c2f2f47a7b94498ae4468e995c5c5d317d564dd3362e226983"
+  },
+  {
+   "id": "TIE_PF-002",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "ef51d948824f13f0563551f7a5155df6e2756aa9b659260a5d7e4af95f05e603"
+  },
+  {
+   "id": "TIE_PF-003",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "4703f417b095be74fce52b97dafae7221f6669b9dfd250dae4086479aed4139f"
+  },
+  {
+   "id": "TIE_PF-004",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "60d6ffadef86c0fbe1cee2195c05aaf2d785cdce280bec1d47e135b82cf81922"
+  },
+  {
+   "id": "TIE_PF-005",
+   "type": "text",
+   "sent": 0,
+   "arrive": 2,
+   "text": "Gadwal cotton silk saree with checks border 5200/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "TIE_PF-006",
+   "type": "image",
+   "sent": 30,
+   "arrive": 35,
+   "truth": {
+    "listing": "B",
+    "colour": "wine",
+    "role": "photo"
+   },
+   "sha256": "be4d3214c0dc1f8934b23c89b9b0eb48e22f7cf81c6ee0f05e963d896525880e"
+  },
+  {
+   "id": "TIE_PF-007",
+   "type": "image",
+   "sent": 30,
+   "arrive": 33,
+   "truth": {
+    "listing": "B",
+    "colour": "wine",
+    "role": "photo"
+   },
+   "sha256": "9de01fe17040b3e72f89d7c555d34db2edb0e197756b1954526ef2d6a075358f"
+  },
+  {
+   "id": "TIE_PF-008",
+   "type": "image",
+   "sent": 30,
+   "arrive": 35,
+   "truth": {
+    "listing": "B",
+    "colour": "wine",
+    "role": "photo"
+   },
+   "sha256": "1ad13c47a22d0661a708234dfdb2b7a45a2eca32b420df8701ed119c9034f08b"
+  },
+  {
+   "id": "TIE_PF-009",
+   "type": "image",
+   "sent": 30,
+   "arrive": 33,
+   "truth": {
+    "listing": "B",
+    "colour": "wine",
+    "role": "photo"
+   },
+   "sha256": "61a5972074209462cd137ca227b7e154e22c2e42df62e67215b95e6ffe50c7ec"
+  },
+  {
+   "id": "TIE_PF-010",
+   "type": "text",
+   "sent": 30,
+   "arrive": 32,
+   "text": "Kalamkari cotton sarees with hand block print 2700/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Photos first; each description is sent in the same second as its 4-photo burst.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TIE_PF-005",
+    "price": 5200,
+    "colours": [
+     "mustard"
+    ],
+    "name_require": [
+     "Gadwal"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "TIE_PF-010",
+    "price": 2700,
+    "colours": [
+     "wine"
+    ],
+    "name_require": [
+     "Kalamkari"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

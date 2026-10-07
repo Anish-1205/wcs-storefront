@@ -1,0 +1,380 @@
+{
+ "name": "F5",
+ "events": [
+  {
+   "id": "F5-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 2,
+   "truth": {
+    "listing": "A",
+    "colour": "multi",
+    "role": "collage"
+   },
+   "sha256": "1195b34aff73d37ed0900d3726387ac04915c6f1590a1430e983d44c0520cd51"
+  },
+  {
+   "id": "F5-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "4b27b3dc237dfbe373ad823173b1ee8975a8d721d4cd2bb7d052f241fbc9f557"
+  },
+  {
+   "id": "F5-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "68738e920fba005c6f91756cbd4f448a0238141fb46f5a7369f07fd97083c111"
+  },
+  {
+   "id": "F5-004",
+   "type": "image",
+   "sent": 3,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "674c24193d70cca0120abf5648af60378e972549c5444665a2da4388a1fedf79"
+  },
+  {
+   "id": "F5-005",
+   "type": "image",
+   "sent": 4,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "a7a5aa1cfde590034344f18a7a21bd7c82cd35df7442572d4b8551152061df97"
+  },
+  {
+   "id": "F5-006",
+   "type": "image",
+   "sent": 5,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "4bce662e5b1469c86a579bd9d724022b7674eedef3ab7f6a8f9db096427def82"
+  },
+  {
+   "id": "F5-007",
+   "type": "image",
+   "sent": 6,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "226cab01b634e6b043f4fed10c5a13e1b0b112226878e914478f767f1684e6f9"
+  },
+  {
+   "id": "F5-008",
+   "type": "image",
+   "sent": 6,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "8728335af08ac7b4d1926c4527cf8600fe833e423365747e0fb0fe204787b608"
+  },
+  {
+   "id": "F5-009",
+   "type": "image",
+   "sent": 6,
+   "arrive": 12,
+   "sha256": "4b27b3dc237dfbe373ad823173b1ee8975a8d721d4cd2bb7d052f241fbc9f557",
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "dup",
+    "of": "F5-002"
+   }
+  },
+  {
+   "id": "F5-010",
+   "type": "image",
+   "sent": 7,
+   "arrive": 13,
+   "sha256": "68738e920fba005c6f91756cbd4f448a0238141fb46f5a7369f07fd97083c111",
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "dup",
+    "of": "F5-003"
+   }
+  },
+  {
+   "id": "F5-011",
+   "type": "image",
+   "sent": 8,
+   "arrive": 14,
+   "sha256": "674c24193d70cca0120abf5648af60378e972549c5444665a2da4388a1fedf79",
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "dup",
+    "of": "F5-004"
+   }
+  },
+  {
+   "id": "F5-012",
+   "type": "image",
+   "sent": 8,
+   "arrive": 14,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "near_dup",
+    "of": "F5-005"
+   },
+   "sha256": "1883f1adf2bdf375486c2278b7fdc4780723429a419c2553daad1bbce9bd51fc"
+  },
+  {
+   "id": "F5-013",
+   "type": "image",
+   "sent": 8,
+   "arrive": 13,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "near_dup",
+    "of": "F5-006"
+   },
+   "sha256": "f0b603e49686d871e868e4f4507e114d76aaaf2c3b4e1b53ecf29b4eb2ccc74e"
+  },
+  {
+   "id": "F5-014",
+   "type": "image",
+   "sent": 8,
+   "arrive": 12,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "near_dup",
+    "of": "F5-007"
+   },
+   "sha256": "051195bf60243ee95749fd5e873e3299b0b936c55f68ba38eb3b0b7386a0435b"
+  },
+  {
+   "id": "F5-015",
+   "type": "image",
+   "sent": 8,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "8268b9ca4d8852952c0d971feaa906a1a25e8720344bd75a8715fd94afb787cf"
+  },
+  {
+   "id": "F5-016",
+   "type": "image",
+   "sent": 9,
+   "arrive": 12,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "011153e23125f0561e7f3de721c6199cc50c2c5c21cf69c06fb8c64e20373bd4"
+  },
+  {
+   "id": "F5-017",
+   "type": "image",
+   "sent": 10,
+   "arrive": 16,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "c9724a49e594e4db358fd1fa8d11f053a5976bf85cef33c0013ffc9ae3a57a8b"
+  },
+  {
+   "id": "F5-018",
+   "type": "image",
+   "sent": 11,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "0dd8c1052b0c76cad4549d12a1346d5e50a665ad507b0b7c5c0fc654bd6b230f"
+  },
+  {
+   "id": "F5-019",
+   "type": "image",
+   "sent": 11,
+   "arrive": 13,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "20180527fde7d91284a4ee5ee9bcaf7047fd49439f68d3cd0ceb23e4ec766a97"
+  },
+  {
+   "id": "F5-020",
+   "type": "image",
+   "sent": 11,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "6baab2878402a2e6fab098d3cdd6fb0187028a55a38e764a59a6022c86880f11"
+  },
+  {
+   "id": "F5-021",
+   "type": "image",
+   "sent": 11,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "7c348a2506ba5c8d87d4185480851f80ddabf6dc2a849618a2bc173589c13f55"
+  },
+  {
+   "id": "F5-022",
+   "type": "image",
+   "sent": 11,
+   "arrive": 17,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "4bbdf611a907cfa91b8b909c33e204524b134b03a43c5df0f442b6a84770326a"
+  },
+  {
+   "id": "F5-023",
+   "type": "image",
+   "sent": 12,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "5821462e0e19d7f53f5672c12f6659e2eb841711812137878b79ddfea8cfd34c"
+  },
+  {
+   "id": "F5-024",
+   "type": "image",
+   "sent": 13,
+   "arrive": 16,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "9613fcd879b54f71806cb2575281b04a04ebe06249932c0d8892a7a132134f66"
+  },
+  {
+   "id": "F5-025",
+   "type": "image",
+   "sent": 14,
+   "arrive": 19,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "d77f396753702580a98dbc8773101c4c92d818eb6ec53e4c9a73f208976e61a0"
+  },
+  {
+   "id": "F5-026",
+   "type": "image",
+   "sent": 15,
+   "arrive": 17,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "312f39bef1c0af14b93b9eb9acb91f4e17f97d16609c832f4d44a7f3737c2c41"
+  },
+  {
+   "id": "F5-027",
+   "type": "image",
+   "sent": 16,
+   "arrive": 20,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "b4080458d271ffd4bfb82f5f91490e697a2d6267cde625fb19015f00870bbcd8"
+  },
+  {
+   "id": "F5-028",
+   "type": "image",
+   "sent": 17,
+   "arrive": 21,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "extra"
+   },
+   "sha256": "a7d029c78151fda1acfb5700cd7fb5b13c2efc9e72f775476ce7716a2d91ef56"
+  },
+  {
+   "id": "F5-029",
+   "type": "text",
+   "sent": 23,
+   "arrive": 25,
+   "text": "Ever demanded  Benarsi Kanjivaram sarees with temple borders .. perfect for any festival..\n\n4890",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "F4 plus 3 exact duplicates (same sha256), 3 recompressed near-duplicates and 14 extra photos: 28 media, 22 unique.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "F5-029",
+    "price": 4890,
+    "colours": [
+     "purple"
+    ],
+    "name_forbid": [
+     "Ever",
+     "Demanded",
+     "Perfect",
+     "Festival"
+    ],
+    "name_require": [
+     "Temple"
+    ]
+   }
+  ]
+ }
+}

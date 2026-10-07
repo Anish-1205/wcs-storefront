@@ -1,0 +1,118 @@
+{
+ "name": "MEDIA_ONLY",
+ "events": [
+  {
+   "id": "MEDIA_ONLY-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 6,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "eb6e87097ce0adcf03886f4538fd0cbff82370da1d9a4dd77416ff762fbdc138"
+  },
+  {
+   "id": "MEDIA_ONLY-002",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "13247ed3020e0e8f0c5c6541e8ae29eee9dae43e1df247a0cf4266323306cd8e"
+  },
+  {
+   "id": "MEDIA_ONLY-003",
+   "type": "image",
+   "sent": 0,
+   "arrive": 6,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "cee30ab3635659346ffaa40c607ef33be09d274bf82cd054b1ed787b0411970d"
+  },
+  {
+   "id": "MEDIA_ONLY-004",
+   "type": "image",
+   "sent": 0,
+   "arrive": 2,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "ba6d9e62ce15eea27fd28315ad1ca391a1b106935a4e5316be07a54a0198c3dd"
+  },
+  {
+   "id": "MEDIA_ONLY-005",
+   "type": "image",
+   "sent": 0,
+   "arrive": 6,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "e248e67122451920205cea48e94cc71b0d194ed649e1555be993e9b24fd65c6e"
+  },
+  {
+   "id": "MEDIA_ONLY-006",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "a302b6e42b73d97dc413d7f85845599a6e11854a1b6db4cb36b0367bedf503c6"
+  },
+  {
+   "id": "MEDIA_ONLY-007",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "c8ce537c92882aabcddc61cbd54b0be06a482dcca379ffce5b0fe30f699fbfcb"
+  },
+  {
+   "id": "MEDIA_ONLY-008",
+   "type": "image",
+   "sent": 1,
+   "arrive": 4,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "335b0b93dcf9f4a55670f7cec9a9e72cf90c054bb7a077d7ec0dda580a2fa9dd"
+  },
+  {
+   "id": "MEDIA_ONLY-009",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "41468f4a3a65a427bd82ce1922de9323205d2954039ee6558d625471d8ce04ba"
+  }
+ ],
+ "description": "9 photos and no description, ever.",
+ "expect": {
+  "listings": [],
+  "clear": true
+ }
+}

@@ -1,0 +1,129 @@
+{
+ "name": "PF_late",
+ "events": [
+  {
+   "id": "PF_late-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "83c3a83e453d6975d719ff9f85fd4005249910af2b958d59f91ad0167cc50b05"
+  },
+  {
+   "id": "PF_late-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "a0334b45db88cc9c2a7af3dd600228a7591143e0691057271c46b281b4f61674"
+  },
+  {
+   "id": "PF_late-003",
+   "type": "image",
+   "sent": 1,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "8bf765c4ebff936d2de7c8b25a95ede732f751224e241051e0812b2046588b16"
+  },
+  {
+   "id": "PF_late-004",
+   "type": "image",
+   "sent": 1,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "64a262b949bd48067f3bdaed88ab40c2201ef04a64efa8b5e105ac5c20c57498"
+  },
+  {
+   "id": "PF_late-005",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "98449930259cf6b57eefa21c08d1157337f933402b16c4d08fc5122cdd8a9a65"
+  },
+  {
+   "id": "PF_late-006",
+   "type": "image",
+   "sent": 2,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "d08af80810aac3fb697738fb3547ddd2fd1d0414e6e953486cedeeb37f5cdecd"
+  },
+  {
+   "id": "PF_late-007",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "57039dd607ab11d33761cf2d97bad7ded70dd921a03e6eb469366631abe07509"
+  },
+  {
+   "id": "PF_late-008",
+   "type": "image",
+   "sent": 3,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "bottle green",
+    "role": "photo"
+   },
+   "sha256": "bbc4a8e250f7ebd1ca2a0205ea3ae643ec900696771507dceda27e512b57489f"
+  },
+  {
+   "id": "PF_late-009",
+   "type": "text",
+   "sent": 25,
+   "arrive": 27,
+   "text": "Maheshwari silk cotton sarees with reversible border 3900/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Photos first, description 22s later (p90 of real lag).",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "PF_late-009",
+    "price": 3900,
+    "colours": [
+     "bottle green"
+    ],
+    "name_require": [
+     "Maheshwari"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

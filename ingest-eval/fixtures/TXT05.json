@@ -1,0 +1,41 @@
+{
+ "name": "TXT05",
+ "events": [
+  {
+   "id": "TXT05-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "d23f45de6ca783cf00f5a7b1a0b324777d7ca4ba27c32b9a75e4ad73d9657bb7"
+  },
+  {
+   "id": "TXT05-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "Ye wali saree dekho yaar, bahut soft hai, mulmul cotton 750 rs",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — Hinglish.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT05-002",
+    "price": 750,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

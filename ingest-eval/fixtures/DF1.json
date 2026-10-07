@@ -1,0 +1,105 @@
+{
+ "name": "DF1",
+ "events": [
+  {
+   "id": "DF1-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 1,
+   "text": "Soft organza sarees with floral print 3800/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF1-002",
+   "type": "image",
+   "sent": 3,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "93c2a09bcf757fe8e9920e9ccc868d030f3289aeaed357c13a7d13f1b4f30ad6"
+  },
+  {
+   "id": "DF1-003",
+   "type": "image",
+   "sent": 4,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "e96ca6b4d61b8f48a1b428bb6473233a0d8a88ce1da8d0b494760c82cf260624"
+  },
+  {
+   "id": "DF1-004",
+   "type": "image",
+   "sent": 4,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "a17cf39f114fb7d5ccae25c4d08e5623d50ae0bd32be21d99a777d5bb8173a3f"
+  },
+  {
+   "id": "DF1-005",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "6eed4991887f2164c710bae8ad83ae56ab0e31ce274a9231e2c3ca6ff37f23fd"
+  },
+  {
+   "id": "DF1-006",
+   "type": "image",
+   "sent": 4,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "7f2afab8c7bbce4f293097ae0614b5a6e1dfee0151f9f9102cdf1e6d81cca762"
+  },
+  {
+   "id": "DF1-007",
+   "type": "image",
+   "sent": 4,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "teal",
+    "role": "photo"
+   },
+   "sha256": "1467c461812dc78a8b24f29dcdc6386e5ef4cf45f52f0697fb3400e066bf3f6e"
+  }
+ ],
+ "description": "Description first, 6 photos 3s later.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "DF1-001",
+    "price": 3800,
+    "colours": [
+     "teal"
+    ],
+    "name_require": [
+     "Organza"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

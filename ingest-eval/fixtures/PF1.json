@@ -1,0 +1,129 @@
+{
+ "name": "PF1",
+ "events": [
+  {
+   "id": "PF1-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "9a610bc98b3ffcfbe24718d73678343a1dd8615117ec3597dc4ff2df2911b773"
+  },
+  {
+   "id": "PF1-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "160bd813cb73c6b50bc7a5281b4242e2330e837fdd2e6c800498998b4ffb7b7a"
+  },
+  {
+   "id": "PF1-003",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "fae2ef87b78804159c2d3e0a8fc53295560ce617d40166f3065783ac86296d81"
+  },
+  {
+   "id": "PF1-004",
+   "type": "image",
+   "sent": 2,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "15e36097ccbdd3fb44b265822f6f247115576b52862a836c6e2852ee280b62e4"
+  },
+  {
+   "id": "PF1-005",
+   "type": "image",
+   "sent": 3,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "260f2b71b2101b2b572a4e7537c3b49296d478e0afc841ebb6677055d721b19d"
+  },
+  {
+   "id": "PF1-006",
+   "type": "image",
+   "sent": 3,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "c366860f398a2052a648a8e1d0c0bd316b3ad04e81fb50c40bd6d49653fe1459"
+  },
+  {
+   "id": "PF1-007",
+   "type": "image",
+   "sent": 3,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "4ef2ea57719b006f389fe700d62eeb0a3fb87dce92c07c7530c68833ff5d446a"
+  },
+  {
+   "id": "PF1-008",
+   "type": "image",
+   "sent": 4,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "rani pink",
+    "role": "photo"
+   },
+   "sha256": "f4e7b806d1a5d09fb9e6476f54d190bade1a8f751e15c8e166f3f9d8ae3ec16b"
+  },
+  {
+   "id": "PF1-009",
+   "type": "text",
+   "sent": 10,
+   "arrive": 13,
+   "text": "Banarasi georgette sarees with brocade border 3300/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Photos first, description 6s later (the common case).",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "PF1-009",
+    "price": 3300,
+    "colours": [
+     "rani pink"
+    ],
+    "name_require": [
+     "Banarasi"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

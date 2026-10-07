@@ -1,0 +1,105 @@
+{
+ "name": "DF_late",
+ "events": [
+  {
+   "id": "DF_late-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 2,
+   "text": "Gadwal cotton silk saree with checks border 5200/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF_late-002",
+   "type": "image",
+   "sent": 20,
+   "arrive": 24,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "c5c6e955609a6437680a2f5bebf8f87b0fb3a54dcdd16ab79c7745387778b178"
+  },
+  {
+   "id": "DF_late-003",
+   "type": "image",
+   "sent": 21,
+   "arrive": 25,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "2c3726f9652eaedd73ad4c32eb68ef4ce1384e24f209d437220b9f0f474662ac"
+  },
+  {
+   "id": "DF_late-004",
+   "type": "image",
+   "sent": 22,
+   "arrive": 26,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "c3f0c92f4bbf544f80b632d63986da8f5fc9efdf3891287f16745f55a1f562e1"
+  },
+  {
+   "id": "DF_late-005",
+   "type": "image",
+   "sent": 22,
+   "arrive": 24,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "cef23a6f3c6f54bc0b41e5e8ae43547ebacce24f1890221687586c3e2e6d6aab"
+  },
+  {
+   "id": "DF_late-006",
+   "type": "image",
+   "sent": 22,
+   "arrive": 24,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "afa853bfabf73b0c8874baf9b216d35a49c07c759071275fa166e4228ae82a66"
+  },
+  {
+   "id": "DF_late-007",
+   "type": "image",
+   "sent": 23,
+   "arrive": 29,
+   "truth": {
+    "listing": "A",
+    "colour": "mustard",
+    "role": "photo"
+   },
+   "sha256": "55e1e07cd3e659ff95fdd019adc1797480449de3d1b531edcc5c61f1f1a55469"
+  }
+ ],
+ "description": "Description first, photos start 20s later.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "DF_late-001",
+    "price": 5200,
+    "colours": [
+     "mustard"
+    ],
+    "name_require": [
+     "Gadwal"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

@@ -1,0 +1,237 @@
+{
+ "name": "F2",
+ "events": [
+  {
+   "id": "F2-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "multi",
+    "role": "collage"
+   },
+   "sha256": "b2f3cd62fcc3bbcee3eb0108b36debce06afaa0e9dee1bea256a741fe015efe9"
+  },
+  {
+   "id": "F2-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "228641c3e9a4e2eec6e9c07d8ff29c15286486c7924af45e1dfe8e5a71d6fa47"
+  },
+  {
+   "id": "F2-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "274c13caefef97e87664dfb903dabc76a69b79801a6f3f44b5f24229a9ac680a"
+  },
+  {
+   "id": "F2-004",
+   "type": "image",
+   "sent": 3,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "ced942e3d628adf099b1240c3f85735f48e3d5465dc046b77426f49bbce06daf"
+  },
+  {
+   "id": "F2-005",
+   "type": "image",
+   "sent": 4,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "e80319beb6c227817288ea31c93049782b23b69395966f70229350b5c2637252"
+  },
+  {
+   "id": "F2-006",
+   "type": "image",
+   "sent": 4,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "3ddc6f5832d87a994af3cf55a1cc8de51808e3d87f5a6a846f3085832cc30c52"
+  },
+  {
+   "id": "F2-007",
+   "type": "image",
+   "sent": 4,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "72e6c08cd65296dd9a7a53d0824fbda446ea838812b47efcc00e82f54270effc"
+  },
+  {
+   "id": "F2-008",
+   "type": "image",
+   "sent": 5,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "bec6006497379263fadd802680453a7920747d0342027a4be2f4e0cba1f81f46"
+  },
+  {
+   "id": "F2-009",
+   "type": "image",
+   "sent": 6,
+   "arrive": 11,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "ed4a4363eab9de32fb2f29c6598f7234608ede5ce06cb5a13b833d02fb9f809e"
+  },
+  {
+   "id": "F2-010",
+   "type": "image",
+   "sent": 7,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "c8dd27d37c485eaec46457b0abb27935315d00d3edc5f16ba2f913fd2788d942"
+  },
+  {
+   "id": "F2-011",
+   "type": "image",
+   "sent": 8,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "e97250d43d4f0511efd9868d41cb7ebad9fdc5f362377c5e2509b30a614a92b9"
+  },
+  {
+   "id": "F2-012",
+   "type": "image",
+   "sent": 8,
+   "arrive": 13,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "793e420b6d76904362cf6ec37a0ff050cd675442859eff84c4221ce8fd4e846d"
+  },
+  {
+   "id": "F2-013",
+   "type": "image",
+   "sent": 9,
+   "arrive": 13,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "e67afd064616bf7e8967a8b63b8788db16299c6c2b83112d43edc5feb5bcff00"
+  },
+  {
+   "id": "F2-014",
+   "type": "image",
+   "sent": 9,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "e79e3e84a1aaa283406b0821e538f9d377430ea8fe7563f405c7b84dc0970a9e"
+  },
+  {
+   "id": "F2-015",
+   "type": "image",
+   "sent": 10,
+   "arrive": 13,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "c664223ce8042e431f9e6ba4ff3fb53f3319a96f5c5d67354d407f6b47dfbf85"
+  },
+  {
+   "id": "F2-016",
+   "type": "image",
+   "sent": 11,
+   "arrive": 14,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "75f442d76875d24856fc86b332f633806503ac94676b6219f07374818b6a626e"
+  },
+  {
+   "id": "F2-017",
+   "type": "image",
+   "sent": 12,
+   "arrive": 15,
+   "truth": {
+    "listing": "A",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "7e19c5835c3a7d595ed29b994b041b546af9bb910a94df8c4db102682efadcfb"
+  },
+  {
+   "id": "F2-018",
+   "type": "text",
+   "sent": 18,
+   "arrive": 19,
+   "text": "Benarsi patola paithani tissue sarees 6490/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Collage, 8 pink, 8 red, then the description 6s later.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "F2-018",
+    "price": 6490,
+    "colours": [
+     "pink",
+     "red"
+    ],
+    "name_require": [
+     "Patola"
+    ]
+   }
+  ]
+ }
+}

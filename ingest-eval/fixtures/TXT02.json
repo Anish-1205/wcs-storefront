@@ -1,0 +1,41 @@
+{
+ "name": "TXT02",
+ "events": [
+  {
+   "id": "TXT02-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "a31441a971743d86badb4893f8ed0b820e77756f2e5679e79af9840714af0f3e"
+  },
+  {
+   "id": "TXT02-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "new arrival 😍 pink georgette sarees price 1800 rs only dm for order",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — price mid-text.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT02-002",
+    "price": 1800,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

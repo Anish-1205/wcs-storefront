@@ -1,0 +1,42 @@
+{
+ "name": "TXT11",
+ "events": [
+  {
+   "id": "TXT11-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "26d5e3f0130fa65da7e07ad57752ba2f1d7481bb758373110737a9749afaaf69"
+  },
+  {
+   "id": "TXT11-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 7,
+   "text": "Hii sir 🙏 plz find new saree stock Rs. 2k to 3k range",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — range written with k; names nothing.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT11-002",
+    "price": null,
+    "price_any_of": null,
+    "colours": [],
+    "generic": true
+   }
+  ],
+  "clear": true
+ }
+}

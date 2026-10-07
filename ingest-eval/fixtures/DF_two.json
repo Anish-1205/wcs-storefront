@@ -1,0 +1,175 @@
+{
+ "name": "DF_two",
+ "events": [
+  {
+   "id": "DF_two-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 3,
+   "text": "Chanderi silk sarees with zari buttas 4400/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF_two-002",
+   "type": "image",
+   "sent": 2,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "ivory",
+    "role": "photo"
+   },
+   "sha256": "79d372b0cea3ddbf2715997a43036ff65142cfd9b05701fda572ecacafc1e88f"
+  },
+  {
+   "id": "DF_two-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "ivory",
+    "role": "photo"
+   },
+   "sha256": "ce6c3fcf2929fbac96360fb867a0b4b976cd5d9fcacd7ae2fc9762355bac750a"
+  },
+  {
+   "id": "DF_two-004",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "ivory",
+    "role": "photo"
+   },
+   "sha256": "ca5d5711fd2bda0f2bfbfe17e099ece3cd2d2a695467936a231d4b6d6e22a645"
+  },
+  {
+   "id": "DF_two-005",
+   "type": "image",
+   "sent": 3,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "ivory",
+    "role": "photo"
+   },
+   "sha256": "ef396aa2ce153fcb3bb8ed64438cad52db10f04cac2450ac689a4cd3fa16e825"
+  },
+  {
+   "id": "DF_two-006",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "ivory",
+    "role": "photo"
+   },
+   "sha256": "7305d5b3ed99ad56295287810777a572cf144871a2e8a6870d1fd310b7bb1191"
+  },
+  {
+   "id": "DF_two-007",
+   "type": "text",
+   "sent": 40,
+   "arrive": 42,
+   "text": "Mulmul cotton sarees with block print 1500/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  },
+  {
+   "id": "DF_two-008",
+   "type": "image",
+   "sent": 42,
+   "arrive": 48,
+   "truth": {
+    "listing": "B",
+    "colour": "blue",
+    "role": "photo"
+   },
+   "sha256": "5cec1adcfd0c6f6a15fa91b1ccea0052f33f9b20808e8371926a2518fadadaec"
+  },
+  {
+   "id": "DF_two-009",
+   "type": "image",
+   "sent": 42,
+   "arrive": 44,
+   "truth": {
+    "listing": "B",
+    "colour": "blue",
+    "role": "photo"
+   },
+   "sha256": "e07e22a832bfbe342f660df8cf8d558845f081f778b1ad7bb74dc4f767268a62"
+  },
+  {
+   "id": "DF_two-010",
+   "type": "image",
+   "sent": 43,
+   "arrive": 47,
+   "truth": {
+    "listing": "B",
+    "colour": "blue",
+    "role": "photo"
+   },
+   "sha256": "38b468504972a5a83b78363094ae4d3c11fdeba00ed7f6bc46eb5c2dc3e6b520"
+  },
+  {
+   "id": "DF_two-011",
+   "type": "image",
+   "sent": 43,
+   "arrive": 47,
+   "truth": {
+    "listing": "B",
+    "colour": "blue",
+    "role": "photo"
+   },
+   "sha256": "a31d79dc6368e01ba779015f2410b01cf0b80ac1412e62d14a1279b500fdc26a"
+  },
+  {
+   "id": "DF_two-012",
+   "type": "image",
+   "sent": 43,
+   "arrive": 47,
+   "truth": {
+    "listing": "B",
+    "colour": "blue",
+    "role": "photo"
+   },
+   "sha256": "ee26da952eb918044316e882a2ebdd81197b3b17491726219e259c0ba120cc9f"
+  }
+ ],
+ "description": "Two description-first listings back to back, 35s apart.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "DF_two-001",
+    "price": 4400,
+    "colours": [
+     "ivory"
+    ],
+    "name_require": [
+     "Chanderi"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "DF_two-007",
+    "price": 1500,
+    "colours": [
+     "blue"
+    ],
+    "name_require": [
+     "Mulmul"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

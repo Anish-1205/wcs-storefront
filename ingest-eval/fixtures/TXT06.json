@@ -1,0 +1,44 @@
+{
+ "name": "TXT06",
+ "events": [
+  {
+   "id": "TXT06-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "f7535dff84227b3ce0f3ddfdab23a971cd561bea6a7be82d1e700f165a5599d1"
+  },
+  {
+   "id": "TXT06-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 9,
+   "text": "Kanchi pattu sarees MRP 12,500 offer price 9800",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — two prices.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT06-002",
+    "price": 9800,
+    "price_any_of": [
+     9800,
+     12500
+    ],
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

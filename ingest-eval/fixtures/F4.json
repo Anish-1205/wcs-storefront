@@ -1,0 +1,134 @@
+{
+ "name": "F4",
+ "events": [
+  {
+   "id": "F4-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "multi",
+    "role": "collage"
+   },
+   "sha256": "d7457923e39ebee752d460c67e3e9fd824f34564f29698e9a336f7098d4d2a96"
+  },
+  {
+   "id": "F4-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "26030052cd4fe643fa51f9c59ac1b689a2aa1e5cff27fb8a5c6dbc6284792511"
+  },
+  {
+   "id": "F4-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "fd28e50fb9360740d54fa680daaeee954530a022b023fd1340075d0ce0a8e37f"
+  },
+  {
+   "id": "F4-004",
+   "type": "image",
+   "sent": 2,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "e4b8148f192dd8da4b19592e18b7e8999d7ad712659ee838d49885eae9630e70"
+  },
+  {
+   "id": "F4-005",
+   "type": "image",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "4a00ebab928fb57e07f7ab9855f81d29f34a2ad6a375f9e3435e26473187ab13"
+  },
+  {
+   "id": "F4-006",
+   "type": "image",
+   "sent": 3,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "744fa2b6fee4480cb69500afa2782214df1d061651f769d8ede4bd536005a096"
+  },
+  {
+   "id": "F4-007",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "9896b2a3fddd58031b54c5492edf4e698514837ca2ef91fb251160b8676963cc"
+  },
+  {
+   "id": "F4-008",
+   "type": "image",
+   "sent": 5,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "80bbf052e3ec3f90253a88958ea8f1bbca3f2d7c2bb6d752ebe012d13eb50d1e"
+  },
+  {
+   "id": "F4-009",
+   "type": "text",
+   "sent": 14,
+   "arrive": 16,
+   "text": "Ever demanded  Benarsi Kanjivaram sarees with temple borders .. perfect for any festival..\n\n4890",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Collage, 7 purple photos, then a description whose price sits on its own line.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "F4-009",
+    "price": 4890,
+    "colours": [
+     "purple"
+    ],
+    "name_forbid": [
+     "Ever",
+     "Demanded",
+     "Perfect",
+     "Festival"
+    ],
+    "name_require": [
+     "Temple"
+    ]
+   }
+  ]
+ }
+}

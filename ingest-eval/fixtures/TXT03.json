@@ -1,0 +1,41 @@
+{
+ "name": "TXT03",
+ "events": [
+  {
+   "id": "TXT03-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 2,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "33df7003672b05790e80cdbfe137f5ca0351332f66a7697217768a1fce836a3c"
+  },
+  {
+   "id": "TXT03-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 9,
+   "text": "Beautiful banarasi saree with zari border",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — no price.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT03-002",
+    "price": null,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

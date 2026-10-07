@@ -1,0 +1,44 @@
+{
+ "name": "TXT08",
+ "events": [
+  {
+   "id": "TXT08-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 2,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "8a7038f10ba033ba87a8174d7d8b01a25bfad28439d4ca061658f88a14ccbe2c"
+  },
+  {
+   "id": "TXT08-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 9,
+   "text": "Soft organza sarees with floral print 4900.50",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — decimal price.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT08-002",
+    "price": 4900,
+    "price_any_of": [
+     4900,
+     4901
+    ],
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

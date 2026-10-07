@@ -1,0 +1,211 @@
+{
+ "name": "LATE_TEXT",
+ "events": [
+  {
+   "id": "LATE_TEXT-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 3,
+   "text": "Gadwal silk sarees with temple border 6100/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "LATE_TEXT-002",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "5bc9114113db609e9af9595d522439546d4d9c2333e1e588cea7143ef37d4f84"
+  },
+  {
+   "id": "LATE_TEXT-003",
+   "type": "image",
+   "sent": 2,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "9dfdf971163e4a4a0e4867b0663e91cf1797e1285dab2ba2ddb3fdfd21ebc105"
+  },
+  {
+   "id": "LATE_TEXT-004",
+   "type": "image",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "5d45d6119e3c3f17ee9b2ad37f9f313bd092f1e82a62283bc1f14eb4943c08b3"
+  },
+  {
+   "id": "LATE_TEXT-005",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "eab6494beafdbc86b2c9572ff100d93821b0274cac5a1c2315f98db4cf84b369"
+  },
+  {
+   "id": "LATE_TEXT-006",
+   "type": "image",
+   "sent": 5,
+   "arrive": 9,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "499a990b2ad71e3e8738b5538ba4580090bd7a81a3a769647cf35ec4f32ef2e7"
+  },
+  {
+   "id": "LATE_TEXT-007",
+   "type": "image",
+   "sent": 6,
+   "arrive": 10,
+   "truth": {
+    "listing": "A",
+    "colour": "maroon",
+    "role": "photo"
+   },
+   "sha256": "8638a99a71b37c7ee8ab6ff05aee7152639b71c3a27aea740fdde7d17910c806"
+  },
+  {
+   "id": "LATE_TEXT-008",
+   "type": "image",
+   "sent": 30,
+   "arrive": 34,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "94dfdf8f7b3733c5fed6c6e3bd7dd075055e3dc5a20913f2eea8039356769635"
+  },
+  {
+   "id": "LATE_TEXT-009",
+   "type": "image",
+   "sent": 31,
+   "arrive": 37,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "e165a949b87968a7f4d57efda6314a67d765a1eff0f8cb2d586b31947bd83d69"
+  },
+  {
+   "id": "LATE_TEXT-010",
+   "type": "image",
+   "sent": 31,
+   "arrive": 37,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "e300384a69e3a8566acb9e770f2237abca5f4c23a13f00a325fba9d3d0860317"
+  },
+  {
+   "id": "LATE_TEXT-011",
+   "type": "image",
+   "sent": 32,
+   "arrive": 38,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "2b216ded89f2f11a316d641a35d96f1738966bb57e25f3268aed5b1149921056"
+  },
+  {
+   "id": "LATE_TEXT-012",
+   "type": "image",
+   "sent": 32,
+   "arrive": 34,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "0943e20b6ac7d95db34647b57af706d2bb1a99503c10c1a15f5f4c661cc65b87"
+  },
+  {
+   "id": "LATE_TEXT-013",
+   "type": "image",
+   "sent": 33,
+   "arrive": 36,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "93c436df43b5f044aac21795a0fff994272d284ef912eeec04ea82b037e747b0"
+  },
+  {
+   "id": "LATE_TEXT-014",
+   "type": "image",
+   "sent": 33,
+   "arrive": 38,
+   "truth": {
+    "listing": "B",
+    "colour": "navy",
+    "role": "photo"
+   },
+   "sha256": "656badba580d031cfb63c5c111ba4712dd182d9ec9f28fc5f13c79f69d803bda"
+  },
+  {
+   "id": "LATE_TEXT-015",
+   "type": "text",
+   "sent": 50,
+   "arrive": 52,
+   "text": "Uppada jamdani sarees with floral jaal 5300/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Description-first listing, then a photos-first listing whose description arrives 17s late (p75 of real lag).",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "LATE_TEXT-001",
+    "price": 6100,
+    "colours": [
+     "maroon"
+    ],
+    "name_require": [
+     "Gadwal"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "LATE_TEXT-015",
+    "price": 5300,
+    "colours": [
+     "navy"
+    ],
+    "name_require": [
+     "Uppada"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

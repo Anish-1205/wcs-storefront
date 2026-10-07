@@ -1,0 +1,163 @@
+{
+ "name": "TIE_DF",
+ "events": [
+  {
+   "id": "TIE_DF-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 2,
+   "text": "Kota doria sarees with gota border 2900/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "TIE_DF-002",
+   "type": "image",
+   "sent": 2,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "ab33c76815502d96af25365c168dbc0ae811eac12d164d52ae1c654b9738f8aa"
+  },
+  {
+   "id": "TIE_DF-003",
+   "type": "image",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "d1e5be5a46d11541de73ed4d9a784c18651a4eb29296ce66b363116c27d36d1c"
+  },
+  {
+   "id": "TIE_DF-004",
+   "type": "image",
+   "sent": 3,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "3f2e96c92d00fb939387bff7bae186ba856cf52e44df35fc83331ac8676ffab1"
+  },
+  {
+   "id": "TIE_DF-005",
+   "type": "image",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "d72d19a16b9dccf8832fc44d6b7a4d303cbd298ae1f492f520946ff6399bde38"
+  },
+  {
+   "id": "TIE_DF-006",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "peach",
+    "role": "photo"
+   },
+   "sha256": "8ffebb9de35609d9a10037d0ea421c2bafb023e227f7bdc7e7c256203713ff99"
+  },
+  {
+   "id": "TIE_DF-007",
+   "type": "text",
+   "sent": 40,
+   "arrive": 41,
+   "text": "Pochampally ikat sarees in pure cotton 2100/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  },
+  {
+   "id": "TIE_DF-008",
+   "type": "image",
+   "sent": 40,
+   "arrive": 46,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "c79eddacd969613f048e135f263004f06016d64c67ac5f410c2e5a4d057a6e1b"
+  },
+  {
+   "id": "TIE_DF-009",
+   "type": "image",
+   "sent": 40,
+   "arrive": 42,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "80a2361e26ee5e7cce79efa137962ab238fac4a27d8222a63b1eb1e5eec2ba7e"
+  },
+  {
+   "id": "TIE_DF-010",
+   "type": "image",
+   "sent": 40,
+   "arrive": 45,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "674e799b42d07a9143d19830513393eb8c5a203aeaed8ff8476da0d4e852b2c7"
+  },
+  {
+   "id": "TIE_DF-011",
+   "type": "image",
+   "sent": 40,
+   "arrive": 45,
+   "truth": {
+    "listing": "B",
+    "colour": "green",
+    "role": "photo"
+   },
+   "sha256": "621b0ac122c283f964a338e8c5a6d56a9bc1b993f23615f9d9606acad7a17aa8"
+  }
+ ],
+ "description": "Description-first listing; the next description shares its second with its entire 4-photo burst.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TIE_DF-001",
+    "price": 2900,
+    "colours": [
+     "peach"
+    ],
+    "name_require": [
+     "Kota"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "TIE_DF-007",
+    "price": 2100,
+    "colours": [
+     "green"
+    ],
+    "name_require": [
+     "Pochampally"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

@@ -1,0 +1,41 @@
+{
+ "name": "TXT12",
+ "events": [
+  {
+   "id": "TXT12-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "e2cfd950f6a60d5c7f5f83a082fddc6f80b4ebee09b1a8c8881a09aeaf7b82d8"
+  },
+  {
+   "id": "TXT12-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "Bandhani sarees 1500 each, minimum 6 pcs",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — price followed by quantity.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT12-002",
+    "price": 1500,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

@@ -1,0 +1,41 @@
+{
+ "name": "TXT13",
+ "events": [
+  {
+   "id": "TXT13-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "60eb8e519b8261e2805dfe23e1d35aab79db887a7c21f0f253ddcf6bcee76b42"
+  },
+  {
+   "id": "TXT13-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 9,
+   "text": "paithani sarees 7490",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — control: plain trailing price.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT13-002",
+    "price": 7490,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}

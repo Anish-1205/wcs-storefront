@@ -1,0 +1,307 @@
+{
+ "name": "F1",
+ "events": [
+  {
+   "id": "F1-001",
+   "type": "text",
+   "sent": 0,
+   "arrive": 1,
+   "text": "Benarsi patola paithani bandhej sarees 7490/",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  },
+  {
+   "id": "F1-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "2b9a74bebf8aa8c542c953a98a514f961a5b3f062f4c5c1e76cbef5139c2c80e"
+  },
+  {
+   "id": "F1-003",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "54164fce07992db217444e0de5efa845367f1be1f9cdb6fc916eb48374f810cf"
+  },
+  {
+   "id": "F1-004",
+   "type": "image",
+   "sent": 1,
+   "arrive": 6,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "b0ea8a2ca0b2608eb55d5783a70d370ce31597d94d45ecf069af46d336aee97f"
+  },
+  {
+   "id": "F1-005",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "a8d30af0dcd6ac32838140100e9d19dd835f25b1c250a46a46aa8235e8736a40"
+  },
+  {
+   "id": "F1-006",
+   "type": "image",
+   "sent": 2,
+   "arrive": 4,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "5473a85f8708a3a22eabbae6f798a23305d8db45b36887d45a1e7f010fe1b398"
+  },
+  {
+   "id": "F1-007",
+   "type": "image",
+   "sent": 2,
+   "arrive": 7,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "4668d97bbbe24963c7cc82f8611c0463446aa09d5fdd7506b720eb6164ef3080"
+  },
+  {
+   "id": "F1-008",
+   "type": "image",
+   "sent": 2,
+   "arrive": 8,
+   "truth": {
+    "listing": "A",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "8210d49b60b997678bd952fd3c4aae6d1831232c15c71b0897ed63c3e87e8209"
+  },
+  {
+   "id": "F1-009",
+   "type": "video",
+   "sent": 3,
+   "arrive": 7,
+   "truth": {
+    "listing": "B",
+    "colour": "multi",
+    "role": "video"
+   },
+   "sha256": "1e9a5f33d1e3158379afe06ab57b84f66e9807b6f29f0ef23401a932b227bc8a"
+  },
+  {
+   "id": "F1-010",
+   "type": "video",
+   "sent": 3,
+   "arrive": 5,
+   "truth": {
+    "listing": "B",
+    "colour": "multi",
+    "role": "video"
+   },
+   "sha256": "3d629181f133329ad11caadae8ce1dce1281249e528e3c19763871195e2f6c29"
+  },
+  {
+   "id": "F1-011",
+   "type": "image",
+   "sent": 4,
+   "arrive": 8,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "ecbe4b82c2863de219fcabc463a8fc581003ceb99421658bd5053f964e8d36f8"
+  },
+  {
+   "id": "F1-012",
+   "type": "image",
+   "sent": 4,
+   "arrive": 7,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "9bab98adcbead63d94444dcb8aa840296e88329dd09e107dd462c77a5a45d7c5"
+  },
+  {
+   "id": "F1-013",
+   "type": "image",
+   "sent": 5,
+   "arrive": 8,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "d4b159113baf4b4c57e7c911624003bfa27b4d14752af4cf81caeae1bd483d8a"
+  },
+  {
+   "id": "F1-014",
+   "type": "image",
+   "sent": 5,
+   "arrive": 9,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "2e4c902c33398eb468a63b3b91703919b2ff112d133db6792d9243401c8fb566"
+  },
+  {
+   "id": "F1-015",
+   "type": "image",
+   "sent": 5,
+   "arrive": 9,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "118f507865239343292e5241c57300be4d1597cc6425ed304325dbb0dad5d879"
+  },
+  {
+   "id": "F1-016",
+   "type": "image",
+   "sent": 5,
+   "arrive": 9,
+   "truth": {
+    "listing": "B",
+    "colour": "red",
+    "role": "photo"
+   },
+   "sha256": "8ed9ba14b04915878d737ef86e2cdea61bc5ad03d6484967607ddaa73f81a0a4"
+  },
+  {
+   "id": "F1-017",
+   "type": "image",
+   "sent": 6,
+   "arrive": 10,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "5240e739168475c152c6715f6e09f12915d68bf184dd7bd29c5c4fe5f26acbc0"
+  },
+  {
+   "id": "F1-018",
+   "type": "image",
+   "sent": 7,
+   "arrive": 13,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "a1f2c42f60445693722db1e7ea5d102ef27ef809c90c8f9007d64e567b8f3a41"
+  },
+  {
+   "id": "F1-019",
+   "type": "image",
+   "sent": 8,
+   "arrive": 10,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "9a5f413f1778b78bdace4f0b7912c46810dac00991235c8d1829aac482663a68"
+  },
+  {
+   "id": "F1-020",
+   "type": "image",
+   "sent": 8,
+   "arrive": 10,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "b9a56d9ea53a86dc4fe102e9c0f4fe73a1e72dcdc22846d7bb01cee21bccd98e"
+  },
+  {
+   "id": "F1-021",
+   "type": "image",
+   "sent": 8,
+   "arrive": 10,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "dc20b9bdf5d5b532a6cf7faf0854c8f82be1ff2c26e62e32087a2b6a5d230688"
+  },
+  {
+   "id": "F1-022",
+   "type": "image",
+   "sent": 9,
+   "arrive": 11,
+   "truth": {
+    "listing": "B",
+    "colour": "pink",
+    "role": "photo"
+   },
+   "sha256": "72b4f5589310f8efa54160da0db773a2c5199900d0a4779904012c40a52f9118"
+  },
+  {
+   "id": "F1-023",
+   "type": "text",
+   "sent": 11,
+   "arrive": 12,
+   "text": "Tissue sarees with petit point embroidery 6490/",
+   "truth": {
+    "listing": "B",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Description, 7 pink photos, 2 videos, 12 red/pink photos, description — one forward, no gaps. Timing alone cannot place the boundary.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "F1-001",
+    "price": 7490,
+    "colours": [
+     "pink"
+    ],
+    "name_require": [
+     "Patola"
+    ]
+   },
+   {
+    "key": "B",
+    "description": "F1-023",
+    "price": 6490,
+    "colours": [
+     "red",
+     "pink"
+    ],
+    "name_require": [
+     "Tissue"
+    ]
+   }
+  ]
+ }
+}

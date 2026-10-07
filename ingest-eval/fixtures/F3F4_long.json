@@ -1,0 +1,207 @@
+{
+ "name": "F3F4_long",
+ "events": [
+  {
+   "id": "F3F4_long-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "6ccf0ed2053ef7442ce3f155b20d5583ac62b1d7665be4377132f62809e2f096"
+  },
+  {
+   "id": "F3F4_long-002",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "96133dbfdb099fb53ad76e5c42d688b9650545472d5cf3f96a988baf6ddb30d5"
+  },
+  {
+   "id": "F3F4_long-003",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "6574ba5239b84d01fd7d12135f4efa7642cfbb78f64ba80072f6ddeacee60d8b"
+  },
+  {
+   "id": "F3F4_long-004",
+   "type": "image",
+   "sent": 1,
+   "arrive": 5,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "e64fbc52298d14ea92c21f3aad602d8b867c3fd2b51edf61289f5f53568ee7cd"
+  },
+  {
+   "id": "F3F4_long-005",
+   "type": "image",
+   "sent": 2,
+   "arrive": 7,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "58eb7f87ed3a26dc13b6facbd5efc6e683d0476a0de82e8ff67b7aac9b09bc64"
+  },
+  {
+   "id": "F3F4_long-006",
+   "type": "image",
+   "sent": 3,
+   "arrive": 8,
+   "truth": {
+    "listing": "UNASSIGNED",
+    "colour": "indigo",
+    "role": "photo"
+   },
+   "sha256": "9ac4d9adae7b4e1c47e0cfa153a53dccbc59a3fd2caf007719514d7ec14ee632"
+  },
+  {
+   "id": "F3F4_long-007",
+   "type": "image",
+   "sent": 2400,
+   "arrive": 2404,
+   "truth": {
+    "listing": "A",
+    "colour": "multi",
+    "role": "collage"
+   },
+   "sha256": "31b7af9338b3c3854f41c135799280924dc80394def6d9593463027598870b3b"
+  },
+  {
+   "id": "F3F4_long-008",
+   "type": "image",
+   "sent": 2401,
+   "arrive": 2406,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "6807e61f4facbce31ce11602c0949cdeebec02bebf2661d272821f2dec6be9ec"
+  },
+  {
+   "id": "F3F4_long-009",
+   "type": "image",
+   "sent": 2401,
+   "arrive": 2405,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "bee8ab4f1d7594e8efe03cb13089d8d289544ea238a7775ec8939b013807c644"
+  },
+  {
+   "id": "F3F4_long-010",
+   "type": "image",
+   "sent": 2401,
+   "arrive": 2405,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "221e79ab1ad575a317105aa08cd47e4cb337be9d6949d9beab9fe11944654275"
+  },
+  {
+   "id": "F3F4_long-011",
+   "type": "image",
+   "sent": 2402,
+   "arrive": 2405,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "20916dc4439cc090a763ed06fb58a9754571943e9e68a89744ce60b0795efcc4"
+  },
+  {
+   "id": "F3F4_long-012",
+   "type": "image",
+   "sent": 2402,
+   "arrive": 2407,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "c7e4badf7551d54e26f71a83aabd6488350fc896f4b7b697676e05399fa8347b"
+  },
+  {
+   "id": "F3F4_long-013",
+   "type": "image",
+   "sent": 2403,
+   "arrive": 2408,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "831b8a151216f4f9c04bfc21386e2bbe943019f013a063089ec7c6fb649629de"
+  },
+  {
+   "id": "F3F4_long-014",
+   "type": "image",
+   "sent": 2404,
+   "arrive": 2410,
+   "truth": {
+    "listing": "A",
+    "colour": "purple",
+    "role": "photo"
+   },
+   "sha256": "fc2bd3e8e75586a5acca8af2ec94803102fb6ba0ef72f3f0489ed11b6b77a92f"
+  },
+  {
+   "id": "F3F4_long-015",
+   "type": "text",
+   "sent": 2413,
+   "arrive": 2415,
+   "text": "Ever demanded  Benarsi Kanjivaram sarees with temple borders .. perfect for any festival..\n\n4890",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "6 indigo photos with no description; F4 arrives 40 minutes later.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "F3F4_long-015",
+    "price": 4890,
+    "colours": [
+     "purple"
+    ],
+    "name_forbid": [
+     "Ever",
+     "Demanded",
+     "Perfect",
+     "Festival"
+    ],
+    "name_require": [
+     "Temple"
+    ]
+   }
+  ],
+  "clear": true
+ }
+}

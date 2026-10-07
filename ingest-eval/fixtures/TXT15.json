@@ -1,0 +1,41 @@
+{
+ "name": "TXT15",
+ "events": [
+  {
+   "id": "TXT15-001",
+   "type": "image",
+   "sent": 0,
+   "arrive": 3,
+   "truth": {
+    "listing": "A",
+    "colour": "default",
+    "role": "photo"
+   },
+   "sha256": "daaced702b5a03cac4af3dc1c0a5c1a64359ea2a10846a0e56c39e1ae2a61064"
+  },
+  {
+   "id": "TXT15-002",
+   "type": "text",
+   "sent": 6,
+   "arrive": 8,
+   "text": "Aaj ka special: Pochampally ikat saree 4500 😍\nContact: 9876543210\nDelivery all India",
+   "truth": {
+    "listing": "A",
+    "role": "description"
+   }
+  }
+ ],
+ "description": "Messy description — price above contact lines.",
+ "expect": {
+  "listings": [
+   {
+    "key": "A",
+    "description": "TXT15-002",
+    "price": 4500,
+    "price_any_of": null,
+    "colours": []
+   }
+  ],
+  "clear": true
+ }
+}
