@@ -11,6 +11,7 @@ import type { Category } from "@/lib/supabase/types";
 import { AVAILABILITY_SIGNAL_PRESETS } from "@/lib/availability-presets";
 import { getProductBySlug } from "@/data/products";
 import { availabilityLabel } from "@/lib/catalog-format";
+import { reviewReasonText } from "@/lib/whatsapp-draft";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,13 @@ export default async function AdminProductsPage(props: {
     : { data: [], error: null };
   const signalBySlug = new Map((signals ?? []).map((signal) => [signal.slug, signal]));
 
+  // WhatsApp drafts that want a second look (migration 030). Read on its own so that a database
+  // without that migration, or any error here, costs the badge and nothing else on this page.
+  const { data: reviewRows } = products.length
+    ? await admin.from("products").select("id, needs_review_reasons").in("id", products.map((p) => p.id as string)).eq("needs_review", true)
+    : { data: [] };
+  const reviewById = new Map(((reviewRows ?? []) as { id: string; needs_review_reasons: string[] | null }[]).map((row) => [row.id, row.needs_review_reasons ?? []]));
+
   const rows: AdminProductRow[] = products.map((p) => ({
     id: p.id as string,
     name: p.name as string,
@@ -116,6 +124,8 @@ export default async function AdminProductsPage(props: {
           || Number(b.is_primary) - Number(a.is_primary) || (a.display_order ?? 0) - (b.display_order ?? 0))[0]?.image_url ?? null,
     created_at: p.created_at as string,
     updated_at: p.updated_at as string,
+    needs_review: reviewById.has(p.id as string),
+    review_reasons: (reviewById.get(p.id as string) ?? []).map(reviewReasonText),
   }));
 
   return (

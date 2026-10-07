@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ProductForm, type ProductFormInitial } from "@/components/admin/ProductForm";
 import { HiddenMediaTray, type HiddenMediaItem } from "@/components/admin/HiddenMediaTray";
+import { WhatsAppDraftPanel } from "@/components/admin/WhatsAppDraftPanel";
+import { MEDIA_LABELS, type AuditRow } from "@/lib/whatsapp-draft";
 import type {
   Category,
   Collection,
@@ -18,7 +20,8 @@ export default async function EditProductPage(
   const params = await props.params;
   const { admin } = await requireAdmin();
 
-  const [{ data: product }, { data: categories }, { data: collections }, { data: joins }, { data: hiddenRows }] =
+  const [{ data: product }, { data: categories }, { data: collections }, { data: joins }, { data: hiddenRows },
+    { data: sourceRow }, { data: auditRows }, { data: labelRows }] =
     await Promise.all([
       admin
         .from("products")
@@ -37,6 +40,14 @@ export default async function EditProductPage(
         .select("id, image_url, media_type, reason")
         .eq("product_id", params.id)
         .order("original_order", { ascending: true, nullsFirst: false }),
+      // The three below are WhatsApp-only context (migrations 029-031). Each is read on its own and an
+      // error is simply "nothing to show", so the product and its images render whatever state they are in.
+      admin.from("product_source_texts").select("source_text").eq("product_id", params.id).maybeSingle(),
+      admin
+        .from("whatsapp_listing_audit")
+        .select("mode, kind, assignment_reason, confidence, decided_by, seconds_before_description, close_reason, summary")
+        .eq("product_id", params.id),
+      admin.from("product_media_labels").select("image_url, label").eq("product_id", params.id),
     ]);
 
   if (!product) notFound();
@@ -83,6 +94,8 @@ export default async function EditProductPage(
       (j) => (j as { collection_id: string }).collection_id,
     ),
     source: p.source,
+    media_labels: Object.fromEntries(((labelRows ?? []) as { image_url: string; label: string }[])
+      .filter((row) => MEDIA_LABELS[row.label]).map((row) => [row.image_url, MEDIA_LABELS[row.label]])),
   };
 
   const hidden = (hiddenRows ?? []) as HiddenMediaItem[];
@@ -92,11 +105,16 @@ export default async function EditProductPage(
   return (
     <div className="max-w-[92rem]">
       <h1 className="mb-6 font-serif text-3xl text-primary">Edit Product</h1>
-      {hidden.length > 0 && (
-        <div className="mb-6">
-          <HiddenMediaTray items={hidden} />
-        </div>
-      )}
+      <div className="mb-6 space-y-4 empty:hidden">
+        <WhatsAppDraftPanel
+          productId={p.id}
+          needsReview={!!p.needs_review}
+          reasons={p.needs_review_reasons ?? []}
+          sourceText={(sourceRow as { source_text?: string } | null)?.source_text ?? null}
+          audit={(auditRows ?? []) as AuditRow[]}
+        />
+        {hidden.length > 0 && <HiddenMediaTray items={hidden} />}
+      </div>
       <ProductForm
         key={mediaKey}
         categories={(categories ?? []) as Category[]}

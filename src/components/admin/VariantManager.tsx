@@ -13,6 +13,8 @@ import type { VariantInputShape } from "@/lib/validation";
 interface Props {
   variants: VariantInputShape[];
   onChange: (variants: VariantInputShape[]) => void;
+  /** image_url -> tag to show on that thumbnail. Display only. */
+  mediaLabels?: Record<string, string>;
 }
 
 const emptyVariant = (order: number): VariantInputShape => ({
@@ -59,7 +61,7 @@ function makeClientKey() {
   return `new-${Date.now().toString(36)}-${clientKeySeq}`;
 }
 
-export function VariantManager({ variants, onChange }: Props) {
+export function VariantManager({ variants, onChange, mediaLabels }: Props) {
   // Stable per-row identity, independent of array index (which shifts on
   // reorder/add/remove) — an existing variant keys off its DB id, a brand
   // new one gets a generated client-only key. Used as the React `key`, as
@@ -379,6 +381,7 @@ export function VariantManager({ variants, onChange }: Props) {
                   onExternalImageDrop={(fromKey, imageIndex, atIndex) =>
                     handleExternalDrop(fromKey, imageIndex, key, atIndex)
                   }
+                  labels={mediaLabels}
                 />
               </div>
             </div>

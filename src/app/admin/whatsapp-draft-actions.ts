@@ -30,3 +30,21 @@ export async function restoreHiddenMedia(id: string): Promise<ActionResult<{ pro
     return { productId };
   });
 }
+
+/**
+ * Clears a draft's "Needs review" flag. The reasons are kept as a record of
+ * what was flagged; nothing else about the product changes, and it stays a
+ * draft until the admin publishes it.
+ */
+export async function markProductReviewed(id: string): Promise<ActionResult> {
+  return toResult(async () => {
+    const { admin } = await assertAdmin();
+    const parsed = idSchema.safeParse(id);
+    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+    const { error } = await admin.from("products").update({ needs_review: false }).eq("id", parsed.data);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/admin/products/${parsed.data}`);
+    revalidatePath("/admin/products");
+    return {};
+  });
+}

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Pagination } from "./Pagination";
 import { MediaThumb } from "./MediaThumb";
 import {
@@ -45,6 +46,9 @@ export interface AdminProductRow {
   thumbnail_url: string | null;
   created_at: string;
   updated_at: string;
+  /** WhatsApp drafts that want a second look, with the reasons as sentences. */
+  needs_review?: boolean;
+  review_reasons?: string[];
 }
 
 interface Props {
@@ -384,6 +388,11 @@ export function ProductTable({ rows, query, total, categories, signalError, list
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <StatusBadge status={r.status} />
+                    {r.needs_review && (
+                      <span title={(r.review_reasons ?? []).join("\n") || undefined}>
+                        <Badge variant="amber">Needs review</Badge>
+                      </span>
+                    )}
                     <Select
                       value={r.status}
                       onChange={(e) =>

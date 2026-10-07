@@ -29,6 +29,8 @@ interface Props {
    * `atIndex` is set when dropped onto a specific thumbnail (insert there)
    * and omitted when dropped on open grid space (append to the end). */
   onExternalImageDrop: (fromDragId: string, imageIndex: number, atIndex?: number) => void;
+  /** image_url -> a short tag shown on that thumbnail ("All colours" for a WhatsApp collage). Display only. */
+  labels?: Record<string, string>;
 }
 
 function readDragPayload(e: React.DragEvent): DragPayload | null {
@@ -56,7 +58,7 @@ function readDragPayload(e: React.DragEvent): DragPayload | null {
  * manually correct AI colour-variant grouping — the parent re-detects each
  * affected variant's colour afterwards).
  */
-export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }: Props) {
+export function ImageUploader({ images, onChange, dragId, onExternalImageDrop, labels }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -221,6 +223,11 @@ export function ImageUploader({ images, onChange, dragId, onExternalImageDrop }:
               {img.is_primary && (
                 <span className="absolute left-1 top-1 rounded-sm bg-gold px-1 text-[9px] font-medium text-white">
                   Primary
+                </span>
+              )}
+              {labels?.[img.image_url] && !img.is_primary && (
+                <span className="absolute left-1 top-1 rounded-sm bg-black/60 px-1 text-[9px] font-medium text-white" data-testid="media-label">
+                  {labels[img.image_url]}
                 </span>
               )}
               <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/50 px-1 py-0.5 text-[10px] text-white">

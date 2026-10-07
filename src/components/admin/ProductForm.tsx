@@ -21,6 +21,8 @@ export type ProductFormInitial = Partial<ProductInputShape> & {
   /** Display-only: not part of the save payload. Set when this product was
    * created by the storefront file sync rather than authored in admin. */
   source?: "admin" | "file_sync";
+  /** Display-only: image_url -> tag shown on that thumbnail ("All colours"). */
+  media_labels?: Record<string, string>;
 };
 
 interface Props {
@@ -342,7 +344,7 @@ export function ProductForm({ categories, collections, initial }: Props) {
             <h2 className="mb-4 font-serif text-lg text-primary">
               Color variants & images
             </h2>
-            <VariantManager variants={variants} onChange={setVariants} />
+            <VariantManager variants={variants} onChange={setVariants} mediaLabels={initial?.media_labels} />
           </section>
         </div>
       </div>

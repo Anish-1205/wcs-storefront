@@ -178,3 +178,34 @@ describe("thresholds are settings, not constants", () => {
     }
   });
 });
+
+describe("what the admin panel reads about a WhatsApp draft", () => {
+  it("why grouped: the audit view gives the signals and confidence for each listing", async () => {
+    const { explainGrouping } = await import("@/lib/whatsapp-draft");
+    await run(stream("SKEW"), { ai: "off" });
+    const { pg } = db;
+    // Exactly the query the product page runs.
+    const audit = async (name: string) => (await pg.query(
+      `select mode, kind, assignment_reason, confidence, decided_by, seconds_before_description, close_reason, summary
+         from whatsapp_listing_audit where product_name = $1`, [name])).rows;
+    expect(explainGrouping(await audit("Venkatagiri Cotton Saree with Zari Border"))).toEqual({
+      headline: "Photos and description arrived as one forward.",
+      signals: [{ signal: "Sent together with the description", count: 6, confidence: "High", timing: expect.stringMatching(/^\d+-\d+s after the description$/) }],
+    });
+    const late = explainGrouping(await audit("Narayanpet Cotton Saree with Contrast Border"))!;
+    expect(late.headline).toBe("Photos first, then the description.");
+    expect(late.signals).toEqual([{ signal: "Sent earlier; the description came late", count: 5, confidence: "Medium", timing: expect.stringMatching(/s before the description$/) }]);
+    // And the stored flag the badge is drawn from.
+    const flagged = (await pg.query("select name, needs_review, needs_review_reasons from products where needs_review order by name")).rows;
+    expect(flagged).toEqual([{ name: "Narayanpet Cotton Saree with Contrast Border", needs_review: true, needs_review_reasons: ["late_description"] }]);
+  });
+
+  it("the collage label and the hidden tray rows are there for the page to read", async () => {
+    await run(stream("F5"), { ai: "oracle" });
+    const { pg } = db;
+    const labels = (await pg.query("select label, count(*)::int as n from product_media_labels group by label")).rows;
+    expect(labels).toEqual([{ label: "all_colours", n: 1 }]);
+    const tray = (await pg.query("select reason, count(*)::int as n from variant_hidden_media group by reason order by reason")).rows;
+    expect(tray).toEqual([{ reason: "duplicate", n: 3 }, { reason: "near_duplicate", n: 3 }, { reason: "over_limit", n: 2 }]);
+  });
+});
