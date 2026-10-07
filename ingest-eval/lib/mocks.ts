@@ -43,6 +43,8 @@ export const state = {
   errors: [] as { scope?: string; message: string }[],
   /** Media ids whose Meta download should fail (failure injection). */
   failMedia: new Set<string>(),
+  /** WhatsApp refuses every reply we try to send. */
+  failReplies: false,
   /** Thumbnails cannot be fetched: no pixel facts for anything. */
   failThumbnails: false,
   /** Replaces the oracle's answer (misbehaving-model tests). */
@@ -222,6 +224,7 @@ export function installFetch() {
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
     if (url.startsWith("https://graph.facebook.com/") && url.endsWith("/messages")) {
       const body = JSON.parse(String(init?.body ?? "{}")) as { text?: { body?: string } };
+      if (state.failReplies) return json({ error: "outside the customer service window" }, 400);
       state.replies.push(body.text?.body ?? "");
       return json({ messages: [{ id: "wamid.reply" }] });
     }

@@ -81,6 +81,8 @@ export function deriveProductName(description: string): string {
   const fromText = nameFromAdminText(description);
   if (fromText) return fromText;
 
+  // Nothing but a price or a number ("3300/-") names nothing; a code with letters ("XYZ-113") is kept.
+  if (!/\p{L}/u.test(cleaned)) return GENERIC_NAME;
   if (!/\s/.test(cleaned)) return cleaned.slice(0, MAX_NAME_LENGTH);
   return GENERIC_NAME;
 }

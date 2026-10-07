@@ -37,6 +37,8 @@ export type ReplayOptions = {
   order?: FixtureEvent[];
   /** Virtual seconds to keep running the scheduler after the last event. */
   horizonSeconds?: number;
+  /** Raw WhatsApp messages (any type) delivered at a virtual second, alongside the stream's own. */
+  raw?: { arrive: number; sent?: number; message: Record<string, unknown> }[];
   /** RPCs that fail this many times before succeeding (a crashed or timed-out write). */
   failRpc?: Record<string, number>;
   /** Deliver every event twice: back to back, or the whole stream again afterwards. */
@@ -132,12 +134,21 @@ export async function replay(db: RunDb, stream: Stream, options: ReplayOptions):
     await noteChange();
   }
 
+  async function postRaw(raw: NonNullable<ReplayOptions["raw"]>[number]) {
+    const timestamp = Math.floor(await dbNowSeconds(pg)) - (now - (raw.sent ?? raw.arrive));
+    await POST(signed({ object: "whatsapp_business_account", entry: [{ changes: [{ value: { messages: [{ from: SENDER, timestamp: String(timestamp), ...raw.message }] } }] }] }));
+    await noteChange();
+  }
+
   const order = options.order ?? [...stream.events].sort((a, b) => a.arrive - b.arrive || a.id.localeCompare(b.id));
+  const extras = [...(options.raw ?? [])].sort((a, b) => a.arrive - b.arrive);
   for (const event of order) {
+    while (extras.length && extras[0].arrive <= event.arrive) { const raw = extras.shift()!; await runUntil(Math.max(now, raw.arrive)); await postRaw(raw); }
     await runUntil(Math.max(now, event.arrive));
     await post(event);
     if (options.redeliver === "adjacent") await post(event);
   }
+  for (const raw of extras) { await runUntil(Math.max(now, raw.arrive)); await postRaw(raw); }
   const lastArrival = now;
   await runUntil(now + (options.horizonSeconds ?? 3600));
   if (options.redeliver === "after") {

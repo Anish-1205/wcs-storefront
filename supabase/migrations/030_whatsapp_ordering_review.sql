@@ -29,6 +29,8 @@
 --      WhatsApp media". A single clean burst is assigned as before.
 --   4. A late description with no competitor is assigned, not asked about.
 --   5. Thresholds live in whatsapp_settings instead of constants.
+--   5a. A price sent on its own after "Price missing, please send it" fills
+--      the price of that draft, and only an empty one.
 --   6. Adds products.needs_review / needs_review_reasons, and the admin-only
 --      product_source_texts (the raw WhatsApp text, which may hold a phone
 --      number: a column on products would be readable through the public
@@ -58,7 +60,10 @@ insert into public.whatsapp_settings(key, value, note) values
   ('description_timeout_seconds', '600', 'A description with no media at all is closed after this.'),
   ('answer_timeout_seconds', '600', 'An unanswered question sets the uncertain media aside after this.'),
   ('stale_seconds', '1800', 'Media with no description is set aside after this.'),
-  ('ack_delay_seconds', '4', 'Delay before "Got your description" and questions, so late photos can cancel them.')
+  ('ack_delay_seconds', '4', 'Delay before "Got your description" and questions, so late photos can cancel them.'),
+  ('price_reply_seconds', '1800', 'How long after a draft is created a price sent on its own still fills it.'),
+  ('price_min', '100', 'Rupees. A price sent on its own below this is refused. Keep equal to WHATSAPP_PRICE_MIN.'),
+  ('price_max', '500000', 'Rupees. A price sent on its own above this is refused. Keep equal to WHATSAPP_PRICE_MAX.')
 on conflict (key) do nothing;
 
 create or replace function public.whatsapp_setting(p_key text, p_default numeric) returns interval
@@ -436,8 +441,10 @@ begin
           then 'No listing was created for "' || label || '": no photos or videos were matched to it.'
           else 'No photos or videos arrived for "' || label || '" before your next description, so no listing was created for it.' end);
       elsif d.created_at + c_hard <= now() then
-        perform whatsapp_close_empty(d.message_id, 'timeout',
-          'No photos or videos arrived for "' || label || '" within 10 minutes, so no listing was created. Please send the photos/videos and the description again.');
+        -- After a review its photos did arrive; they just were not given to it.
+        perform whatsapp_close_empty(d.message_id, 'timeout', case when b.review is not null
+          then 'No listing was created for "' || label || '": no photos or videos were matched to it. Please send them again with the description.'
+          else 'No photos or videos arrived for "' || label || '" within 10 minutes, so no listing was created. Please send the photos/videos and the description again.' end);
       else
         update whatsapp_batches set status = 'awaiting_media' where id = d.batch_id and status is distinct from 'awaiting_media';
         -- Held back a few seconds: photos sent just before a description often
@@ -470,6 +477,47 @@ begin
   perform whatsapp_finish_unassigned(p_sender);
 end $$;
 
+-- A text that is nothing but a price ("4500", "Rs. 4,500/-", "price 4500").
+-- It fills the price of the sender's latest draft when that draft was created
+-- without one in the last 30 minutes and nobody has set it since. It never
+-- changes a price that is already there. Returns false, changing nothing, when
+-- there is no such draft or when photos are waiting for a description: the
+-- text is then an ordinary (if terse) description, as it always was.
+create or replace function public.whatsapp_price_reply(p_phone text, p_message jsonb, p_cap text, p_sent_at timestamptz) returns boolean
+language plpgsql security invoker set search_path = public as $$
+declare v numeric; latest record; answer text;
+  lo constant numeric := extract(epoch from whatsapp_setting('price_min', 100));
+  hi constant numeric := extract(epoch from whatsapp_setting('price_max', 500000));
+begin
+  v := round(replace(substring(p_cap from '[0-9][0-9,]*(?:\.[0-9]+)?'), ',', '')::numeric);
+  select wb.id as batch_id, wb.frozen_at, p.id, p.name, p.status, p.base_price_min, p.base_price_max, p.needs_review_reasons
+    into latest from whatsapp_batches wb join products p on p.id = wb.product_id
+    where wb.sender_phone = p_phone and wb.status = 'ready' order by wb.sequence desc limit 1;
+  if latest.id is null or latest.status <> 'draft'
+      or latest.frozen_at < now() - whatsapp_setting('price_reply_seconds', 1800)
+      -- Something newer is still open (a description, or photos with none yet): the number is for that.
+      or exists(select 1 from whatsapp_batches o where o.sender_phone = p_phone and o.frozen_at is null and o.description_id is not null)
+      or exists(select 1 from whatsapp_inbox i join whatsapp_batches o on o.id = i.batch_id
+        where i.sender_phone = p_phone and i.mode = 'media' and o.frozen_at is null) then
+    return false;
+  end if;
+  if latest.base_price_min is not null or latest.base_price_max is not null then
+    -- Never overwritten: whoever set it (the description, an earlier reply, the admin) meant it.
+    answer := latest.name || ' already has a price (₹' || coalesce(latest.base_price_min, latest.base_price_max) || '), so I did not change it. You can edit it in the admin panel.';
+  elsif v < lo or v > hi then
+    answer := 'That price looks wrong (outside ₹' || lo::bigint || ' to ₹' || hi::bigint || '), so I left it empty. Please send it again.';
+  else
+    update products set base_price_min = v::integer, base_price_max = v::integer,
+        needs_review_reasons = array_remove(needs_review_reasons, 'price_missing'),
+        needs_review = cardinality(array_remove(needs_review_reasons, 'price_missing')) > 0
+      where id = latest.id and status = 'draft' and base_price_min is null and base_price_max is null;
+    answer := 'Price ₹' || v::bigint || ' added to ' || latest.name || '.';
+  end if;
+  insert into whatsapp_inbox(message_id,sender_phone,batch_id,payload,mode,message_ts,state,completed_at,reply,assignment_reason)
+    values(p_message->>'message_id', p_phone, latest.batch_id, p_message, 'answer', p_sent_at, 'done', now(), answer, 'price_reply');
+  return true;
+end $$;
+
 -- ── Receipt ──────────────────────────────────────────────────────────
 -- As 029, plus YES/NO: a bare yes/no answers the oldest open proposal, the
 -- same way a bare 1/2/3 answers the oldest open numbered question.
@@ -498,6 +546,11 @@ begin
         insert into whatsapp_batches(sender_phone,sealed,product_id,variant_id,status,frozen_at)
           values(phone,true,old_session.product_id,old_session.variant_id,'legacy',now()) returning id into batch;
       end if;
+    elsif mode = 'finalize' and m->>'kind' is null
+        and cap ~* '^(?:(?:price|rate|mrp)\s*[:=-]?\s*)?(?:₹|rs\.?|inr)?\s*[0-9][0-9,]{2,7}(?:\.[0-9]{1,2})?\s*(?:/-|/|rs\.?|inr|₹|only)?$'
+        and whatsapp_price_reply(phone, m, cap, sent_at) then
+      -- A price on its own, answering "Price missing, please send it": handled, not a description.
+      continue;
     elsif mode = 'finalize' and m->>'kind' is null and (cap ~ '^[1-3]$' or word in ('yes','y','ok','okay','haan','ha','no','n','nahi','nahin')) then
       -- Never a description: it answers the oldest open question of its kind.
       q := null;
@@ -836,13 +889,13 @@ create or replace view public.whatsapp_listing_audit with (security_invoker = tr
 revoke all on public.whatsapp_listing_audit from public, anon, authenticated;
 grant select on public.whatsapp_listing_audit to service_role;
 
-revoke all on function public.whatsapp_setting(text,numeric), public.whatsapp_claimable(text),
+revoke all on function public.whatsapp_setting(text,numeric), public.whatsapp_claimable(text), public.whatsapp_price_reply(text,jsonb,text,timestamptz),
  public.whatsapp_set_aside_rows(text,text[],text,text), public.whatsapp_freeze(uuid,text), public.whatsapp_place_stragglers(text),
  public.whatsapp_regroup(text), public.enqueue_whatsapp_messages(jsonb), public.whatsapp_message_blocked(public.whatsapp_inbox),
  public.whatsapp_take(text), public.resolve_whatsapp_review(text,uuid,jsonb), public.checkpoint_whatsapp_plan(text,uuid,text,jsonb,jsonb),
  public.whatsapp_after_product(uuid,uuid,jsonb), public.complete_whatsapp_message(text,uuid,jsonb), public.whatsapp_next_wake(text)
  from public,anon,authenticated;
-grant execute on function public.whatsapp_setting(text,numeric), public.whatsapp_claimable(text),
+grant execute on function public.whatsapp_setting(text,numeric), public.whatsapp_claimable(text), public.whatsapp_price_reply(text,jsonb,text,timestamptz),
  public.whatsapp_set_aside_rows(text,text[],text,text), public.whatsapp_freeze(uuid,text), public.whatsapp_place_stragglers(text),
  public.whatsapp_regroup(text), public.enqueue_whatsapp_messages(jsonb), public.whatsapp_message_blocked(public.whatsapp_inbox),
  public.whatsapp_take(text), public.resolve_whatsapp_review(text,uuid,jsonb), public.checkpoint_whatsapp_plan(text,uuid,text,jsonb,jsonb),

@@ -392,6 +392,7 @@ function database() {
     if (name === "whatsapp_sweep") return { data: sweepSenders(args.p_sender_phone), error: null };
     if (name === "whatsapp_next_wake") return { data: nextWake(args.p_sender_phone), error: null };
     if (name === "whatsapp_settled") return { data: settled(args.p_message_ids), error: null };
+    if (name === "whatsapp_notify") { notify(args.p_sender, args.p_kind, args.p_key, args.p_body); return { data: null, error: null }; }
     if (name === "finish_whatsapp_reply" && args.p_message_id.startsWith("notice:")) {
       const n = notices.find((x) => `notice:${x.id}` === args.p_message_id);
       if (!n.sent) { n.sent = args.p_sent; n.lease_until = args.p_sent ? null : Date.now() + n.attempts * 5_000; }
@@ -1053,5 +1054,39 @@ describe("the pipeline never goes silent", () => {
     advance(600_000); expect(await sweep()).toBe(200);
     expect(db.unassigned).toEqual([["m"]]);
     expect(products()).toHaveLength(0);
+  });
+});
+
+describe("messages a listing cannot be made from (audio, documents, contact cards)", () => {
+  const audio = (id: string, from = phone) => ({ from, id, timestamp: "1700000100", type: "audio", audio: { id: `media-${id}`, mime_type: "audio/ogg" } });
+
+  it("are answered once, never queued, and never fail the webhook", async () => {
+    expect(await send(audio("voice"))).toBe(200);
+    expect(replies).toEqual([expect.stringContaining("I can't listen to voice notes")]);
+    expect(db.jobs.size).toBe(0);
+    expect(uploads).toBe(0);
+    expect(await send(audio("voice"))).toBe(200); // Meta redelivers
+    expect(replies).toHaveLength(1);
+  });
+
+  it("do not disturb the listing they arrive in the middle of", async () => {
+    expect(await send(message("a"), audio("voice"), { from: phone, id: "doc", timestamp: "1700000100", type: "document", document: { id: "media-doc" } },
+      message("b", "Silk | 1200", "text"))).toBe(200);
+    expect(products()).toHaveLength(1);
+    expect(mediaOf(products()[0])).toEqual(["a"]);
+    expect(replies.filter((r) => r.includes("Draft created"))).toHaveLength(1);
+    expect(replies.filter((r) => r.includes("voice notes") || r.includes("documents"))).toHaveLength(2);
+  });
+
+  it("from anyone but an admin are ignored without a reply", async () => {
+    expect(await send(audio("voice", "11111111111"))).toBe(200);
+    expect(replies).toEqual([]);
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it("stickers and reactions get no reply at all", async () => {
+    expect(await send({ from: phone, id: "st", timestamp: "1700000100", type: "sticker", sticker: { id: "media-st" } },
+      { from: phone, id: "re", timestamp: "1700000100", type: "reaction", reaction: { message_id: "x", emoji: "👍" } })).toBe(200);
+    expect(replies).toEqual([]);
   });
 });

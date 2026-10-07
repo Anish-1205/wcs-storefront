@@ -104,8 +104,18 @@ function parseMessageTimestamp(timestamp?: string): string {
   return new Date(numeric * 1000).toISOString();
 }
 
-function extractMessages(payload: WhatsAppWebhookPayload): InboxMessage[] {
+/** What we tell an admin who sends something a listing cannot be made from. Stickers and reactions get no reply. */
+const UNSUPPORTED_REPLIES: Record<string, string> = {
+  audio: "I can't listen to voice notes or audio yet, so that one wasn't used. Please type the description as a text message.",
+  document: "I can't open documents or files. If it was a photo or video, please send it as a normal photo/video, not as a file.",
+  contacts: "I can't use contact cards, so that one was ignored. To add a listing, send the photos/videos and a description.",
+  location: "I can't use locations, so that one was ignored. To add a listing, send the photos/videos and a description.",
+};
+type UnsupportedNotice = { sender: string; key: string; body: string };
+
+function extractMessages(payload: WhatsAppWebhookPayload): { messages: InboxMessage[]; unsupported: UnsupportedNotice[] } {
   const messages: InboxMessage[] = [];
+  const unsupported: UnsupportedNotice[] = [];
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
       for (const message of change.value?.messages ?? []) {
@@ -113,7 +123,14 @@ function extractMessages(payload: WhatsAppWebhookPayload): InboxMessage[] {
         if (!sender || !isAllowedWhatsAppAdmin(sender)) continue;
         const kind = messageMediaKind(message);
         const caption = normalizeCaption(message);
-        if (!kind && !caption) continue;
+        if (!kind && !caption) {
+          // Never queued, so it can never hold up a listing. One friendly reply per type per minute,
+          // keyed by the message's own time so a redelivery does not repeat it.
+          const body = UNSUPPORTED_REPLIES[message.type ?? ""];
+          const minute = Math.floor(Number(message.timestamp ?? 0) / 60);
+          if (body) unsupported.push({ sender, body, key: `unsupported:${sender}:${message.type}:${minute}` });
+          continue;
+        }
         if (!message.id) throw new Error("Handled WhatsApp message is missing its ID");
         messages.push({
           message_id: message.id, sender_phone: sender,
@@ -127,7 +144,7 @@ function extractMessages(payload: WhatsAppWebhookPayload): InboxMessage[] {
       }
     }
   }
-  return messages;
+  return { messages, unsupported };
 }
 
 export async function GET(req: Request) {
@@ -178,9 +195,19 @@ export async function POST(req: Request) {
 
   if (payload.object !== "whatsapp_business_account") return NextResponse.json({ ok: true });
   try {
-    const messages = extractMessages(payload);
-    if (!messages.length) return NextResponse.json({ ok: true });
+    const { messages, unsupported } = extractMessages(payload);
+    if (!messages.length && !unsupported.length) return NextResponse.json({ ok: true });
     const supabase = createAdminClient();
+    // Best effort and never a reason to fail the webhook: the notice is durable once written, and is
+    // delivered with the same lease, retries and 24-hour window as every other reply.
+    for (const notice of unsupported) {
+      await rpc(supabase, "whatsapp_notify", { p_sender: notice.sender, p_kind: "unsupported", p_key: notice.key, p_body: notice.body })
+        .catch((error) => reportError(error, { scope: "whatsapp-unsupported" }));
+    }
+    if (!messages.length) {
+      for (const sender of new Set(unsupported.map((notice) => notice.sender))) await deliverReplies(supabase, sender);
+      return NextResponse.json({ ok: true });
+    }
     await rpc(supabase, "enqueue_whatsapp_messages", { p_messages: messages });
     // The messages are durable from here on. Everything below is best-effort
     // progress: a 503 only asks Meta to redeliver as a backup driver.

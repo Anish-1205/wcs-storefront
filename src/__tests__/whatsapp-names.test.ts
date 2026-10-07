@@ -187,3 +187,15 @@ describe("facts read from the admin's text", () => {
     expect(isTitleOnly("This saree is made of soft cotton and comes with a blouse piece")).toBe(false);
   });
 });
+
+describe("a text that is only a price", () => {
+  it("names nothing: the generic name, never the price itself", () => {
+    for (const raw of ["3300/-", "4500", "Rs. 4,500/-", "₹ 2500"]) {
+      const { description, price } = parseCollectionMessage(raw);
+      expect(deriveProductName(description), raw).toBe(GENERIC_NAME);
+      expect(describeFromAdminText(description), raw).toBeNull();
+      expect(price, raw).not.toBeNull();
+    }
+    expect(deriveProductName("XYZ-113")).toBe("XYZ-113"); // a design code is still a name
+  });
+});
