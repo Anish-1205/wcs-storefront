@@ -324,7 +324,7 @@ function database() {
   }
   function complete(job: any, plan: any) {
     const batch = batchOf(job);
-    const planned = new Set((plan.variants ?? []).flatMap((v: any) => (v.media ?? []).map((m: any) => m.url)));
+    const planned = new Set([...(plan.variants ?? []).flatMap((v: any) => v.media ?? []), ...(plan.hidden ?? [])].map((m: any) => m.url));
     // The batch gained media the plan does not cover: hand the finalize back, attempt refunded.
     if (job.mode === "finalize" && all().some((s) => s.batch === job.batch && s.mode === "media" && s !== job && s.state !== "dead"
       && (s.state !== "done" || (s.asset && !planned.has(s.asset.url))))) {
@@ -412,6 +412,7 @@ function database() {
     }
     if (!owns) return { data: null, error: { message: "Stale WhatsApp worker" } };
     if (name === "checkpoint_whatsapp_asset") { job.asset = args.p_asset; return { data: null, error: null }; }
+    if (name === "checkpoint_whatsapp_plan") { Object.assign(batchOf(job), { plan: args.p_plan, plan_key: args.p_key, analysis: args.p_analysis }); return { data: null, error: null }; }
     if (name === "complete_whatsapp_message") {
       try { return { data: complete(job, args.p_plan), error: null }; } catch (error) { return { data: null, error: { message: (error as Error).message } }; }
     }
@@ -428,7 +429,8 @@ let db: ReturnType<typeof database>;
 let uploads: number;
 let replies: string[];
 const products = () => db.plans.filter((p) => p.variants?.length);
-const mediaOf = (plan: any) => plan.variants.flatMap((v: any) => v.media.map((m: any) => m.message_id));
+const mediaOf = (plan: any) => [...plan.variants.flatMap((v: any) => v.media), ...(plan.hidden ?? [])].map((m: any) => m.message_id as string)
+  .sort((x, y) => db.jobs.get(x).ts - db.jobs.get(y).ts || db.jobs.get(x).seq - db.jobs.get(y).seq);
 const ids = (messages: { id: string }[]) => messages.map((m) => m.id);
 const statusOf = (id: string) => db.batches[db.jobs.get(id).batch - 1].status;
 beforeEach(() => {
@@ -449,9 +451,12 @@ beforeEach(() => {
     }
     if (url.includes("/resources/")) return new Response("{}", { status: 404 });
     if (url.includes("/messages")) { replies.push(JSON.parse(String(init?.body)).text.body); return new Response("{}"); }
-    if (url === "https://media.invalid") return new Response(new Uint8Array([1,2,3]));
+    // Each photo/video has its own bytes: identical bytes are (correctly) treated as the same photo sent twice.
+    if (url.startsWith("https://media.invalid/")) return new Response(new TextEncoder().encode(url));
     if (url.includes("media-bad")) return new Response("unavailable", { status: 500 });
-    return new Response(JSON.stringify({ url: "https://media.invalid" }));
+    // Thumbnails for duplicate detection: unavailable here, so no pixel facts (the listing is made without them).
+    if (url.startsWith("https://res.cloudinary.com/")) return new Response("not found", { status: 404 });
+    return new Response(JSON.stringify({ url: `https://media.invalid/${new URL(url).pathname.split("/").pop()}` }));
   }));
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
@@ -576,29 +581,30 @@ describe("durable WhatsApp route (F02/F03/F04)", () => {
     expect(products()).toHaveLength(1);
   });
   it("preserves AI metadata, collection tagging, colour splitting and video ownership in the atomic plan", async () => {
-    mocks.ai.mockReturnValue({ isConfigured: () => true,
-      suggestProductMetadata: vi.fn().mockResolvedValue({ category_slug: { value: "silk", confidence: 0.9 }, highlights: { value: ["Zari border"], confidence: 0.9 } }),
-      classifyCollection: vi.fn().mockResolvedValue([{ collection_id: "collection", collection_name: "Bridal", confidence: 0.9, evidence: "bridal" }]),
-      suggestColorVariants: vi.fn().mockResolvedValue([
-        { color: "Ivory", color_hex: null, asset_client_upload_ids: ["media-a"], confidence: 0.9, is_best_display: true },
-        { color: "Pink", color_hex: null, asset_client_upload_ids: ["media-b"], confidence: 0.9, is_best_display: false },
-      ]),
-    });
+    const provider = { isConfigured: () => true, analyzeListing: vi.fn(async (input: any) => ({ images: input.images.map((image: any) => ({ id: image.id, collage: false, shot_type: "full", quality: [], belongs: "this", belongs_confidence: 0.9 })),
+      category_slug: { value: "silk", confidence: 0.9 }, highlights: { value: ["Zari border"], confidence: 0.9 },
+      collection_ids: { value: ["collection"], confidence: 0.9 }, cover_image_id: { value: "img1", confidence: 0.9 },
+      colour_groups: { value: [{ colour: "ivory", image_ids: ["img1"] }, { colour: "pink", image_ids: ["img2"] }], confidence: 0.9 } })) };
+    mocks.ai.mockReturnValue(provider);
     expect(await send(message("a"), message("b"), message("v", "", "video"), message("close", "Bridal Silk | 1200 | Silk", "text"))).toBe(200);
     const product = db.plans.at(-1);
     expect(product).toMatchObject({ category_id: "cat", collection_ids: ["collection"], highlights: ["Zari border"], fabric_type: "Silk" });
     expect(product.variants.map((v: any) => v.color)).toEqual(["Ivory", "Pink"]);
     expect(product.variants[0].media.map((m: any) => m.message_id)).toEqual(["a", "v"]);
     expect(product.variants[1].media.map((m: any) => m.message_id)).toEqual(["b"]);
+    // One call for the listing, shown photos only (never the video), as 512px thumbnails.
+    expect(provider.analyzeListing).toHaveBeenCalledTimes(1);
+    const given = provider.analyzeListing.mock.calls[0][0];
+    expect(given.images.map((image: any) => image.id)).toEqual(["img1", "img2"]);
+    expect(given.images.every((image: any) => image.url.includes("/image/upload/c_limit,w_512/"))).toBe(true);
+    expect(given.timeoutMs).toBeLessThanOrEqual(8000);
   });
   it("falls back to a single variant when AI suggestions fail", async () => {
-    mocks.ai.mockReturnValue({ isConfigured: () => true,
-      suggestProductMetadata: vi.fn().mockRejectedValue(new Error("AI offline")),
-      classifyCollection: vi.fn().mockRejectedValue(new Error("AI offline")),
-      suggestColorVariants: vi.fn().mockRejectedValue(new Error("AI offline")),
-    });
+    mocks.ai.mockReturnValue({ isConfigured: () => true, analyzeListing: vi.fn().mockRejectedValue(new Error("AI offline")) });
     expect(await send(message("a", "Silk | 1200 | Silk"))).toBe(200);
     expect(db.plans[0].variants[0].color).toBe("Default");
+    // The listing is complete without the AI: name, price and fabric from the admin's text.
+    expect(db.plans[0]).toMatchObject({ name: "Silk Saree", price: 1200, fabric_type: "Silk", ai_fields: [] });
   });
   it("does not recreate products if reply delivery fails after commit, and stops retrying the reply eventually", async () => {
     const original = global.fetch;
@@ -621,16 +627,17 @@ describe("every stored media URL is renderable (broken admin thumbnails)", () =>
     expect(await send(message("v", "", "video"), message("a"), message("b"), message("close", "Silk | 1200", "text"))).toBe(200);
     const media = products()[0].variants[0].media;
     // The exact shape production stores: res.cloudinary.com/<cloud>/<image|video>/upload/v<version>/whatsapp/inbox/<sha256 of the message id>.<ext>
+    // Photos first (the first one is the cover), the video after them.
     expect(media.map((m: any) => m.url)).toEqual([
+      expect.stringMatching(/^https:\/\/res\.cloudinary\.com\/test\/image\/upload\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/),
+      expect.stringMatching(/^https:\/\/res\.cloudinary\.com\/test\/image\/upload\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/),
       expect.stringMatching(/^https:\/\/res\.cloudinary\.com\/test\/video\/upload\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.mp4$/),
-      expect.stringMatching(/^https:\/\/res\.cloudinary\.com\/test\/image\/upload\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/),
-      expect.stringMatching(/^https:\/\/res\.cloudinary\.com\/test\/image\/upload\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/),
     ]);
-    expect(media.map((m: any) => [m.kind, m.is_primary])).toEqual([["video", false], ["image", true], ["image", false]]);
+    expect(media.map((m: any) => [m.kind, m.is_primary])).toEqual([["image", true], ["image", false], ["video", false]]);
     // What the admin requests for each row is always an image: the photo itself, or the video's poster frame.
-    expect(cld(media[1].url, "thumbnail")).toMatch(/\/image\/upload\/c_fill,w_400,h_500,q_auto:best,f_auto\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/);
-    expect(cldVideoThumbnail(media[0].url)).toMatch(/\/video\/upload\/so_0,c_fill,w_400,h_500,q_auto\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/);
-    expect(cld(media[0].url, "thumbnail")).toBe(cldVideoThumbnail(media[0].url)); // the list thumbnail of a video-only product
+    expect(cld(media[0].url, "thumbnail")).toMatch(/\/image\/upload\/c_fill,w_400,h_500,q_auto:best,f_auto\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/);
+    expect(cldVideoThumbnail(media[2].url)).toMatch(/\/video\/upload\/so_0,c_fill,w_400,h_500,q_auto\/v\d+\/whatsapp\/inbox\/[0-9a-f]{64}\.jpg$/);
+    expect(cld(media[2].url, "thumbnail")).toBe(cldVideoThumbnail(media[2].url)); // the list thumbnail of a video-only product
   });
   it("refuses to store a URL the site could not render, and retries instead", async () => {
     const original = global.fetch;
@@ -654,11 +661,10 @@ describe("batching across out-of-order deliveries", () => {
     let delivered = false;
     mocks.ai.mockReturnValue({ isConfigured: () => true,
       // The straggler's own webhook arrives mid-finalize, after the plan's media snapshot.
-      suggestProductMetadata: vi.fn(async () => {
+      analyzeListing: vi.fn(async () => {
         if (!delivered) { delivered = true; expect(await send(message("late", "", "image", "1700000000.5"))).toBe(200); }
-        return {};
+        return { images: [] };
       }),
-      classifyCollection: vi.fn().mockResolvedValue([]), suggestColorVariants: vi.fn().mockResolvedValue([]),
     });
     expect(await send(message("a"), message("b", "Silk saree | 1200", "text"))).toBe(200);
     expect(products()).toHaveLength(1);
@@ -712,7 +718,9 @@ describe.each(deliveries)("grouping by description (%s)", (_name, deliver) => {
     await deliver([...a, text("d", "Silk saree | 1200")]);
     expect(products()).toHaveLength(1);
     expect(mediaOf(products()[0])).toEqual(ids(a));
-    expect(replies).toEqual([expect.stringContaining("with 5 photo(s)/video(s) (5 sent before your description)")]);
+    expect(replies).toEqual([expect.stringContaining("Draft created: Silk Saree. 5 photos/videos used.")]);
+    // Photos as sent, then the video; a photo is the cover.
+    expect(products()[0].variants[0].media.map((m: any) => m.kind)).toEqual(["image", "image", "image", "image", "video"]);
   });
   it("description first, then the photos and videos: parked, then one draft after the quiet period", async () => {
     const d = text("d", "Silk saree | 1200"), a = album("a", 5);
@@ -726,7 +734,7 @@ describe.each(deliveries)("grouping by description (%s)", (_name, deliver) => {
     await settle(16_000);
     expect(products()).toHaveLength(1);
     expect(mediaOf(products()[0])).toEqual(ids(a));
-    expect(replies).toEqual([expect.stringContaining("(5 sent after your description)")]);
+    expect(replies).toEqual([expect.stringContaining("5 photos/videos used")]);
     expect(db.jobs.get("a1")).toMatchObject({ reason: "after_description", confidence: "high" });
   });
   it("D1 A, pause, D2 B: each description-first listing gets only its own media", async () => {
@@ -757,8 +765,8 @@ describe.each(deliveries)("grouping by description (%s)", (_name, deliver) => {
     expect(products().map(mediaOf)).toEqual([ids(a), ids(b)]);
     expect(replies.some((r) => r.includes("No photos"))).toBe(false);
     expect(replies).toEqual(expect.arrayContaining([
-      expect.stringContaining("with 6 photo(s)/video(s) (6 sent after your description)"),
-      expect.stringContaining("with 6 photo(s)/video(s) (6 sent before your description)"),
+      expect.stringContaining("6 photos/videos used"),
+      expect.stringContaining("6 photos/videos used"),
     ]));
   });
   it("the production incident with no pause between the albums: asks, and creates nothing until answered", async () => {
@@ -778,7 +786,8 @@ describe.each(deliveries)("grouping by description (%s)", (_name, deliver) => {
     expect(products()[0].description).toBe("Second description.");
     expect(db.jobs.get("m1")).toMatchObject({ reason: "confirmed_second", confidence: "confirmed" });
     expect(db.jobs.get("d1")).toMatchObject({ state: "done", reply: expect.stringContaining("No listing was created") });
-    expect(replies.at(-1)).toContain("(12 you confirmed)");
+    expect(replies.at(-1)).toContain("11 photos/videos used, 1 extra hidden");
+    expect(products()[0].hidden.map((m: any) => [m.kind, m.reason])).toEqual([["video", "over_limit"]]);
   });
   it("answer 1 gives the contested media to the first description and leaves the second waiting for its own", async () => {
     const d1 = text("d1", "First | 1200"), m = album("m", 4), d2 = text("d2", "Second | 900");
@@ -902,7 +911,7 @@ describe("description-first lifecycle and the scheduler", () => {
     expect(await send(d)).toBe(200); // the description's webhook wins the race
     expect(await send(before)).toBe(200);
     await lingerSender(db as any, phone, Date.now() + 115_000, async (ms) => { advance(ms); });
-    expect(replies).toEqual([expect.stringContaining("Created")]);
+    expect(replies).toEqual([expect.stringContaining("Draft created")]);
   });
   it("closes a description-first listing from inside the invocation once its photos go quiet", async () => {
     expect(await send(text("d", "Silk | 1200"))).toBe(200);
@@ -911,7 +920,7 @@ describe("description-first lifecycle and the scheduler", () => {
     await lingerSender(db as any, phone, Date.now() + 115_000, async (ms) => { slept.push(ms); advance(ms); });
     expect(slept[0]).toBeGreaterThan(44_000); expect(slept[0]).toBeLessThan(46_000);
     expect(products().map(mediaOf)).toEqual([["p1", "p2"]]);
-    expect(replies).toEqual([expect.stringContaining("(2 sent after your description)")]);
+    expect(replies).toEqual([expect.stringContaining("2 photos used")]);
   });
   it("does not wait inside the invocation for a deadline it cannot reach", async () => {
     expect(await send(text("d", "Silk | 1200"))).toBe(200);
@@ -1033,7 +1042,7 @@ describe("the pipeline never goes silent", () => {
     vi.stubGlobal("fetch", original);
     advance(6_000); pause(60);
     expect(await send(message("b"))).toBe(200); // the next message flushes the reply that was owed
-    expect(replies).toEqual([expect.stringContaining("Created")]);
+    expect(replies).toEqual([expect.stringContaining("Draft created")]);
   });
   it("a question that cannot be delivered is retried, then given up on, and still times out safely", async () => {
     const original = global.fetch;

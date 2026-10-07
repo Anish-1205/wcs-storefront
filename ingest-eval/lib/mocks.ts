@@ -7,8 +7,11 @@
  */
 import { createHash } from "node:crypto";
 import type { Client } from "pg";
+import sharp from "sharp";
 import type { AiProvider, ColorVariantSuggestion, ListingAnalysis, ProductMetadataSuggestions } from "@/lib/ai/types";
 import { nullAiProvider } from "@/lib/ai/null-provider";
+import { GENERIC_NAME, parseCollectionMessage } from "@/lib/whatsapp-caption";
+import { describeFromAdminText, isTitleOnly } from "@/lib/whatsapp-text";
 import { supabaseShim } from "./db";
 
 export const CLOUD = "demo-cloud";
@@ -28,16 +31,36 @@ export const state = {
   ai: "off" as "off" | "oracle",
   /** Meta media id -> truth. */
   truthByMedia: new Map<string, Truth>(),
+  /** Meta media id / Cloudinary public-id hash -> the fixture event. */
+  eventByMedia: new Map<string, FixtureEvent>(),
+  eventByHash: new Map<string, FixtureEvent>(),
   /** Description text -> the listing it is the description of. */
   listingByText: new Map<string, string>(),
   /** How many times the single listing call was made, and what it was given. */
-  analysisCalls: [] as { text: string; images: number }[],
+  analysisCalls: [] as { text: string; images: number; feedback?: string }[],
   /** Replies the admin would have received on WhatsApp, in send order. */
   replies: [] as string[],
   errors: [] as { scope?: string; message: string }[],
   /** Media ids whose Meta download should fail (failure injection). */
   failMedia: new Set<string>(),
+  /** Thumbnails cannot be fetched: no pixel facts for anything. */
+  failThumbnails: false,
+  /** Replaces the oracle's answer (misbehaving-model tests). */
+  analysisOverride: null as null | ((input: Parameters<NonNullable<AiProvider["analyzeListing"]>>[0], honest: ListingAnalysis) => ListingAnalysis | null | Promise<ListingAnalysis | null>),
 };
+
+export function attachStream(events: FixtureEvent[]) {
+  state.truthByMedia.clear();
+  state.eventByMedia.clear();
+  state.eventByHash.clear();
+  state.listingByText.clear();
+  for (const event of events) {
+    if (event.type === "text") { if (event.text) state.listingByText.set(event.text, event.truth.listing); continue; }
+    state.truthByMedia.set(mediaId(event.id), event.truth);
+    state.eventByMedia.set(mediaId(event.id), event);
+    state.eventByHash.set(publicIdHash(event.id), event);
+  }
+}
 
 export const serverMock = {
   createAdminClient: () => {
@@ -56,16 +79,58 @@ export const reportMock = {
 const METADATA_IMAGE_CAP = 4;
 const COLOUR_IMAGE_CAP = 20;
 
-function truthOfUrl(url: string): Truth | undefined {
+function eventOfUrl(url: string): FixtureEvent | undefined {
   const match = /whatsapp\/inbox\/([0-9a-f]{64})/.exec(url);
-  if (!match) return undefined;
-  for (const [media, truth] of state.truthByMedia) {
-    if (createHash("sha256").update(`wamid.${media.replace(/^mid\./, "")}`).digest("hex") === match[1]) return truth;
+  return match ? state.eventByHash.get(match[1]) : undefined;
+}
+const truthOfUrl = (url: string): Truth | undefined => eventOfUrl(url)?.truth;
+const titleCase = (value: string) => value.split(" ").map((word) => `${word[0].toUpperCase()}${word.slice(1)}`).join(" ");
+
+/**
+ * What a correct, well-behaved model would say, from ground truth: which images belong, which is the
+ * collage, the colours, and copy that keeps to the admin's words. It only ever sees what it is shown.
+ */
+function honestAnalysis(input: Parameters<NonNullable<AiProvider["analyzeListing"]>>[0]): ListingAnalysis {
+  const mine = state.listingByText.get(input.adminText);
+  const theirs = input.otherText ? state.listingByText.get(input.otherText) : undefined;
+  const shown = input.images.map((image) => ({ id: image.id, truth: truthOfUrl(image.url) }));
+  const own = shown.filter((image) => image.truth?.listing === mine);
+  const singles = own.filter((image) => image.truth?.role !== "collage" && image.truth?.role !== "video");
+  const hasCollage = own.some((image) => image.truth?.role === "collage");
+  const groups = new Map<string, string[]>();
+  for (const image of singles) {
+    const colour = image.truth?.colour;
+    if (!colour || colour === "default" || colour === "multi") continue;
+    groups.set(colour, [...(groups.get(colour) ?? []), image.id]);
   }
-  return undefined;
+
+  const description = parseCollectionMessage(input.adminText).description;
+  const sentence = describeFromAdminText(description);
+  const generic = input.deterministicName === GENERIC_NAME;
+  const single = groups.size === 1 && !hasCollage ? [...groups.keys()][0] : null;
+  const named = new RegExp(`\\b${single?.split(" ").pop()}\\b`, "i").test(input.deterministicName);
+  // A well-behaved model keeps to 3-7 words: it leads with the colour only when there is room.
+  const coloured = single && !named ? `${titleCase(single)} ${input.deterministicName}` : input.deterministicName;
+  const name = generic ? "Saree with Woven Border" : coloured.split(" ").length <= 7 ? coloured : input.deterministicName;
+  const copy = !sentence ? null : isTitleOnly(description)
+    ? `${sentence} The photographs show the full length of the saree, its border and the pallu.\n\nIt drapes easily for long celebrations and for quieter gatherings at home. More photographs and details of this piece can be shared on request.`
+    : `${sentence} The photographs show the full length of the saree, its border and the pallu, so the pattern and the way it falls can be seen clearly.\n\nIt is a piece chosen for the catalogue with care, and it drapes easily for long celebrations and for quieter gatherings at home. More photographs and details of this piece can be shared on request, and each one is checked by hand before it is sent out.`;
+
+  return {
+    name: { value: name, confidence: 0.9 },
+    ...(copy ? { description: { value: copy, confidence: 0.9 } } : {}),
+    tagline: { value: "A saree for celebrations and quiet days", confidence: 0.9 },
+    highlights: { value: ["Border shown in close-up", "Pallu shown in full", "Photographed at full length"], confidence: 0.9 },
+    ...(groups.size ? { colour_groups: { value: [...groups].map(([colour, image_ids]) => ({ colour, image_ids })), confidence: 0.9 } } : {}),
+    ...(singles[0] ? { cover_image_id: { value: singles[0].id, confidence: 0.9 } } : {}),
+    images: shown.map(({ id, truth }) => ({
+      id, collage: truth?.role === "collage", shot_type: truth?.role === "collage" ? "other" : "full", quality: [],
+      belongs: truth?.listing === mine ? "this" : theirs && truth?.listing === theirs ? "other" : "neither",
+      belongs_confidence: 0.95,
+    })),
+  };
 }
 
-/** Answers from ground truth: what a correct, well-behaved model would say. */
 const oracle: AiProvider = {
   name: "oracle",
   isConfigured: () => true,
@@ -98,25 +163,57 @@ const oracle: AiProvider = {
     return list.length ? list : null;
   },
   async analyzeListing(input): Promise<ListingAnalysis | null> {
-    state.analysisCalls.push({ text: input.adminText, images: input.images.length });
-    const mine = state.listingByText.get(input.adminText);
-    const theirs = input.otherText ? state.listingByText.get(input.otherText) : undefined;
-    return {
-      images: input.images.map((image) => {
-        const truth = truthOfUrl(image.url);
-        return {
-          id: image.id, collage: truth?.role === "collage", shot_type: truth?.role === "collage" ? "other" : "full", quality: [],
-          belongs: truth?.listing === mine ? "this" : theirs && truth?.listing === theirs ? "other" : "neither",
-          belongs_confidence: 0.95,
-        };
-      }),
-    };
+    state.analysisCalls.push({ text: input.adminText, images: input.images.length, ...(input.feedback ? { feedback: input.feedback } : {}) });
+    const honest = honestAnalysis(input);
+    return state.analysisOverride ? state.analysisOverride(input, honest) : honest;
   },
 };
 
 export const aiMock = {
   getAiProvider: (): AiProvider => (state.ai === "oracle" ? oracle : nullAiProvider),
 };
+
+// ── Synthetic photos ────────────────────────────────────────────────────────
+// A 32x32 image per event: one body colour (four stripes for a collage) under a blocky brightness
+// pattern that is unique to the photo. A recompressed near-duplicate shares its original's pattern.
+const PALETTE: Record<string, [number, number, number]> = {
+  pink: [240, 100, 170], red: [215, 30, 35], purple: [140, 50, 190], indigo: [70, 40, 170], teal: [20, 150, 150],
+  mustard: [215, 170, 30], ivory: [235, 225, 195], blue: [40, 90, 215], peach: [245, 175, 140], green: [40, 160, 70],
+  maroon: [120, 20, 40], navy: [25, 35, 110], "rani pink": [225, 40, 130], "bottle green": [20, 95, 60],
+  wine: [110, 25, 60], lemon: [235, 225, 80], grey: [140, 140, 140], default: [150, 150, 150], multi: [150, 150, 150],
+};
+const STRIPES: [number, number, number][] = [[215, 30, 35], [40, 160, 70], [40, 90, 215], [215, 190, 30]];
+const thumbnails = new Map<string, Buffer>();
+
+function seeded(text: string) {
+  let a = createHash("sha256").update(text).digest().readUInt32LE(0);
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+async function thumbnailOf(event: FixtureEvent): Promise<Buffer> {
+  const pattern = event.truth.role === "near_dup" || event.truth.role === "dup" ? event.truth.of ?? event.id : event.id;
+  const key = `${pattern}|${event.truth.role}|${event.truth.colour}`;
+  const cached = thumbnails.get(key);
+  if (cached) return cached;
+  const size = 32, block = 4;
+  const random = seeded(pattern);
+  const shade = Array.from({ length: (size / block) ** 2 }, () => 0.55 + random() * 0.45);
+  const noise = event.truth.role === "near_dup" ? seeded(`${event.id}:noise`) : null;
+  const pixels = Buffer.alloc(size * size * 3);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const base = event.truth.role === "collage" ? STRIPES[Math.floor((x / size) * STRIPES.length)] : PALETTE[event.truth.colour ?? "default"] ?? PALETTE.default;
+    const factor = shade[Math.floor(y / block) * (size / block) + Math.floor(x / block)] + (noise ? (noise() - 0.5) * 0.02 : 0);
+    for (let c = 0; c < 3; c++) pixels[(y * size + x) * 3 + c] = Math.max(0, Math.min(255, Math.round(base[c] * factor)));
+  }
+  const png = await sharp(pixels, { raw: { width: size, height: size, channels: 3 } }).png().toBuffer();
+  thumbnails.set(key, png);
+  return png;
+}
 
 /** Meta Graph + Cloudinary, in memory. Anything else is a bug in the test. */
 export function installFetch() {
@@ -134,14 +231,26 @@ export function installFetch() {
       return json({ url: `https://lookaside.invalid/${lookup[1]}`, mime_type: "image/jpeg" });
     }
     if (url.startsWith("https://lookaside.invalid/")) {
-      return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } });
+      // The bytes Meta delivers: identical for an exact duplicate (the fixture's sha256 says which are).
+      const event = state.eventByMedia.get(url.slice("https://lookaside.invalid/".length));
+      return new Response(new Uint8Array(Buffer.from(event?.sha256 ?? url)), { status: 200, headers: { "content-type": "image/jpeg" } });
     }
     if (url.startsWith("https://api.cloudinary.com/") && init?.method !== "POST") return new Response("{}", { status: 404 });
     if (url.startsWith("https://api.cloudinary.com/") && init?.method === "POST") {
       const form = init.body as FormData;
       const publicId = String(form.get("public_id"));
       const kind = url.includes("/video/") ? "video" : "image";
-      return json({ secure_url: `https://res.cloudinary.com/${CLOUD}/${kind}/upload/v1/${publicId}.${kind === "video" ? "mp4" : "jpg"}`, public_id: publicId });
+      // A recompressed copy is the smaller file.
+      const small = state.eventByHash.get(publicId.replace("whatsapp/inbox/", ""))?.truth.role === "near_dup";
+      return json({
+        secure_url: `https://res.cloudinary.com/${CLOUD}/${kind}/upload/v1/${publicId}.${kind === "video" ? "mp4" : "jpg"}`, public_id: publicId,
+        width: small ? 900 : 1200, height: small ? 1200 : 1600, bytes: small ? 90_000 : 240_000,
+      });
+    }
+    if (url.startsWith(`https://res.cloudinary.com/${CLOUD}/`)) {
+      const event = eventOfUrl(url);
+      if (!event || state.failThumbnails) return new Response("not found", { status: 404 });
+      return new Response(new Uint8Array(await thumbnailOf(event)), { status: 200, headers: { "content-type": "image/png" } });
     }
     throw new Error(`ingest-eval: unexpected network call ${init?.method ?? "GET"} ${url}`);
   };

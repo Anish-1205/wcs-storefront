@@ -19,6 +19,8 @@ export type StoredAnalysis = {
   /** short id -> message_id, for every thumbnail the AI was shown. */
   ids: Record<string, string>;
   result: ListingAnalysis;
+  /** The one retry (name or description failed validation) has been spent. */
+  retried?: boolean;
 };
 
 export const textKey = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);

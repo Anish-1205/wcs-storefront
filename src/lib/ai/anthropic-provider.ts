@@ -6,8 +6,12 @@ import type {
   AiProvider,
   CollectionCandidate,
   ColorVariantSuggestion,
+  ListingAnalysis,
+  ListingAnalysisInput,
   ProductMetadataSuggestions,
 } from "./types";
+import { LISTING_SYSTEM_PROMPT, listingUserContent, parseListingAnalysis } from "./listing-analysis";
+import { isTitleOnly } from "@/lib/whatsapp-text";
 import {
   CATALOGUE_STYLE_PREAMBLE,
   COLOUR_STYLE_GUIDE,
@@ -28,6 +32,13 @@ const REQUEST_TIMEOUT_MS = 20_000;
 function getModel() {
   return process.env.ANTHROPIC_IMPORT_MODEL || "claude-haiku-4-5-20251001";
 }
+
+/** The WhatsApp listing call has 8 seconds, so it defaults to the fast model too. */
+function getListingModel() {
+  return process.env.ANTHROPIC_INGEST_MODEL || getModel();
+}
+// Room for a 120-word description plus one short entry per thumbnail.
+const LISTING_MAX_TOKENS = 1800;
 
 const suggestionSchema = <T extends z.ZodTypeAny>(inner: T) =>
   z
@@ -159,12 +170,16 @@ function imageBlocks(urls: string[]): ImageBlock[] {
   }));
 }
 
-async function callAnthropic(system: string, content: Array<ImageBlock | TextBlock>): Promise<unknown | null> {
+async function callAnthropic(
+  system: string,
+  content: Array<ImageBlock | TextBlock>,
+  options: { timeoutMs?: number; maxTokens?: number; model?: string } = {},
+): Promise<unknown | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -175,8 +190,8 @@ async function callAnthropic(system: string, content: Array<ImageBlock | TextBlo
         "anthropic-version": ANTHROPIC_VERSION,
       },
       body: JSON.stringify({
-        model: getModel(),
-        max_tokens: 1024,
+        model: options.model ?? getModel(),
+        max_tokens: options.maxTokens ?? 1024,
         system,
         messages: [{ role: "user", content }],
       }),
@@ -378,5 +393,22 @@ export const anthropicAiProvider: AiProvider = {
           evidence: group.evidence,
         };
       });
+  },
+
+  async analyzeListing(input: ListingAnalysisInput): Promise<ListingAnalysis | null> {
+    if (!this.isConfigured() || input.images.length === 0) return null;
+    // The seller's text never becomes prompt text: the system prompt is a
+    // constant and the text travels as a JSON string value (listing-analysis.ts).
+    const raw = await callAnthropic(LISTING_SYSTEM_PROMPT, listingUserContent(input, isTitleOnly(input.adminText)), {
+      timeoutMs: input.timeoutMs, maxTokens: LISTING_MAX_TOKENS, model: getListingModel(),
+    });
+    if (raw == null) return null;
+    const parsed = parseListingAnalysis(raw, {
+      imageIds: input.images.map((image) => image.id),
+      categorySlugs: input.categories.map((category) => category.slug),
+      collectionIds: input.collections.map((collection) => collection.id),
+    });
+    if (!parsed) console.warn("anthropic provider: listing analysis was not a JSON object");
+    return parsed;
   },
 };

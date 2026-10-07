@@ -1,22 +1,16 @@
+import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isRenderableCloudinaryUrl, signUpload } from "@/lib/cloudinary";
-import { deriveProductName, GENERIC_NAME, generateProductSKU, parseCollectionMessage } from "@/lib/whatsapp-caption";
-import { describeFromAdminText } from "@/lib/whatsapp-text";
-import { describePriceFlag, toSafePrice } from "@/lib/whatsapp-price";
-import { slugify } from "@/lib/utils";
+import { deriveProductName, parseCollectionMessage } from "@/lib/whatsapp-caption";
 import { reportError } from "@/lib/report-error";
 import { getAiProvider } from "@/lib/ai";
-import { ingestConfig } from "@/lib/whatsapp-config";
-import { requestAnalysis, type StoredAnalysis } from "@/lib/whatsapp-analysis";
+import { ingestConfig, type IngestConfig } from "@/lib/whatsapp-config";
+import { requestAnalysis, textKey, type StoredAnalysis } from "@/lib/whatsapp-analysis";
 import { decideReview, type ReviewHint, type ReviewMedia } from "@/lib/whatsapp-review";
-import {
-  enrichWhatsAppProduct,
-  resolveWhatsAppColorVariants,
-  type CategoryOption,
-  type CollectionOption,
-  type ColorVariantSplit,
-  type ProductEnrichment,
-} from "@/lib/whatsapp-enrichment";
+import { assemblePlan, type ListingPlan, type PlanContext } from "@/lib/whatsapp-plan";
+import { computeVisuals } from "@/lib/whatsapp-visual";
+import type { CurationItem } from "@/lib/whatsapp-curation";
+import type { CategoryOption, CollectionOption } from "@/lib/whatsapp-enrichment";
 
 // No new message is started after this point in an invocation, leaving the
 // rest of maxDuration for the one in hand (a video download + upload, or the
@@ -46,6 +40,9 @@ type CloudinaryUploadResponse = {
   public_id?: string;
   asset_id?: string;
   format?: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
 };
 
 type PendingMediaItem = {
@@ -54,6 +51,11 @@ type PendingMediaItem = {
   url: string;
   kind: MediaKind;
   received_at: string;
+  /** Of the bytes Meta delivered: what "the same photo twice" means. Absent on media saved before this was recorded. */
+  sha256?: string | null;
+  width?: number | null;
+  height?: number | null;
+  bytes?: number | null;
 };
 
 /** Stage information is retained in the recoverable inbox error. */
@@ -129,6 +131,9 @@ type ClaimedMessage = {
   answer_timeout_seconds?: number | null;
   /** The AI answer already obtained for this listing, if any. */
   analysis?: StoredAnalysis | null;
+  /** The plan a previous attempt built, and the inputs it was built from. */
+  stored_plan?: ListingPlan | null;
+  plan_key?: string | null;
   payload: InboxMessage;
 };
 type MediaInfo = {
@@ -249,12 +254,14 @@ async function downloadMediaFromMeta(
   };
 }
 
+type UploadedAsset = { secureUrl: string; publicId: string; width?: number; height?: number; bytes?: number };
+
 async function uploadToCloudinary(params: {
   buffer: Buffer;
   mimeType?: string;
   kind: MediaKind;
   publicId: string;
-}): Promise<{ secureUrl: string; publicId: string }> {
+}): Promise<UploadedAsset> {
   const cloudName = getCloudName();
   const apiKey = requireEnv("CLOUDINARY_API_KEY");
   requireEnv("CLOUDINARY_API_SECRET");
@@ -311,10 +318,11 @@ async function uploadToCloudinary(params: {
   return {
     secureUrl: uploaded.secure_url,
     publicId: uploaded.public_id ?? params.publicId,
+    width: uploaded.width, height: uploaded.height, bytes: uploaded.bytes,
   };
 }
 
-async function findUploadedAsset(publicId: string, kind: MediaKind) {
+async function findUploadedAsset(publicId: string, kind: MediaKind): Promise<UploadedAsset | null> {
   const credentials = Buffer.from(`${requireEnv("CLOUDINARY_API_KEY")}:${requireEnv("CLOUDINARY_API_SECRET")}`).toString("base64");
   const response = await fetch(`https://api.cloudinary.com/v1_1/${getCloudName()}/resources/${kind}/upload/${encodeURIComponent(publicId)}`, {
     headers: { Authorization: `Basic ${credentials}` },
@@ -323,7 +331,7 @@ async function findUploadedAsset(publicId: string, kind: MediaKind) {
   if (!response.ok) throw new PipelineStageError("media_upload", `Cloudinary recovery lookup failed (${response.status})`);
   const asset = await response.json() as CloudinaryUploadResponse;
   if (!asset.secure_url) throw new PipelineStageError("media_upload", "Cloudinary recovery lookup returned no URL");
-  return { secureUrl: asset.secure_url, publicId: asset.public_id ?? publicId };
+  return { secureUrl: asset.secure_url, publicId: asset.public_id ?? publicId, width: asset.width, height: asset.height, bytes: asset.bytes };
 }
 
 async function sendWhatsAppReply(to: string, text: string): Promise<void> {
@@ -371,97 +379,82 @@ async function sendWhatsAppReply(to: string, text: string): Promise<void> {
   console.log(`whatsapp webhook: reply sent to ${maskPhone(to)} (${response.status})`);
 }
 
+/** Changes whenever anything a plan is built from changes: the text, the media, or the limits. */
+function planKey(text: string, pending: PendingMediaItem[], config: IngestConfig): string {
+  return createHash("sha256").update(JSON.stringify([
+    text, pending.map((item) => item.url).sort(), config.maxImages, config.maxVideos, config.maxColours, config.nearDuplicateBits,
+  ])).digest("hex");
+}
+
+/**
+ * Builds the plan for one closed listing: what it is called, what it says,
+ * which media it shows and which it hides.
+ *
+ * At most one AI call (plus one retry when its name or description fails
+ * validation), each limited to INGEST_AI_TIMEOUT_MS, alongside the thumbnail
+ * hashing. Neither can fail the listing: with no answer the deterministic
+ * name, description and curation stand, field by field. The result is stored
+ * with the listing before it is applied, so a retry of this message repeats
+ * it exactly instead of asking again.
+ */
 async function buildProductPlan(
-  supabase: ReturnType<typeof createAdminClient>, text: string, pending: PendingMediaItem[], grouping?: string | null,
-  claimed?: ClaimedMessage,
-) {
+  supabase: ReturnType<typeof createAdminClient>, claimed: ClaimedMessage, pending: PendingMediaItem[],
+): Promise<ListingPlan | { variants: never[]; reply: string }> {
   // A description only runs once its listing is closed with media (migration
   // 029), so this is the case where none of that media could be saved.
   if (!pending.length) return { variants: [], reply: "No photos or videos could be saved for this description, so no listing was created. Please send the photos/videos and the description again." };
-  const { description, price, fabric, needsReview = [] } = parseCollectionMessage(text);
-  const imageItems = pending.filter((item) => item.kind === "image");
+  const text = claimed.payload.caption;
+  const config = ingestConfig();
+  const key = planKey(text, pending, config);
+  if (claimed.stored_plan && claimed.plan_key === key) return claimed.stored_plan;
 
+  const info = new Map((claimed.media_info ?? []).map((row) => [row.message_id, row]));
+  const items: CurationItem[] = pending.map((item) => ({
+    ...item, sha256: item.sha256 ?? info.get(item.message_id)?.sha256 ?? null, visual: null,
+  }));
+
+  // The AI is shown photos only, and each distinct photo once.
+  const seen = new Set<string>();
+  const forAi = items.filter((item) => item.kind === "image" && !(item.sha256 && seen.has(item.sha256)) && (!item.sha256 || !!seen.add(item.sha256)));
   const aiProvider = getAiProvider();
-  let enrichment: ProductEnrichment = {
-    categoryId: null,
-    categoryName: null,
-    highlights: [],
-    fabricType: fabric,
-    collectionIds: [],
-    collectionNames: [],
-    name: null,
-  };
-  let colorSplit: ColorVariantSplit | null = null;
+  const aiReady = aiProvider.isConfigured() && !!aiProvider.analyzeListing && forAi.length > 0;
+  let analysis = claimed.analysis && claimed.analysis.text === textKey(text) ? claimed.analysis : null;
+  const taxonomy = analysis || aiReady ? await loadTaxonomy(supabase) : { categories: [], collections: [] };
+  const deterministicName = deriveProductName(parseCollectionMessage(text).description);
+  const ask = (feedback?: string) => requestAnalysis({
+    provider: aiProvider, text, deterministicName, feedback, config,
+    items: forAi.map((item) => ({ message_id: item.message_id, url: item.url, kind: item.kind })),
+    categories: taxonomy.categories, collections: taxonomy.collections,
+  });
 
-  if (aiProvider.isConfigured()) {
-    const [{ data: categoriesData, error: categoriesError }, { data: collectionsData, error: collectionsError }] =
-      await Promise.all([
-        supabase.from("categories").select("id, slug, name, description"),
-        supabase.from("collections").select("id, name, description"),
-      ]);
+  const [visuals, fresh] = await Promise.all([
+    computeVisuals(items.map((item) => item.url), config.hashTimeoutMs).catch(() => new Map()),
+    !analysis && aiReady ? ask() : Promise.resolve(null),
+  ]);
+  analysis = analysis ?? fresh;
+  for (const item of items) item.visual = visuals.get(item.url) ?? null;
 
-    if (categoriesError) {
-      console.warn("whatsapp webhook: categories lookup failed, skipping auto-category", categoriesError.message);
-    }
-    if (collectionsError) {
-      console.warn("whatsapp webhook: collections lookup failed, skipping auto-tagging", collectionsError.message);
-    }
-
-    const categories = (categoriesData ?? []) as CategoryOption[];
-    const collections = (collectionsData ?? []) as CollectionOption[];
-    const imageUrls = imageItems.map((item) => item.url);
-
-    [enrichment, colorSplit] = await Promise.all([
-      enrichWhatsAppProduct({ aiProvider, description, fabricFromCaption: fabric, imageUrls, categories, collections }),
-      resolveWhatsAppColorVariants({
-        aiProvider,
-        description,
-        images: imageItems.map((item) => ({ media_id: item.media_id, url: item.url })),
-      }),
-    ]);
+  const context = (current: StoredAnalysis | null): PlanContext => ({
+    text, items, analysis: current, categories: taxonomy.categories, collections: taxonomy.collections,
+    lateBy: claimed.late_by ?? null, lateLimit: claimed.late_review_seconds ?? 30,
+    groupedByAi: (claimed.media_info ?? []).some((row) => row.reason === "ai_match"), config,
+  });
+  let { plan, problems } = assemblePlan(context(analysis));
+  if (problems.length && analysis && !analysis.retried && aiReady) {
+    // One retry, told what was wrong. Whatever still fails falls back to the deterministic value.
+    const again = await ask(problems.join("; "));
+    analysis = { ...analysis, retried: true, result: { ...analysis.result, ...(again ? { name: again.result.name, description: again.result.description } : {}) } };
+    ({ plan, problems } = assemblePlan(context(analysis)));
   }
+  if (problems.length) console.warn(`whatsapp webhook: AI copy rejected, deterministic values used (${problems.join("; ")})`);
 
-  // The AI-drafted name already went through the catalogue style rules; the
-  // deterministic derivation is the fallback so a listing never fails (or
-  // silently degrades in style) just because the AI call didn't land.
-  const name = enrichment.name ?? deriveProductName(description);
-  const slugBase = slugify(name);
-  const codeBase = generateProductSKU(name);
-
-  const distinctColors = colorSplit ? Array.from(new Set(colorSplit.colorByMediaId.values())) : [];
-  const colors = distinctColors.length >= 2 ? [
-    ...(colorSplit?.bestColor && distinctColors.includes(colorSplit.bestColor) ? [colorSplit.bestColor] : []),
-    ...distinctColors.filter((c) => c !== colorSplit?.bestColor),
-  ] : ["Default"];
-  const variants = colors.map((color, groupIndex) => {
-    const media = pending.filter((item) => colors.length === 1 ||
-      (item.kind === "video" ? groupIndex === 0 : (colorSplit?.colorByMediaId.get(item.media_id) ?? colors[0]) === color));
-    const firstImage = media.findIndex((item) => item.kind === "image");
-    return { color, media: media.map((item, index) => ({ ...item,
-      is_primary: index === (firstImage < 0 ? 0 : firstImage), display_order: index + 1,
-    })) };
-  }).filter((v) => v.media.length);
-  // A price never costs a listing: whatever reaches the database is a whole rupee amount in range, or null.
-  // The reasons travel in the plan (the SQL ignores unknown keys) and in the reply to the admin.
-  const review: string[] = [...needsReview];
-  const checks = needsReview.map(describePriceFlag);
-  if (name === GENERIC_NAME) {
-    review.push("name_generic");
-    checks.push(`nothing in the text said what kind of saree it is, so it is just called "${GENERIC_NAME}"`);
-  }
-  // Assigned, not asked about: a lone description that came well after its photos.
-  if (claimed?.late_by != null && claimed.late_by > (claimed.late_review_seconds ?? 30)) {
-    review.push("late_description");
-    checks.push("the description came a while after the photos, so make sure they belong together");
-  }
-  return { name, slug: slugBase, code: codeBase, description: describeFromAdminText(description), price: toSafePrice(price),
-    fabric_type: enrichment.fabricType, category_id: enrichment.categoryId,
-    highlights: enrichment.highlights, collection_ids: enrichment.collectionIds, variants,
-    needs_review: review,
-    // Admin-only (product_source_texts): the raw text can hold a phone number.
-    source_text: text,
-    reply: `Created "${name}" with ${pending.length} photo(s)/video(s)${grouping ? ` (${grouping})` : ""}. Review it in the admin panel.${checks.length ? ` Please check: ${checks.join("; ")}.` : ""}`,
-  };
+  // Pixel facts are working data, not part of what is stored.
+  const stored: ListingPlan = { ...plan, variants: plan.variants.map((variant) => ({ ...variant, media: variant.media.map(({ visual: _visual, ...media }) => media) })) };
+  // Best effort: without the checkpoint a retry rebuilds the plan (reusing the stored analysis when there is one).
+  await rpc(supabase, "checkpoint_whatsapp_plan", {
+    p_message_id: claimed.payload.message_id, p_token: claimed.token, p_key: key, p_analysis: analysis, p_plan: stored,
+  }).catch((error) => console.warn("whatsapp webhook: plan checkpoint failed", error instanceof Error ? error.message : error));
+  return stored;
 }
 
 export async function rpc<T>(supabase: ReturnType<typeof createAdminClient>, name: string, args: Record<string, unknown>): Promise<T> {
@@ -476,9 +469,11 @@ async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claime
   try {
     let asset = claimed.asset;
     if (m.kind && m.media_id && !asset) {
-      let uploaded = claimed.attempts > 1 ? await findUploadedAsset(m.public_id, m.kind) : null;
+      let uploaded: UploadedAsset | null = claimed.attempts > 1 ? await findUploadedAsset(m.public_id, m.kind) : null;
+      let sha256: string | null = null;
       if (!uploaded) {
         const { buffer, mimeType } = await downloadMediaFromMeta(m.media_id, m.kind);
+        sha256 = createHash("sha256").update(buffer).digest("hex");
         uploaded = await uploadToCloudinary({ buffer, mimeType, kind: m.kind, publicId: m.public_id });
       }
       // Every URL that reaches variant_images must be one the site can render
@@ -486,8 +481,14 @@ async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claime
       if (!isRenderableCloudinaryUrl(uploaded.secureUrl, m.kind, getCloudName())) {
         throw new PipelineStageError("media_upload", `Cloudinary returned a URL that cannot be rendered as ${m.kind}: ${uploaded.secureUrl}`);
       }
+      // The same photo forwarded twice is uploaded twice: each message has its own idempotent public_id,
+      // and whether two copies are duplicates depends on the listing they end up in (the same photo in
+      // two listings is legitimate). So nothing is skipped here; the duplicate is hidden at finalize.
       asset = { media_id: m.media_id, message_id: m.message_id, url: uploaded.secureUrl,
-        kind: m.kind, received_at: m.message_timestamp };
+        kind: m.kind, received_at: m.message_timestamp,
+        ...(sha256 ? { sha256 } : {}),
+        ...(uploaded.width && uploaded.height ? { width: uploaded.width, height: uploaded.height } : {}),
+        ...(uploaded.bytes ? { bytes: uploaded.bytes } : {}) };
       await rpc(supabase, "checkpoint_whatsapp_asset", { p_message_id: messageId, p_token: claimed.token,
         p_asset: { ...asset, public_id: uploaded.publicId ?? m.public_id } });
     }
@@ -497,7 +498,7 @@ async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claime
       return;
     }
     const plan = m.mode === "finalize"
-      ? await buildProductPlan(supabase, m.caption, [...claimed.pending_media, ...(asset ? [asset] : [])], claimed.grouping, claimed)
+      ? await buildProductPlan(supabase, claimed, [...claimed.pending_media, ...(asset ? [asset] : [])])
       : { reply: m.mode === "numbered" ? `Saved photo ${m.caption}.` : null };
     await rpc(supabase, "complete_whatsapp_message", { p_message_id: messageId, p_token: claimed.token, p_plan: plan });
   } catch (error) {

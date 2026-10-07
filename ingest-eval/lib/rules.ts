@@ -80,7 +80,10 @@ export function descriptionViolations(description: string | null, raw: string, r
   if (URGENCY.test(text)) out.push("sales/urgency wording");
   if (!/^[A-Zऀ-ॿ]/.test(text)) out.push("does not start with a capital");
   if (!/[.!?]$/.test(text)) out.push("does not end with a full stop");
-  if (text.length > 400) out.push(`${text.length} chars (want <= 400)`);
+  // A written description is 60-120 words in two short paragraphs; the old rubric only knew one-line ones.
+  const limit = rubric === "old" ? 400 : 900;
+  if (text.length > limit) out.push(`${text.length} chars (want <= ${limit})`);
+  if (rubric === "new" && words(text).length > 120) out.push(`${words(text).length} words (want <= 120)`);
   return out;
 }
 
@@ -99,7 +102,9 @@ export function evaluate(stream: Stream, snap: Snapshot, ai: "off" | "oracle", r
   // Safety, always.
   findings.push(check("draft_only", snap.products.filter((p) => p.status !== "draft").map((p) => `${p.name} is ${p.status}`)));
   findings.push(check("no_dead_letter", snap.dead.map((d) => `${d.event}: ${d.error?.slice(0, 90) ?? "?"}`)));
-  const lost = media.filter((m) => !snap.products.some((p) => members(p).includes(m.id)));
+  // Hidden media (a duplicate, an extra over the cap) is kept, not lost. The old rubric had no such place.
+  const kept = (p: SnapProduct) => (rubric === "new" ? [...members(p), ...(p.hidden ?? []).map((h) => h.event)] : members(p));
+  const lost = media.filter((m) => !snap.products.some((p) => kept(p).includes(m.id)));
   findings.push(check("no_lost_media", lost.length ? [`${lost.length} of ${media.length} media in no product (${lost.slice(0, 4).map((m) => m.id).join(", ")}${lost.length > 4 ? ", …" : ""})`] : []));
 
   // Media never mixes across listings.
@@ -114,6 +119,11 @@ export function evaluate(stream: Stream, snap: Snapshot, ai: "off" | "oracle", r
   // Where only the photos can tell (an older burst before a listing's own), asking is the right answer without an AI.
   const mayAsk = rubric === "new" && ai === "off" && stream.expect.ask_without_ai;
   if (clear && !mayAsk) findings.push(check("no_question_asked", snap.questions.length ? [`admin was asked ${snap.questions.length} question(s)`] : []));
+  // One listing call per description at most, plus at most one retry each.
+  if (rubric === "new" && ai === "oracle") {
+    const descriptions = stream.events.filter((e) => e.type === "text" && e.truth.role === "description").length;
+    findings.push(check("ai_call_budget", (snap.aiCalls ?? 0) > descriptions ? [`${snap.aiCalls} AI calls for ${descriptions} description(s)`] : [], `${snap.aiCalls ?? 0} call(s)`));
+  }
   if (ambiguous) return findings;
 
   // Media with no description must be set aside, together, in an Unassigned draft.
@@ -180,6 +190,14 @@ export function evaluate(stream: Stream, snap: Snapshot, ai: "off" | "oracle", r
     const covers = product.variants.map((v) => v.images.filter((i) => i.primary));
     const badCover = covers.flatMap((c) => c.filter((i) => i.event && events.get(i.event)?.truth.role === "collage"));
     const noPrimary = product.variants.filter((v, i) => v.images.length && covers[i].length !== 1);
+    // The "all colours" collage: labelled, and second or last in the first colour. Recognising it needs
+    // eyes, so without an AI this is only checked when the opener was caught from its pixels.
+    const collageShown = product.variants.flatMap((v, vi) => v.images.map((image, ii) => ({ image, vi, ii, n: v.images.length })))
+      .filter((x) => x.image.event && events.get(x.image.event)?.truth.role === "collage");
+    if (rubric === "new" && collageShown.length && (ai === "oracle" || collageShown.some((x) => x.image.label))) {
+      const bad = collageShown.filter((x) => x.image.label !== "all_colours" || x.vi !== 0 || !(x.ii === 1 || x.ii === x.n - 1));
+      findings.push(check(`${tag}collage_placed`, bad.map((x) => `${x.image.event} is at colour ${x.vi + 1}, position ${x.ii + 1}, label ${x.image.label ?? "none"}`)));
+    }
     findings.push(check(`${tag}cover`, [
       ...(badCover.length ? [`collage is a cover (${badCover.map((i) => i.event).join(", ")})`] : []),
       ...(noPrimary.length ? [`${noPrimary.length} variant(s) without exactly one cover`] : []),

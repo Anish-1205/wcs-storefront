@@ -13,8 +13,8 @@
 import { createHash, createHmac } from "node:crypto";
 import { POST } from "@/app/api/whatsapp/route";
 import { sweepSenders } from "@/lib/whatsapp-pipeline";
-import { dbNowSeconds, shiftTime, type RunDb } from "./db";
-import { mediaId, messageId, publicIdHash, serverMock, setEnv, state, type FixtureEvent, type Truth } from "./mocks";
+import { dbNowSeconds, faults, shiftTime, type RunDb } from "./db";
+import { attachStream, mediaId, messageId, publicIdHash, serverMock, setEnv, state, type FixtureEvent, type Truth } from "./mocks";
 
 export const SENDER = "15550100001";
 
@@ -37,16 +37,20 @@ export type ReplayOptions = {
   order?: FixtureEvent[];
   /** Virtual seconds to keep running the scheduler after the last event. */
   horizonSeconds?: number;
+  /** RPCs that fail this many times before succeeding (a crashed or timed-out write). */
+  failRpc?: Record<string, number>;
   /** Deliver every event twice: back to back, or the whole stream again afterwards. */
   redeliver?: "adjacent" | "after";
 };
 
-export type SnapImage = { event: string | null; kind: string; primary: boolean; order: number };
+export type SnapImage = { event: string | null; kind: string; primary: boolean; order: number; label: string | null };
 export type SnapProduct = {
   name: string; slug: string; status: string; description: string | null; fabric: string | null;
   priceMin: number | null; priceMax: number | null; highlights: string[]; categoryId: string | null;
   descriptionEvent: string | null; unassigned: boolean;
   needsReview: boolean; reviewReasons: string[];
+  /** Media kept for this product but not shown (migration 031). */
+  hidden: { event: string | null; kind: string; reason: string }[];
   variants: { color: string | null; order: number; images: SnapImage[] }[];
 };
 export type Snapshot = {
@@ -56,6 +60,8 @@ export type Snapshot = {
   replies: string[];
   questions: string[];
   errors: { scope?: string; message: string }[];
+  /** How many times the AI was asked about a listing (retries included). */
+  aiCalls: number;
   /** Virtual seconds after the last event at which the last product appeared. */
   lastProductAfter: number | null;
   rows: number;
@@ -86,11 +92,10 @@ export async function replay(db: RunDb, stream: Stream, options: ReplayOptions):
   state.replies = [];
   state.errors = [];
   state.failMedia.clear();
-  state.truthByMedia.clear();
-  state.listingByText.clear();
+  faults.rpc.clear();
+  for (const [name, times] of Object.entries(options.failRpc ?? {})) faults.rpc.set(name, times);
   state.analysisCalls = [];
-  for (const event of stream.events) if (event.type === "text" && event.text) state.listingByText.set(event.text, event.truth.listing);
-  for (const event of stream.events) if (event.type !== "text") state.truthByMedia.set(mediaId(event.id), event.truth);
+  attachStream(stream.events);
 
   const client = serverMock.createAdminClient();
   const rpc = async <T,>(name: string, args: Record<string, unknown>) => (await client.rpc(name, args)).data as T;
@@ -156,6 +161,8 @@ export async function snapshot(db: RunDb, stream: Stream, lastProductAfter: numb
   const media = (await pg.query(
     `select v.product_id, v.id as variant_id, v.color, v.display_order as vorder, i.image_url, i.media_type, i.is_primary, i.display_order as iorder
        from product_variants v left join variant_images i on i.variant_id=v.id order by v.display_order, i.display_order, i.id`)).rows;
+  const hidden = (await pg.query("select product_id, image_url, media_type, reason from variant_hidden_media order by original_order, id")).rows;
+  const labels = new Map((await pg.query("select product_id, image_url, label from product_media_labels")).rows.map((r) => [`${r.product_id}|${r.image_url}`, r.label as string]));
   const inbox = Object.fromEntries((await pg.query("select state, count(*)::int as n from whatsapp_inbox group by state")).rows.map((r) => [r.state, r.n]));
   const dead = (await pg.query("select message_id, last_error from whatsapp_inbox where state='dead' order by sequence")).rows
     .map((r) => ({ event: eventIdOf(r.message_id), error: r.last_error as string | null }));
@@ -168,7 +175,7 @@ export async function snapshot(db: RunDb, stream: Stream, lastProductAfter: numb
       for (const m of media.filter((row) => row.product_id === p.id)) {
         const variant = variants.get(m.variant_id) ?? { color: m.color, order: m.vorder, images: [] as SnapImage[] };
         variants.set(m.variant_id, variant);
-        if (m.image_url) variant.images.push({ event: eventOfUrl(m.image_url), kind: m.media_type, primary: !!m.is_primary, order: m.iorder });
+        if (m.image_url) variant.images.push({ event: eventOfUrl(m.image_url), kind: m.media_type, primary: !!m.is_primary, order: m.iorder, label: labels.get(`${p.id}|${m.image_url}`) ?? null });
       }
       return {
         name: p.name, slug: p.slug, status: p.status, description: p.description, fabric: p.fabric_type,
@@ -176,12 +183,14 @@ export async function snapshot(db: RunDb, stream: Stream, lastProductAfter: numb
         descriptionEvent: p.description_id ? eventIdOf(p.description_id) : null,
         unassigned: p.batch_status === "unassigned" || p.name === "Unassigned WhatsApp media",
         needsReview: !!p.needs_review, reviewReasons: p.needs_review_reasons ?? [],
+        hidden: hidden.filter((row) => row.product_id === p.id).map((row) => ({ event: eventOfUrl(row.image_url), kind: row.media_type, reason: row.reason })),
         variants: [...variants.values()],
       };
     }),
     inbox, dead, questions, rows,
     replies: [...state.replies],
     errors: [...state.errors],
+    aiCalls: state.analysisCalls.length,
     lastProductAfter,
   };
 }

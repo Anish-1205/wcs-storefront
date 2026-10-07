@@ -25,6 +25,9 @@ export type Rpc = <T = unknown>(name: string, args?: Record<string, unknown>) =>
 /** Parameters that are Postgres arrays; everything else non-scalar is sent as JSON. */
 const ARRAY_PARAMS = new Set(["p_message_ids", "p_bursts"]);
 
+/** Failure injection: an RPC named here fails that many times before it is let through. */
+export const faults = { rpc: new Map<string, number>() };
+
 /** The part of the supabase-js admin client the pipeline uses, over a real connection. */
 export function supabaseShim(pg: Client) {
   const result = async <T,>(run: () => Promise<T>) => {
@@ -37,6 +40,8 @@ export function supabaseShim(pg: Client) {
   return {
     rpc: (name: string, args: Record<string, unknown> = {}) =>
       result(async () => {
+        const left = faults.rpc.get(name) ?? 0;
+        if (left > 0) { faults.rpc.set(name, left - 1); throw new Error(`injected failure in ${name}`); }
         const keys = Object.keys(args);
         const values = keys.map((key) => {
           const value = args[key];

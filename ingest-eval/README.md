@@ -62,3 +62,18 @@ Three rules changed between the baseline and Step 2. Nothing else did; re-scorin
 A fourth change came with Step 3 (and is the only one since):
 
 4. **A question is allowed where only the photos can tell (`expect.ask_without_ai`, F3F4), when there is no AI.** Old: `no_question_asked` applied to F3F4 in both modes, which could only pass by merging or separating on timing alone. New: with AI off, asking about the older burst is the correct answer (it is still never merged without a reply); with AI on, no question is allowed. Also new in Step 3: `needs_review` is checked where a fixture expects a stored reason (`expect.review`), new rubric only.
+
+Two more came with Step 5, both because the old rule could not describe the new behaviour at all:
+
+5. **Hidden media is kept, not lost (`no_lost_media`).** Old: a photo/video counted as lost unless it was a visible image of some product, so F5 (28 media, 20-image cap) could never pass `no_lost_media` and `within_image_cap` together. New: a duplicate or an extra that sits in `variant_hidden_media` for its product is accounted for.
+6. **Description length.** Old: at most 400 characters (every description was one line). New: at most 900 characters and 120 words, because a written description is 60-120 words in two short paragraphs. Everything else about a description is judged as before.
+
+New-rubric-only rules added in Step 5 (they have no old-rubric counterpart, so they change the new total, not the old one): `collage_placed` (the "all colours" collage is labelled and sits second or last in the first colour), `ai_call_budget` (at most one listing call per description; a retry would show up here) and `needs_review` (Step 3).
+
+## What the oracle is, and is not
+
+`ai=oracle` answers the single listing call (`AiProvider.analyzeListing`) from ground truth: which image belongs to which description, which one is the collage, the body colours, and copy built only from the admin's words. It is shown only the thumbnails the pipeline would send (12 at most) and nothing else. It measures what the pipeline does with a correct answer. It says nothing about how often a real model gives one: that needs the manual WhatsApp script in the final report.
+
+`state.analysisOverride` (see `curation.test.ts`) makes it misbehave on purpose: wrong names, injected instructions followed, no answer at all.
+
+Photos are synthetic 32x32 images (`lib/mocks.ts`): one body colour under a brightness pattern unique to the photo, four colour stripes for a collage, and the original's pattern for a recompressed near-duplicate. They exercise the real dHash, colour-match and multi-colour code, but they are not sarees: the pixel heuristics (near-duplicate threshold, collage guess without AI) are only proven on these.

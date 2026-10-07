@@ -128,16 +128,8 @@ export function nameFromAdminText(text: string | null | undefined): string | nul
 const display = (word: string) => (PROPER.has(word) ? `${word[0].toUpperCase()}${word.slice(1)}` : word);
 const upperFirst = (text: string) => `${text[0].toUpperCase()}${text.slice(1)}`;
 
-/**
- * A tidy description from the admin's text: price, phone numbers, hype, chatter and
- * ordering/delivery lines out; ".." and double spaces collapsed; sentence case; every sentence
- * ends with a full stop. A bare keyword title ("Benarsi patola paithani bandhej sarees")
- * becomes one short sentence from the same words ("A Banarasi patola paithani bandhej saree.").
- * Returns null when nothing about the saree is left.
- */
-export function describeFromAdminText(text: string | null | undefined): string | null {
-  if (!text?.trim()) return null;
-  // sentence -> comma segments -> words
+/** The admin's text as sentences -> comma segments -> words, with everything that is not about the saree removed. */
+function sentencesOf(text: string): string[][][] {
   const sentences: string[][][] = [];
   for (const raw of prepare(text).split(/[.!?…;\n\r]+/)) {
     const segments: string[][] = [];
@@ -159,20 +151,147 @@ export function describeFromAdminText(text: string | null | undefined): string |
     const kept = segments.length > 1 ? segments.filter((s) => !(s.length === 1 && s[0] === "saree")) : segments;
     if (kept.length) sentences.push(kept);
   }
+  return sentences;
+}
+
+const TRAILING = /^(?:perfect|ideal|suitable|available|made)$/;
+const isTitle = (words: string[]) => words.filter((w) => !STOP.has(w)).length <= 8 && !SIGNAL.test(words.join(" "));
+const article = (word: string) => (/^[aeiou]/.test(word) ? "An" : "A");
+
+/** "navy blue chanderi saree" -> "A navy blue Chanderi saree"; the noun is supplied before with/in/and when missing. */
+function nounPhrase(words: string[]): string {
+  const parts = [...words];
+  if (!parts.includes("saree")) {
+    const at = parts.findIndex((w) => w === "with" || w === "in" || w === "and");
+    parts.splice(at === -1 ? parts.length : at, 0, "saree");
+  }
+  return `${article(parts[0])} ${parts.map(display).join(" ")}`;
+}
+
+/**
+ * True when the admin's text is only a title: a handful of keywords and no sentence
+ * ("paithani sarees 7490"). There is then little to say, and a description must not pad.
+ */
+export function isTitleOnly(text: string | null | undefined): boolean {
+  if (!text?.trim()) return true;
+  const sentences = sentencesOf(text);
+  return sentences.length === 0 || (sentences.length === 1 && sentences[0].length === 1 && isTitle(sentences[0][0]));
+}
+
+/**
+ * The fabric the admin's text states, in Title Case ("Mulmul Cotton", "Silk"), or null. Only ever the
+ * admin's own words: the first run of fabric words in the text. Never inferred from anything else.
+ */
+export function fabricFromAdminText(text: string | null | undefined): string | null {
+  const fabrics = new Set(FABRICS);
+  let run: string[] = [];
+  for (const word of comparableWords(text)) {
+    if (fabrics.has(word)) { run.push(word); continue; }
+    if (run.length) break;
+  }
+  run = run.slice(0, 3);
+  return run.length ? run.map((word) => `${word[0].toUpperCase()}${word.slice(1)}`).join(" ") : null;
+}
+
+/**
+ * A tidy description from the admin's text: price, phone numbers, hype, chatter and
+ * ordering/delivery lines out; ".." and double spaces collapsed; sentence case; every sentence
+ * ends with a full stop. A bare keyword title ("Benarsi patola paithani bandhej sarees")
+ * becomes one short sentence from the same words ("A Banarasi patola paithani bandhej saree.").
+ *
+ * No sentence fragments. Keywords with no verb are not a sentence on their own, so they are
+ * built into the sentence about the saree instead, using only the admin's words plus the noun:
+ *   "bahut soft hai, mulmul cotton"          -> "A soft mulmul cotton saree."
+ *   "Navy blue chanderi saree .. zari buttas" -> "A navy blue Chanderi saree with zari butta."
+ * Returns null when nothing about the saree is left.
+ */
+export function describeFromAdminText(text: string | null | undefined): string | null {
+  if (!text?.trim()) return null;
+  const sentences = sentencesOf(text);
   if (!sentences.length) return null;
 
   if (sentences.length === 1 && sentences[0].length === 1) {
     const title = sentences[0][0];
-    if (title.filter((w) => !STOP.has(w)).length <= 8 && !SIGNAL.test(title.join(" "))) {
-      const parts = [...title];
-      // "saree" is only supplied for text that is about a saree: a known fabric, weave, work or colour word.
-      if (!parts.includes("saree") && parts.some(isDescriptor)) {
-        const at = parts.findIndex((w) => w === "with" || w === "in" || w === "and");
-        parts.splice(at === -1 ? parts.length : at, 0, "saree");
-      }
-      if (parts.includes("saree")) return `${/^[aeiou]/.test(parts[0]) ? "An" : "A"} ${parts.map(display).join(" ")}.`;
-    }
+    // "saree" is only supplied for text that is about a saree: a known fabric, weave, work or colour word.
+    if (isTitle(title) && (title.includes("saree") || title.some(isDescriptor))) return `${nounPhrase(title)}.`;
   }
 
-  return sentences.map((segments) => `${upperFirst(segments.map((s) => s.map(display).join(" ")).join(", "))}.`).join(" ");
+  // Each sentence is a real sentence (it has a verb), a bare noun phrase about the saree, or loose
+  // keywords. Loose keywords are never left as a fragment: fabric, weave and colour words go in front of
+  // the noun ("A soft mulmul cotton saree."), work words follow it ("... with zari butta.").
+  type Unit = { segments: string[][]; flat: string[]; kind: "sentence" | "noun" | "keywords" };
+  const units: Unit[] = sentences.map((segments) => {
+    const flat = segments.flat();
+    const kind = SIGNAL.test(flat.join(" ")) ? "sentence" : flat.includes("saree") ? "noun" : "keywords";
+    return { segments, flat, kind };
+  });
+  const work = new Set(WORK);
+  const isWork = (words: string[]) => words.some((w) => work.has(w) || w.split("-").some((part) => work.has(part)));
+  const about = (unit: Unit) => unit.flat.includes("saree") || unit.flat.some(isDescriptor);
+  const nounAt = units.findIndex((unit) => unit.kind === "noun");
+  const front: string[] = [];
+  const details: string[][] = [];
+  for (const unit of units) {
+    if (unit.kind !== "keywords" || !unit.flat.some(isDescriptor)) continue;
+    const words = unit.flat.filter((w) => !STOP.has(w));
+    if (isWork(words)) details.push(words); else front.push(...words);
+  }
+  const sareeSentence = nounAt < 0 ? units.find((unit) => unit.kind === "sentence" && unit.flat.includes("saree")) ?? null : null;
+  const withClause = (already: string[]) => {
+    const fresh = details.map((group) => group.filter((w) => !already.includes(w))).filter((group) => group.length);
+    if (!fresh.length) return "";
+    return `${already.includes("with") ? " and" : " with"} ${fresh.map((group) => group.map(display).join(" ")).join(" and ")}`;
+  };
+  const sentenceText = (unit: Unit) => unit.segments.map((s) => s.map(display).join(" ")).join(", ");
+
+  const out: string[] = [];
+  units.forEach((unit, index) => {
+    if (unit.kind === "noun") {
+      const words = index === nounAt ? [...front.filter((w) => !unit.flat.includes(w)), ...unit.flat] : unit.flat;
+      out.push(`${nounPhrase(words)}${index === nounAt ? withClause(words) : ""}.`);
+    } else if (unit.kind === "sentence") {
+      // "Perfect for any festival" has no subject of its own: it trails the sentence before it.
+      if (TRAILING.test(unit.flat[0] ?? "") && out.length) out[out.length - 1] = `${out[out.length - 1].slice(0, -1)}, ${sentenceText(unit)}.`;
+      // A sentence that is not about the saree at all says nothing a customer needs.
+      else if (about(unit)) out.push(`${upperFirst(sentenceText(unit))}${unit === sareeSentence ? withClause(unit.flat) : ""}.`);
+    }
+  });
+  if (nounAt < 0) {
+    // No noun phrase to hang the keywords on: they become it.
+    if (front.length) out.unshift(`${nounPhrase(front)}${sareeSentence ? "" : withClause(front)}.`);
+    else if (details.length && !sareeSentence) out.unshift(`A saree${withClause([])}.`);
+  }
+  if (out.length) return out.join(" ");
+  // Nothing here uses a word we know. It is still what the admin said about the product, so it is
+  // kept as written rather than thrown away (a brand, a design name, "party wear collection").
+  return units.map((unit) => `${upperFirst(sentenceText(unit))}.`).join(" ");
+}
+
+// ── Shared with the validators of AI-written copy (whatsapp-copy.ts) ───────
+
+/** The catalogue's descriptor words, in comparable form (lowercase, singular). */
+export const VOCABULARY = {
+  fabrics: new Set(FABRICS),
+  weaves: new Set(WEAVES),
+  work: new Set(WORK),
+  colours: new Set(COLOURS),
+} as const;
+
+/**
+ * The words of a name, sentence or admin text in comparable form: lowercase, plurals made singular,
+ * spelling variants folded ("Benarsi" and "Banarasi" are the same word). Numbers and punctuation drop out.
+ */
+export function comparableWords(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const out: string[] = [];
+  for (const piece of prepare(text).split(/[^\p{L}\p{N}-]+/u)) {
+    const word = token(piece);
+    if (word) out.push(word);
+  }
+  return out;
+}
+
+/** True when the text contains a marketing/filler term (DEFAULT_HYPE_TERMS plus WHATSAPP_HYPE_TERMS). */
+export function containsHype(text: string): boolean {
+  return hypeRegex().test(text);
 }
