@@ -69,17 +69,41 @@ straight from your phone — no need to open the admin panel:
    reply either way.
 4. Open the admin panel to check it over and publish it when ready.
 
-**Category, fabric, highlights and collection tags are filled in
-automatically** from your description and photos, whenever confident — the
-WhatsApp reply tells you what got set (e.g. *"Category: Banarasi. Collections:
-Bridal Sarees."*). If a photo set clearly shows more than one colourway, it's
-split into separate colour variants on the product automatically too (the
-reply says *"across N colourways"* when this happens). Anything not
-confident enough is simply left blank for you to fill in — same as fabric or
-price, add it in the admin panel. This uses the same AI as the bulk import
-tool (see [import-pipeline.md](import-pipeline.md)); if the AI key isn't
-configured, everything still works exactly as before, just without the
-auto-fill.
+**What the reply tells you.** For example: *"Draft created: Tissue Saree with
+Petit Point Embroidery. 7 photos used, 2 duplicates skipped, 3 extras hidden.
+Price missing, please send it."*
+
+- **Price missing** — just reply with the price (`4500` or `Rs. 4,500/-`)
+  within half an hour and it is added to that draft. It never changes a price
+  that is already there.
+- **Please check: …** — the draft is marked **Needs review** in the admin panel
+  with the same reasons (no fabric mentioned, description arrived late, …).
+  Open it, look it over, and click **Mark as reviewed**.
+- **A question** — if it is not clear which description some photos belong to,
+  you are asked before anything is created: reply `YES` or `NO` to a
+  suggestion, or `1`, `2` or `3` to choose. If you do not reply in 10 minutes
+  those photos are saved as a draft called "Unassigned WhatsApp media" for you
+  to sort; nothing is ever merged on a guess.
+- Voice notes, documents and contact cards cannot be used; you get a short
+  reply saying so and the rest of your listing is unaffected.
+
+**In the admin panel**, a WhatsApp draft shows:
+
+- **From WhatsApp** — why it needs review, the exact text that was sent (only
+  visible to you, never to customers) and why these photos were grouped with
+  it.
+- **Hidden images (N)** — photos that were sent but left out: the same photo
+  twice, a near-identical copy, or anything past 20 photos. Nothing is deleted;
+  click **Restore** to add one back to the end of its colour.
+- An **All colours** tag on the collage photo. A collage is never used as the
+  cover.
+
+**Name, description, highlights, category and colour variants are filled in
+automatically** when confident. The name always keeps your own fabric, weave
+and work words; the description never claims a fabric or "pure/handloom" you
+did not write. Anything not confident enough is left for you to fill in. If
+the AI key isn't configured, or it does not answer in time, the draft is still
+created from your text alone.
 
 **The product's name is written for you in a consistent style** — roughly
 *"[Colour] [Fabric] Saree with [Key Detail]"*, e.g. *"Ivory Tissue Saree with

@@ -185,23 +185,77 @@ pipeline in `docs/import-pipeline.md`); this is the one-time setup:
    grouping deadlines below and resumes work a killed function left behind.
    `vercel.json` calls it once a day — the most a Hobby plan allows.
 
-**How messages are grouped into drafts (migration 029).** A draft is one
+**How messages are grouped into drafts (migrations 029-030).** A draft is one
 description plus the photos/videos that belong to it, decided from WhatsApp's
-own send timestamps, not arrival order:
+own send timestamps, ordered by (timestamp, kind, message id), never by
+arrival order:
 
-- Photos first, then the description: created at once.
-- Description first: acknowledged, then created 45 s after the last
-  photo/video arrives (or when the next description arrives). With no media at
-  all it is dropped after 10 minutes with a reply asking for a resend.
+- Photos first, then the description: created at once. A description up to
+  15 s after its photos is confident; later than that it is still assigned
+  (nobody else wants those photos) and past 30 s the draft is flagged
+  `needs_review`.
+- A description within 6 s of a burst, before or after it, is part of that
+  forward (WhatsApp often stamps the text a second or two ahead of the photos
+  sent with it). It owns that burst and nothing sent after a pause.
+- Description clearly first (photos start more than 6 s later): acknowledged,
+  then created 45 s after the last photo/video arrives, or when the next
+  description arrives. With no media at all it is dropped after 10 minutes with
+  a reply asking for a resend.
 - A caption on a photo, or a description sent as a reply to a photo, owns that
   album outright.
-- Two descriptions around the same photos with no clear pause: nothing is
-  created; the bot asks and waits for `1`, `2` or `3`. No answer in 10 minutes
-  (or photos with no description for 30 minutes) saves the photos as a draft
-  named "Unassigned WhatsApp media".
+- **Nothing is assigned on a guess.** Two cases are reviewed first: two
+  descriptions competing for the same burst, and an older burst sitting before
+  a description's own. With an AI configured, one call looks at the photos and
+  decides at 0.85 confidence or better. Otherwise the sender is asked: a
+  proposal answered with `YES`/`NO`, or `1`/`2`/`3`. No answer in 10 minutes
+  (or photos with no description for 30 minutes) saves the uncertain photos as
+  a draft named "Unassigned WhatsApp media".
 
-Every reply says how many photos went in and why. To audit a draft later:
+The thresholds are rows in `whatsapp_settings` (`burst_seconds` 8,
+`skew_seconds` 6, `tight_seconds` 15, `late_review_seconds` 30,
+`quiet_seconds` 45, `settle_seconds` 12, `answer_timeout_seconds` 600,
+`description_timeout_seconds` 600, `stale_seconds` 1800,
+`price_reply_seconds` 1800, `price_min` 100, `price_max` 500000). Change one
+with `update whatsapp_settings set value = '…' where key = '…'`; a missing or
+malformed value falls back to the default.
+
+**What a draft gets (one AI call, validated field by field).** When
+`ANTHROPIC_API_KEY` is set, each listing gets a single call (12 thumbnails at
+512 px, 8 s limit) for name, description, highlights, category, collections,
+colour groups, cover and per-image flags. Every field is validated on its own:
+the name must keep every fabric, weave and work word of the name built from
+the admin's text and may add only a colour the photos show; the description
+may not claim a fabric, weave or authenticity the text does not state. A
+failed name or description is retried once, then replaced by the
+deterministic value. Timeout or no key: the listing is made from the text
+alone. The price is only ever read from the admin's text.
+
+Photos are curated, never deleted: duplicates and anything past
+`INGEST_MAX_IMAGES` (20) go to the product's **Hidden images** tray in admin
+(restore with one click); a collage is never the cover and is tagged "All
+colours"; colour variants need two or more colours.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `INGEST_MAX_IMAGES` | 20 | visible images per listing (videos not counted) |
+| `INGEST_MAX_VIDEOS` | 2 | videos kept per listing |
+| `INGEST_AI_IMAGES` | 12 | thumbnails shown to the AI |
+| `INGEST_THUMBNAIL_WIDTH` | 512 | width of those thumbnails |
+| `INGEST_AI_TIMEOUT_MS` | 8000 | limit per AI call (capped at 8000) |
+| `INGEST_HASH_TIMEOUT_MS` | 6000 | time allowed for near-duplicate hashing; on failure it is skipped |
+| `INGEST_BOUNDARY_CONFIDENCE` | 0.85 | below this an AI grouping answer becomes a question to the sender |
+| `INGEST_FIELD_CONFIDENCE` | 0.6 | below this an AI field is ignored |
+| `INGEST_MAX_COLOURS` | 6 | more colours than this collapses to one variant |
+| `INGEST_NEAR_DUPLICATE_BITS` | 6 | how different two hashes may be and still be the same photo |
+| `ANTHROPIC_INGEST_MODEL` | `ANTHROPIC_IMPORT_MODEL` | model for the listing call |
+
+Every reply says what was created and what to check, e.g. *"Draft created:
+Tissue Saree. 7 photos used, 2 duplicates skipped, 3 extras hidden. Price
+missing, please send it."* A price sent on its own after that fills the price
+of that draft, only while it is still empty. To audit a draft later, open it
+in admin ("Why these photos are in this listing") or:
 `select * from whatsapp_listing_audit where slug = '<slug>' order by message_ts;`
+
 
 **What fires the deadlines.** The webhook function stays alive after
 answering Meta and closes the 45 s quiet period itself. The 10- and 30-minute
