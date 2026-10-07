@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import { ProductForm, type ProductFormInitial } from "@/components/admin/ProductForm";
+import { HiddenMediaTray, type HiddenMediaItem } from "@/components/admin/HiddenMediaTray";
 import type {
   Category,
   Collection,
@@ -17,7 +18,7 @@ export default async function EditProductPage(
   const params = await props.params;
   const { admin } = await requireAdmin();
 
-  const [{ data: product }, { data: categories }, { data: collections }, { data: joins }] =
+  const [{ data: product }, { data: categories }, { data: collections }, { data: joins }, { data: hiddenRows }] =
     await Promise.all([
       admin
         .from("products")
@@ -30,6 +31,12 @@ export default async function EditProductPage(
         .from("collection_products")
         .select("collection_id")
         .eq("product_id", params.id),
+      // Migration 031. Before it is applied this is an error and an empty list, never a broken page.
+      admin
+        .from("variant_hidden_media")
+        .select("id, image_url, media_type, reason")
+        .eq("product_id", params.id)
+        .order("original_order", { ascending: true, nullsFirst: false }),
     ]);
 
   if (!product) notFound();
@@ -78,10 +85,20 @@ export default async function EditProductPage(
     source: p.source,
   };
 
+  const hidden = (hiddenRows ?? []) as HiddenMediaItem[];
+  // Restoring a hidden image changes the product's images on the server: remount the form so it shows them.
+  const mediaKey = `${initial.variants.reduce((n, v) => n + v.images.length, 0)}:${hidden.length}`;
+
   return (
     <div className="max-w-[92rem]">
       <h1 className="mb-6 font-serif text-3xl text-primary">Edit Product</h1>
+      {hidden.length > 0 && (
+        <div className="mb-6">
+          <HiddenMediaTray items={hidden} />
+        </div>
+      )}
       <ProductForm
+        key={mediaKey}
         categories={(categories ?? []) as Category[]}
         collections={(collections ?? []) as Pick<Collection, "id" | "name">[]}
         initial={initial}

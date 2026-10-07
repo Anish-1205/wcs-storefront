@@ -100,6 +100,8 @@ describe("effective RLS state across all migrations", () => {
       "storefront_page_content_versions",
       // Raw WhatsApp text (may hold a phone number) and the ingestion's own tables.
       "product_source_texts",
+      "variant_hidden_media",
+      "product_media_labels",
       "whatsapp_settings",
       "whatsapp_inbox",
       "whatsapp_batches",

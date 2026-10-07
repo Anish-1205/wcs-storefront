@@ -15,6 +15,7 @@ const HOST = "127.0.0.1";
 const PORT = 55432;
 const config = { host: HOST, port: PORT, user: "audit", database: "postgres" };
 const MIGRATIONS = join(process.cwd(), "supabase", "migrations");
+let counter = 0;
 
 // Hard stop: nothing here may ever be pointed at a remote database.
 if (!["127.0.0.1", "localhost"].includes(config.host)) throw new Error("ingest-eval only talks to the local disposable Postgres");
@@ -81,20 +82,53 @@ export async function ensureTemplate(): Promise<string> {
     const db = new Client({ ...config, database: name });
     await db.connect();
     try {
-      await db.query(`create schema auth; create table auth.users(id uuid primary key);
-        create function auth.uid() returns uuid language sql stable as $$select null::uuid$$;
-        create function auth.role() returns text language sql stable as $$select current_user::text$$;
-        grant usage on schema public,auth to anon,authenticated,service_role;
-        -- As on Supabase: every new table starts out granted to all three API roles, so a migration's
-        -- own REVOKE and RLS are what keep a table private, and the tests can prove they do.
-        alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-        alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;`);
+      await bootstrap(db);
       for (const file of readdirSync(MIGRATIONS).sort()) await db.query(readFileSync(join(MIGRATIONS, file), "utf8"));
     } finally {
       await db.end();
     }
     return name;
   });
+}
+
+/** What a Supabase project has before the first migration runs. */
+async function bootstrap(db: Client) {
+  await db.query(`create schema auth; create table auth.users(id uuid primary key);
+    create function auth.uid() returns uuid language sql stable as $$select null::uuid$$;
+    create function auth.role() returns text language sql stable as $$select current_user::text$$;
+    grant usage on schema public,auth to anon,authenticated,service_role;
+    -- As on Supabase: every new table starts out granted to all three API roles, so a migration's
+    -- own REVOKE and RLS are what keep a table private, and the tests can prove they do.
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+    alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;`);
+}
+
+/**
+ * A database migrated only up to (and including) the migration whose file name starts with `upTo`,
+ * for before/after tests of a later migration. `applyRest` runs the remaining ones in order.
+ */
+export async function createDbAt(upTo: string): Promise<{ pg: Client; applyRest(): Promise<string[]>; close(): Promise<void> }> {
+  const name = `wcs_ingest_at_${process.pid}_${Date.now()}_${counter++}`;
+  await admin((root) => root.query(`create database ${name}`));
+  const pg = new Client({ ...config, database: name });
+  await pg.connect();
+  const files = readdirSync(MIGRATIONS).sort();
+  const cut = files.findIndex((file) => file.startsWith(upTo));
+  if (cut < 0) throw new Error(`No migration starts with ${upTo}`);
+  await bootstrap(pg);
+  for (const file of files.slice(0, cut + 1)) await pg.query(readFileSync(join(MIGRATIONS, file), "utf8"));
+  return {
+    pg,
+    applyRest: async () => {
+      const rest = files.slice(cut + 1);
+      for (const file of rest) await pg.query(readFileSync(join(MIGRATIONS, file), "utf8"));
+      return rest;
+    },
+    close: async () => {
+      await pg.end();
+      await admin((root) => root.query(`drop database if exists ${name} with (force)`));
+    },
+  };
 }
 
 export type RunDb = {
@@ -105,7 +139,6 @@ export type RunDb = {
   close(): Promise<void>;
 };
 
-let counter = 0;
 export async function createRunDb(template: string): Promise<RunDb> {
   const name = `wcs_ingest_run_${process.pid}_${Date.now()}_${counter++}`;
   await admin((root) => root.query(`create database ${name} template ${template}`));
