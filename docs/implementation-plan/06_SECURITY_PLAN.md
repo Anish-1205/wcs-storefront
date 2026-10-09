@@ -38,7 +38,7 @@ Boundaries: public internet → Vercel; Vercel → Supabase/Upstash/Resend/Cloud
 | Threat | Control now | Plan |
 |---|---|---|
 | Spam / bot floods | Upstash 5 per 10 min per IP, honeypot `website` (`inquiries/route.ts:16,41`) | Policy **open** on limiter failure; Turnstile if abuse observed |
-| Limiter outage → 500s | none (unguarded `limit()` at `rate-limit.ts:54`) | try/catch + throttled alert |
+| Limiter outage → 500s | **closed (T1.7)**: guarded, timed out, backed off, per-endpoint failure policy, throttled Sentry report | — |
 | Header spoofing for IP | prefers `x-vercel-forwarded-for` then `x-real-ip` | correct only on Vercel; document, add test, never trust `x-forwarded-for` first |
 | Replay / duplicate submit | none | `client_request_id` unique (T4.9); Turnstile tokens are single-use |
 | Stored XSS in admin | output escaped in e-mail (`escapeHtml`); React escapes UI | keep; add test for message with markup |
@@ -61,18 +61,38 @@ Strong already: HMAC over raw body with timing-safe compare before parsing; 1 MB
 | Default-workspace key cannot be limited | Dedicated Console workspace with its own spend limit (T2.3) |
 
 ### 2.6 API rate limiting
-Endpoint policy table (to be encoded in code comments and tests):
+Endpoint policy table. Rows marked **implemented (T1.7)** are encoded in
+`src/lib/rate-limit.ts` plus the call sites, and covered by
+`src/__tests__/rate-limit.test.ts` and each route's own test.
 
 | Endpoint | Auth | Limiter | On limiter failure | Extra |
 |---|---|---|---|---|
-| `POST /api/inquiries` | none | 5/10 min/IP | **open** | honeypot, Turnstile (conditional), idempotency |
-| `POST /api/subscribe` | none | same | **open** | honeypot |
-| `/api/upload`, `/api/import/*` | Supabase session + allowlist | strict / import bucket | **closed** | check auth before consuming shared bucket where feasible |
-| Admin login (T3.4) | none | per IP+email hash | **closed** | audit failures |
-| `/api/whatsapp` POST | HMAC | none (signature-gated) | n/a | size cap |
+| `POST /api/inquiries` | none | 5/10 min/IP (`public`) | **open** — implemented (T1.7) | honeypot, Turnstile (conditional), idempotency |
+| `POST /api/subscribe` | none | same | **open** — implemented (T1.7) | honeypot; the write is an upsert |
+| `POST /api/upload` | Supabase session + allowlist | same | **closed**, 503 — implemented (T1.7) | auth is checked after the bucket; the bucket bounds Cloudinary spend |
+| `POST /api/import/sign`, `/api/import/complete` | Supabase session + allowlist | 600/10 min/IP (`import`) | **closed**, 503 — implemented (T1.7) | one batch fires hundreds of calls |
+| Admin login (T3.4) | none | per IP+email hash | **closed** | audit failures; not built yet |
+| `/api/whatsapp` POST | HMAC + sender allowlist | none (signature-gated) | n/a | size cap |
 | `/api/whatsapp/sweep` | bearer `CRON_SECRET` | none | n/a | fail-closed without secret |
 | `/api/csp-report` (T3.6) | none | sampled + cap | open | size cap |
-| `/api/health` | none / token for deep | none | n/a | no internals |
+| `/api/health` (T1.8) | none / token for deep | none | n/a | no internals; reads `getRateLimitStatus()` |
+
+How the implemented rows behave (T1.7):
+
+- The Redis client is built on first use. The real client throws for any URL
+  that is not https, which at module scope would have crashed the route before
+  any guard could run.
+- A check that fails (unreachable, 5xx, Upstash refusing once the free tier's
+  monthly command budget is spent, or no credentials at all) is timed out after
+  1s, backs the bucket off for 30s, and is reported to Sentry once per bucket
+  per 30 minutes (scope `rate-limit`, carrying no IP or body).
+- `rateLimitResponse()` is the only place a refusal is written: **429** for a
+  caller that spent its own budget, **503 + Retry-After: 30** when the limiter
+  itself is unavailable. The distinction is deliberate — the 503 says the
+  fault is ours, and `src/lib/submit-errors.ts` turns it into copy that sends
+  the customer to WhatsApp instead of blaming their details.
+- Quota alerting for the Upstash command budget is **not** part of this; it
+  belongs to T2.7's weekly quota check.
 
 Abuse testing: scripted bursts against a preview deployment (low volume, own IP), spoofed `x-forwarded-for`, oversized bodies, honeypot-filled submissions, replayed Turnstile token; confirm Upstash command usage stays within quota.
 

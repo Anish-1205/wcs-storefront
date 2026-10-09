@@ -30,7 +30,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · S · FREE WITH LIMITS · depends on: T1.5
 - [ ] **T1.13** — Build-time hidden-slug snapshot (cold-start fail-closed for visibility)  
   P1 · M · FREE · depends on: T1.5
-- [ ] **T1.7** — Rate-limit failure policy  
+- [x] **T1.7** — Rate-limit failure policy (code, tests and docs done; not deployed)  
   P0 · M · EXISTING COST · depends on: none
 - [ ] **T1.8** — `/api/health` and the free uptime monitor  
   P0 · S · FREE WITH LIMITS · depends on: none (richer after T1.6)
