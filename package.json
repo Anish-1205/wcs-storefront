@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/build-media-variants.mjs",
+    "prebuild": "node scripts/build-media-variants.mjs && node scripts/snapshot-catalog-visibility.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

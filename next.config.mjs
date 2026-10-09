@@ -1,8 +1,18 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import { readSnapshotFile } from "./src/lib/catalog-visibility-snapshot.mjs";
+
+// The hidden-slug snapshot prebuild just took (scripts/snapshot-catalog-
+// visibility.mjs), or null when there is no valid one — a CI or local build
+// with no database. Inlined below rather than read off disk at runtime, so it
+// cannot go missing from a deployed function's bundle.
+const catalogVisibilitySnapshot = readSnapshotFile();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Only src/lib/storefront-catalog-resilience.ts reads this, and that module
+  // is server-only, so the value is compiled into the server bundle alone.
+  env: catalogVisibilitySnapshot ? { CATALOG_VISIBILITY_SNAPSHOT: catalogVisibilitySnapshot } : {},
   images: {
     // Every next/image in the app is served by src/lib/image-loader.ts, never
     // by Vercel's /_next/image optimizer: once the plan's transformation

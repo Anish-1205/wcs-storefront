@@ -16,6 +16,9 @@
 # production
 /build
 
+# build-time catalogue visibility snapshot (scripts/snapshot-catalog-visibility.mjs)
+/.generated/
+
 # misc
 .DS_Store
 *.pem
