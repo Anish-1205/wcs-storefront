@@ -66,3 +66,10 @@ See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-dr
 - Unit tests (Vitest) live in `src/__tests__/` and cover validation schemas, API routes (inquiries, whatsapp, upload), webhook security, security policies, the WhatsApp ingestion flow (product creation + photo-append, mocked Supabase/Meta/Cloudinary), and the import pipeline's fail-closed logic (grouping heuristics, collection classification, colour-variant assignment) — run with `npm test`.
 - E2E tests (Playwright) live in `e2e/` and run against a production build (`playwright.config.ts` builds+starts the app on port 3000). `public-site.spec.ts` has no backend dependency; `admin-auth.spec.ts` and `admin-product-crud.spec.ts` exercise real admin login/CRUD against a local Supabase stack (`supabase start` + two seeded users — see [docs/setup.md](docs/setup.md#running-the-full-e2e-suite-locally)); `enquiry.spec.ts` mocks `/api/inquiries` at the network layer and needs no backend. Cloudinary uploads are mocked in-browser via `e2e/helpers.ts`.
 - When changing validation logic, webhook signature checks, or RLS policies, add/update the corresponding test in `src/__tests__/`.
+
+## Git rules
+- Commit automatically when a task is validated. No approval needed.
+- Never add Co-Authored-By, Author, or "Generated with" lines
+  to commits, docs, or code comments.
+- Never push, deploy, run migrations, or touch the migration ledger
+  unless I say so.
