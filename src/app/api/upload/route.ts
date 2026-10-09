@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
@@ -14,13 +14,11 @@ export const runtime = "nodejs";
  * the server.
  */
 export async function POST(req: Request) {
-  const rateLimit = await checkRateLimit(req);
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } },
-    );
-  }
+  // Fails closed (503): admin auth below already keeps strangers out, so
+  // this bucket exists to bound a runaway client that would spend real
+  // Cloudinary quota. Without a limiter there is nothing bounding it.
+  const limited = rateLimitResponse(await checkRateLimit(req, { failure: "closed" }));
+  if (limited) return limited;
 
   // Verify an authenticated admin session.
   const supabase = await createClient();

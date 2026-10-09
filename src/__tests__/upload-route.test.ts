@@ -16,7 +16,9 @@ vi.mock("@/lib/cloudinary", () => ({
   signUpload: mockSignUpload,
 }));
 
-vi.mock("@/lib/rate-limit", () => ({
+// The real rateLimitResponse, so 429 vs 503 is decided by the helper itself.
+vi.mock("@/lib/rate-limit", async (original) => ({
+  ...(await original<typeof import("@/lib/rate-limit")>()),
   checkRateLimit: mockCheckRateLimit,
 }));
 
@@ -25,7 +27,7 @@ import { POST } from "@/app/api/upload/route";
 describe("upload route auth", () => {
   beforeEach(() => {
     process.env.ADMIN_EMAILS = "admin@example.com";
-    mockCheckRateLimit.mockResolvedValue({ success: true });
+    mockCheckRateLimit.mockResolvedValue({ success: true, degraded: false, retryAfter: 0 });
     mockSignUpload.mockResolvedValue({
       signature: "sig",
       apiKey: "key",
@@ -64,6 +66,22 @@ describe("upload route auth", () => {
     expect(await response.json()).toEqual({ error: "Forbidden" });
     expect(mockSignUpload).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith("upload signing denied: forbidden");
+  });
+
+  it("refuses with 503 when the limiter itself is unavailable", async () => {
+    // T1.7: this endpoint fails CLOSED. Auth keeps strangers out; the bucket
+    // is what bounds a runaway client against real Cloudinary quota, so with
+    // no limiter there is nothing left to bound it.
+    mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
+    mockCheckRateLimit.mockResolvedValue({ success: false, degraded: true, retryAfter: 30 });
+
+    const response = await POST(new Request("http://localhost/api/upload", { method: "POST" }));
+
+    // 503, not 429 — the admin did nothing wrong.
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("30");
+    expect(mockSignUpload).not.toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(expect.anything(), { failure: "closed" });
   });
 
   it("returns the signed payload for admins", async () => {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { subscriberSchema } from "@/lib/validation";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,13 +9,10 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const rateLimit = await checkRateLimit(req);
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } },
-    );
-  }
+  // Fails open, like /api/inquiries: validation and the honeypot still
+  // apply, and the write is an upsert, so a duplicate costs nothing.
+  const limited = rateLimitResponse(await checkRateLimit(req, { failure: "open" }));
+  if (limited) return limited;
 
   let body: unknown;
   try {

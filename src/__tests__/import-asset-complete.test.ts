@@ -38,7 +38,11 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-vi.mock("@/lib/rate-limit", () => ({ checkImportRateLimit: mockCheckImportRateLimit }));
+// The real rateLimitResponse, so 429 vs 503 is decided by the helper itself.
+vi.mock("@/lib/rate-limit", async (original) => ({
+  ...(await original<typeof import("@/lib/rate-limit")>()),
+  checkImportRateLimit: mockCheckImportRateLimit,
+}));
 
 import { POST } from "@/app/api/import/complete/route";
 
@@ -68,7 +72,7 @@ describe("POST /api/import/complete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_EMAILS = "admin@example.com";
-    mockCheckImportRateLimit.mockResolvedValue({ success: true });
+    mockCheckImportRateLimit.mockResolvedValue({ success: true, degraded: false, retryAfter: 0 });
     mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
     mockBatchMaybeSingle.mockResolvedValue({ data: { id: BATCH_ID, status: "open" } });
     mockUpsertSingle.mockResolvedValue({ data: { id: "asset-1", created_at: "2026-01-01T00:00:00Z" }, error: null });
@@ -105,6 +109,18 @@ describe("POST /api/import/complete", () => {
     const res = await POST(req(validBody()));
     expect(res.status).toBe(409);
     expect(mockUpsertSingle).not.toHaveBeenCalled();
+  });
+
+  it("refuses with 503 when the limiter itself is unavailable", async () => {
+    // T1.7: fails CLOSED, and records nothing while it does.
+    mockCheckImportRateLimit.mockResolvedValue({ success: false, degraded: true, retryAfter: 30 });
+
+    const res = await POST(req(validBody()));
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Retry-After")).toBe("30");
+    expect(mockUpsertSingle).not.toHaveBeenCalled();
+    expect(mockCheckImportRateLimit).toHaveBeenCalledWith(expect.anything(), { failure: "closed" });
   });
 
   it("records a completed upload idempotently and reports no duplicate when none exists", async () => {

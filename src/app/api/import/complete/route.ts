@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
-import { checkImportRateLimit } from "@/lib/rate-limit";
+import { checkImportRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { importAssetCompleteSchema } from "@/lib/validation";
 import { reportError } from "@/lib/report-error";
 
@@ -20,13 +20,10 @@ export const runtime = "nodejs";
  * admin without silently dropping anything.
  */
 export async function POST(req: Request) {
-  const rateLimit = await checkImportRateLimit(req);
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } },
-    );
-  }
+  // Fails closed (503) — see /api/upload. One import batch can fire
+  // hundreds of these, which is exactly what the bucket is here to bound.
+  const limited = rateLimitResponse(await checkImportRateLimit(req, { failure: "closed" }));
+  if (limited) return limited;
 
   const supabase = await createClient();
   const {

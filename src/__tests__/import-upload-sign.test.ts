@@ -26,7 +26,11 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/cloudinary", () => ({ signUpload: mockSignUpload }));
-vi.mock("@/lib/rate-limit", () => ({ checkImportRateLimit: mockCheckImportRateLimit }));
+// The real rateLimitResponse, so 429 vs 503 is decided by the helper itself.
+vi.mock("@/lib/rate-limit", async (original) => ({
+  ...(await original<typeof import("@/lib/rate-limit")>()),
+  checkImportRateLimit: mockCheckImportRateLimit,
+}));
 
 import { POST } from "@/app/api/import/sign/route";
 
@@ -51,7 +55,7 @@ describe("POST /api/import/sign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_EMAILS = "admin@example.com";
-    mockCheckImportRateLimit.mockResolvedValue({ success: true });
+    mockCheckImportRateLimit.mockResolvedValue({ success: true, degraded: false, retryAfter: 0 });
     mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
     mockBatchMaybeSingle.mockResolvedValue({ data: { id: "batch", status: "open" } });
     mockCount.mockResolvedValue({ count: 3 });
@@ -105,6 +109,19 @@ describe("POST /api/import/sign", () => {
     const res = await POST(req(validBody()));
     expect(res.status).toBe(409);
     expect(mockSignUpload).not.toHaveBeenCalled();
+  });
+
+  it("refuses with 503 when the limiter itself is unavailable", async () => {
+    // T1.7: fails CLOSED. One batch can fire hundreds of these.
+    mockCheckImportRateLimit.mockResolvedValue({ success: false, degraded: true, retryAfter: 30 });
+
+    const res = await POST(req(validBody()));
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Retry-After")).toBe("30");
+    expect(mockSignUpload).not.toHaveBeenCalled();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockCheckImportRateLimit).toHaveBeenCalledWith(expect.anything(), { failure: "closed" });
   });
 
   it("signs a valid image request with a batch-scoped, idempotent public_id", async () => {

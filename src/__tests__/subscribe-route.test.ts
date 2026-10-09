@@ -14,7 +14,11 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ from: () => ({ insert: mockInsert }) }),
 }));
 
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: mockCheckRateLimit }));
+// The real rateLimitResponse, so 429 vs 503 is decided by the helper itself.
+vi.mock("@/lib/rate-limit", async (original) => ({
+  ...(await original<typeof import("@/lib/rate-limit")>()),
+  checkRateLimit: mockCheckRateLimit,
+}));
 
 import { POST } from "@/app/api/subscribe/route";
 
@@ -56,9 +60,29 @@ describe("subscribe route", () => {
   });
 
   it("enforces rate limiting before parsing", async () => {
-    mockCheckRateLimit.mockResolvedValue({ success: false, retryAfter: 60 });
+    mockCheckRateLimit.mockResolvedValue({ success: false, retryAfter: 60, degraded: false });
     const response = await post({});
     expect(response.status).toBe(429);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("still takes the subscriber when the limiter itself is unavailable", async () => {
+    // T1.7: fails OPEN, like /api/inquiries. The write is an upsert, so a
+    // duplicate during an outage costs nothing.
+    mockCheckRateLimit.mockResolvedValue({ success: true, retryAfter: 30, degraded: true });
+
+    const response = await post(validPayload);
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(expect.anything(), { failure: "open" });
+  });
+
+  it("keeps validating and keeps the honeypot shut while the limiter is unavailable", async () => {
+    mockCheckRateLimit.mockResolvedValue({ success: true, retryAfter: 30, degraded: true });
+
+    expect((await post({ ...validPayload, phone: "123" })).status).toBe(400);
+    expect((await post({ ...validPayload, website: "https://spam.invalid" })).status).toBe(200);
     expect(mockInsert).not.toHaveBeenCalled();
   });
 });

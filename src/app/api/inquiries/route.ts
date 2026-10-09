@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/server";
 import { inquirySchema } from "@/lib/validation";
 import { SITE } from "@/lib/site";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
 
 export const runtime = "nodejs";
@@ -13,13 +13,11 @@ export const runtime = "nodejs";
  * Validate → honeypot check → DB insert (public RLS) → Resend email to admin.
  */
 export async function POST(req: Request) {
-  const rateLimit = await checkRateLimit(req);
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } },
-    );
-  }
+  // Fails open: with the limiter unavailable this still validates, still
+  // checks the honeypot, and still records the lead. Losing an enquiry is a
+  // worse outcome than accepting spam for the length of an outage.
+  const limited = rateLimitResponse(await checkRateLimit(req, { failure: "open" }));
+  if (limited) return limited;
 
   let body: unknown;
   try {
