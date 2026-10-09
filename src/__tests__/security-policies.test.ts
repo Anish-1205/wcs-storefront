@@ -175,3 +175,76 @@ describe("the raw WhatsApp text stays admin-only", () => {
     }
   });
 });
+
+/**
+ * Replays every `grant`/`revoke` in the migrations and returns the privileges
+ * each role is left holding on one object.
+ *
+ * `storefront_hidden_slugs` is an auto-updatable view that deliberately runs
+ * as its owner rather than its invoker, so a write privilege on it is a write
+ * to public.products with the products RLS policies bypassed (see migration
+ * 032). Read-only is the whole contract, and only a replay can show it: 021
+ * granted select and revoked "all ... from public", which left Supabase's
+ * default grants to anon and authenticated in place.
+ */
+function effectiveGrants(object: string) {
+  const dir = resolve("supabase/migrations");
+  const held = new Map<string, Set<string>>();
+  const ALL = ["select", "insert", "update", "delete", "truncate", "references", "trigger"];
+  const privsOf = (list: string) =>
+    list.trim().toLowerCase() === "all" ? ALL : list.toLowerCase().split(",").map((p) => p.trim().replace(/\s*\(.*\)$/, ""));
+  const rolesOf = (list: string) => list.toLowerCase().split(",").map((r) => r.trim());
+
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+    const sql = readFileSync(resolve(dir, file), "utf8").replace(/^\s*--.*$/gm, "");
+
+    for (const raw of sql.split(";")) {
+      const statement = raw.trim().replace(/\s+/g, " ");
+      if (!statement) continue;
+
+      const granted = statement.match(/^grant\s+(.+?)\s+on\s+(?:table\s+)?public\.([a-z_]+)\s+to\s+(.+)$/i);
+      if (granted && granted[2].toLowerCase() === object) {
+        for (const role of rolesOf(granted[3])) {
+          const set = held.get(role) ?? new Set<string>();
+          for (const priv of privsOf(granted[1])) set.add(priv);
+          held.set(role, set);
+        }
+        continue;
+      }
+
+      const revoked = statement.match(/^revoke\s+(.+?)\s+on\s+(?:table\s+)?public\.([a-z_]+)\s+from\s+(.+)$/i);
+      if (revoked && revoked[2].toLowerCase() === object) {
+        for (const role of rolesOf(revoked[3])) {
+          const set = held.get(role);
+          if (!set) continue;
+          for (const priv of privsOf(revoked[1])) set.delete(priv);
+        }
+      }
+    }
+  }
+
+  return held;
+}
+
+describe("the hidden-slugs view is readable and nothing more", () => {
+  const grants = effectiveGrants("storefront_hidden_slugs");
+
+  it("leaves anon and authenticated holding select only", () => {
+    for (const role of ["anon", "authenticated"]) {
+      expect([...(grants.get(role) ?? [])].sort(), `${role} can write through the view`).toEqual(["select"]);
+    }
+  });
+
+  it("still lets the storefront read it — the view's whole purpose", () => {
+    // src/lib/catalog-hidden-slugs.ts reads this with the anon key on every
+    // catalogue render; without select the storefront cannot tell what is hidden.
+    expect(grants.get("anon")).toContain("select");
+    expect(readFileSync(resolve("src/lib/catalog-hidden-slugs.ts"), "utf8")).toContain("storefront_hidden_slugs");
+  });
+
+  it("keeps running as its owner, which is why the privileges have to be tight", () => {
+    const creation = readFileSync(resolve("supabase/migrations/021_storefront_hidden_slugs.sql"), "utf8");
+
+    expect(creation).toContain("security_invoker = off");
+  });
+});
