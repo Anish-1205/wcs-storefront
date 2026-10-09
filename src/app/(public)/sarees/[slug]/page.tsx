@@ -12,7 +12,7 @@ import {
   derivedColourways,
   primaryImage,
 } from "@/data/products";
-import { getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getPublicCatalog } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
@@ -23,6 +23,8 @@ import { ProductMedia } from "@/components/product/ProductMedia";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { SareeCard } from "@/components/catalog/SareeCard";
+import { CatalogUnavailable } from "@/components/catalog/CatalogUnavailable";
+import { uncacheable } from "@/lib/no-cache-notice";
 import { Reveal } from "@/components/media/Reveal";
 
 export const revalidate = 3600;
@@ -39,7 +41,10 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  const product = getProductBySlug(params.slug, await getProductsWithOverrides(getAllProducts()));
+  // An unconfirmed read yields no products, so this falls through to the
+  // generic title rather than failing the route before it can explain itself.
+  const { products } = await getPublicCatalog(getAllProducts());
+  const product = getProductBySlug(params.slug, products);
   if (!product) return { title: "Saree" };
   const title = product.title;
   const description = `${product.description.slice(0, 155)} Availability personally confirmed before purchase.`;
@@ -65,7 +70,24 @@ export async function generateMetadata(
 
 export default async function ProductPage(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const allProducts = await getProductsWithOverrides(getAllProducts());
+  const { products: allProducts, confirmed } = await getPublicCatalog(getAllProducts());
+  if (!confirmed) {
+    // The one case where a 404 would be actively wrong: we cannot tell whether
+    // this saree is on show, so we say so instead of declaring it gone.
+    await uncacheable();
+    return (
+      <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+        <CatalogUnavailable heading="This piece can’t be shown right now">
+          <p>
+            We can’t confirm whether this saree is currently on show, so we’re
+            not displaying it rather than risk showing you something that has
+            been sold or withdrawn. Please try again in a few minutes — or ask
+            us directly and we’ll tell you.
+          </p>
+        </CatalogUnavailable>
+      </div></ContentRegion>
+    );
+  }
   const product = getProductBySlug(params.slug, allProducts);
   if (!product) notFound();
 

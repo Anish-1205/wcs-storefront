@@ -3,13 +3,16 @@ import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
 import { SITE, SOCIAL_LINKS } from "@/lib/site";
 import { BrandMark } from "@/components/layout/BrandMark";
-import { getLiveCategories } from "@/lib/storefront-overrides";
+import { getLiveCategoriesForNavigation } from "@/lib/storefront-overrides";
 import { COLLECTIONS } from "@/data/collections";
 import { buildWhatsAppURL } from "@/lib/whatsapp";
 import { WhatsAppSubscribeForm } from "@/components/lead/WhatsAppSubscribeForm";
 
 export async function Footer() {
-  const categories = await getLiveCategories();
+  // No colour links when visibility is unconfirmed: the footer is on every
+  // page, so letting this throw would take the whole site down, and listing
+  // unverified colours could lead to a product admin has hidden.
+  const categories = await getLiveCategoriesForNavigation();
 
   return (
     <ContentRegion region="Footer" global><footer className="mt-28 border-t border-line bg-warm-cream/60">

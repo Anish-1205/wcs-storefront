@@ -4,12 +4,14 @@ import { HomepageSections } from "@/components/home/HomepageSections";
 import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
 import { getAllProducts, getCategories } from "@/data/products";
-import { getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getPublicCatalog } from "@/lib/storefront-overrides";
 import { getStorefrontCollections } from "@/lib/storefront-collections";
 import { COLOUR_STORY, DETAIL_STORY } from "@/lib/site";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SareeCard } from "@/components/catalog/SareeCard";
+import { CatalogUnavailable } from "@/components/catalog/CatalogUnavailable";
+import { uncacheable } from "@/lib/no-cache-notice";
 import { Reveal } from "@/components/media/Reveal";
 import { PortraitImage } from "@/components/media/PortraitMedia";
 import type { Metadata } from "next";
@@ -29,11 +31,16 @@ export default async function HomePage() {
   // Independent reads — each is separately cached, so on a cold cache (new
   // deploy, or the 60s window expiring under traffic) awaiting them in sequence
   // stacks three Supabase round trips onto TTFB for no reason.
-  const [all, config, collections] = await Promise.all([
-    getProductsWithOverrides(getAllProducts()),
+  // `confirmed: false` = the storefront cannot establish what admin has
+  // hidden, so `all` is empty by design. The homepage keeps its hero, its
+  // story and its WhatsApp routes; only the product rows say they are
+  // briefly unavailable. See src/lib/storefront-catalog-resilience.ts.
+  const [{ products: all, confirmed }, config, collections] = await Promise.all([
+    getPublicCatalog(getAllProducts()),
     getHomepageContent(),
     getStorefrontCollections(),
   ]);
+  if (!confirmed) await uncacheable();
   const selection = config.featuredSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
   // The welcome banner shows a standalone showroom clip, not a saree (HERO in
   // lib/site.ts), so no product is "already shown" up there — only the
@@ -55,13 +62,21 @@ export default async function HomePage() {
         <div className="container-px mx-auto flex max-w-[90rem] flex-wrap items-center justify-center gap-x-8 gap-y-2 py-6 sm:gap-x-10">
           <span className="eyebrow">Browse by colour</span>
           <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-base uppercase tracking-[0.08em] text-deep-brown/90 sm:gap-x-9">
-            {categories.map((c) => (
-              <li key={c.slug}>
-                <Link href={`/catalog/${c.slug}`} className="hover:text-oxblood">
-                  {c.name}
+            {categories.length === 0 ? (
+              <li>
+                <Link href="/catalog" className="hover:text-oxblood">
+                  All sarees
                 </Link>
               </li>
-            ))}
+            ) : (
+              categories.map((c) => (
+                <li key={c.slug}>
+                  <Link href={`/catalog/${c.slug}`} className="hover:text-oxblood">
+                    {c.name}
+                  </Link>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </section>
@@ -80,6 +95,8 @@ export default async function HomePage() {
             View all
           </Link>
         </Reveal>
+
+        {!confirmed && <CatalogUnavailable />}
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-12 lg:gap-x-8">
           {selection[0] && (
@@ -183,13 +200,20 @@ export default async function HomePage() {
               View all
             </Link>
           </Reveal>
-          <div data-testid="shelf-grid" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
-            {more.map((p) => (
-              <div key={p.slug} className="min-w-0">
-                <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
-              </div>
-            ))}
-          </div>
+          {confirmed ? (
+            <div data-testid="shelf-grid" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
+              {more.map((p) => (
+                <div key={p.slug} className="min-w-0">
+                  <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            // The notice is already shown above, in the selection row.
+            <p className="text-base text-muted-foreground">
+              Listings are briefly unavailable — please try again in a few minutes.
+            </p>
+          )}
         </div>
       </section>
 

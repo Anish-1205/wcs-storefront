@@ -4,12 +4,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
-import { getLiveCategories, getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getLiveCategoriesForNavigation, getPublicCatalog } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { CatalogFilterBar } from "@/components/catalog/CatalogFilterBar";
+import { CatalogUnavailable } from "@/components/catalog/CatalogUnavailable";
+import { uncacheable } from "@/lib/no-cache-notice";
 import { Reveal } from "@/components/media/Reveal";
 
 export const revalidate = 3600;
@@ -33,7 +35,9 @@ export async function generateMetadata(
   }
 ): Promise<Metadata> {
   const params = await props.params;
-  const category = (await getLiveCategories()).find((c) => c.slug === params.category);
+  // Degrades to the generic title when visibility is unconfirmed, so metadata
+  // never decides the whole route has failed.
+  const category = (await getLiveCategoriesForNavigation()).find((c) => c.slug === params.category);
   if (!category) return { title: "Catalog" };
   return {
     title: `${category.name} Sarees`,
@@ -50,7 +54,17 @@ interface PageProps {
 export default async function CategoryPage(props: PageProps) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const all = await getProductsWithOverrides(getAllProducts());
+  const { products: all, confirmed } = await getPublicCatalog(getAllProducts());
+  if (!confirmed) {
+    // Never notFound() here: the colour page exists, we just cannot say what
+    // is in it right now, and a 404 would outlive the outage in search results.
+    await uncacheable();
+    return (
+      <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+        <CatalogUnavailable />
+      </div></ContentRegion>
+    );
+  }
   const category = getCategories(all).find((c) => c.slug === params.category);
   if (!category) notFound();
 

@@ -2,10 +2,12 @@
 import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import { filterProducts, getCategories, getAllProducts } from "@/data/products";
-import { getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getPublicCatalog } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { SareeCard } from "@/components/catalog/SareeCard";
 import { CatalogFilterBar } from "@/components/catalog/CatalogFilterBar";
+import { CatalogUnavailable } from "@/components/catalog/CatalogUnavailable";
+import { uncacheable } from "@/lib/no-cache-notice";
 import { Reveal } from "@/components/media/Reveal";
 
 export const revalidate = 3600;
@@ -29,7 +31,19 @@ const AVAIL_LABELS: Record<string, string> = {
 
 export default async function CatalogPage(props: PageProps) {
   const searchParams = await props.searchParams;
-  const all = await getProductsWithOverrides(getAllProducts());
+  // Fails closed: with visibility unconfirmed there is no catalogue to list,
+  // and the page says so rather than listing a product that may be hidden.
+  const { products: all, confirmed } = await getPublicCatalog(getAllProducts());
+  if (!confirmed) {
+    // Keep the notice out of the page cache, so the catalogue comes back with
+    // the database rather than an hour later. See src/lib/no-cache-notice.ts.
+    await uncacheable();
+    return (
+      <ContentRegion region="page"><div className="container-px mx-auto max-w-[90rem] py-12 lg:py-16">
+        <CatalogUnavailable />
+      </div></ContentRegion>
+    );
+  }
   const products = filterProducts(searchParams, all);
   const availabilities = Array.from(new Set(all.map((p) => p.availability)));
 

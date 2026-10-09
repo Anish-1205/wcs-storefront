@@ -8,11 +8,13 @@ import {
   getAllCollectionSlugs,
 } from "@/data/collections";
 import { getAllProducts } from "@/data/products";
-import { getProductsWithOverrides } from "@/lib/storefront-overrides";
+import { getPublicCatalog } from "@/lib/storefront-overrides";
 import { SITE } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
 import { SareeCard } from "@/components/catalog/SareeCard";
+import { CatalogUnavailable } from "@/components/catalog/CatalogUnavailable";
+import { uncacheable } from "@/lib/no-cache-notice";
 import { PortraitImage } from "@/components/media/PortraitMedia";
 import { Reveal } from "@/components/media/Reveal";
 
@@ -48,7 +50,8 @@ export default async function CollectionPage(props: { params: Promise<{ slug: st
   const collections = await getStorefrontCollections();
   const collection = collections.find((c) => c.slug === params.slug);
   if (!collection) notFound();
-  const all = await getProductsWithOverrides(getAllProducts());
+  const { products: all, confirmed } = await getPublicCatalog(getAllProducts());
+  if (!confirmed) await uncacheable();
   const products = collection.productSlugs.flatMap((slug) => all.find((p) => p.slug === slug) ?? []);
   const others = collections.filter((c) => c.slug !== params.slug);
   const breadcrumbs = breadcrumbList([
@@ -83,13 +86,21 @@ export default async function CollectionPage(props: { params: Promise<{ slug: st
         </Reveal>
       </section>
 
-      <section className="mt-20 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
-        {products.map((p, i) => (
-          <Reveal key={p.slug} delay={(i % 3) * 50}>
-            <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
-          </Reveal>
-        ))}
-      </section>
+      {confirmed ? (
+        <section className="mt-20 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:gap-x-8">
+          {products.map((p, i) => (
+            <Reveal key={p.slug} delay={(i % 3) * 50}>
+              <SareeCard product={p} sizes="(min-width:768px) 30vw, 45vw" />
+            </Reveal>
+          ))}
+        </section>
+      ) : (
+        // The collection’s own story still renders; only its pieces are held
+        // back, because we cannot tell which of them are still on show.
+        <div className="mt-20">
+          <CatalogUnavailable heading="These pieces can’t be listed right now" />
+        </div>
+      )}
 
       <section className="mt-24 border-t border-line pt-12">
         <p className="eyebrow mb-8">Other collections</p>
