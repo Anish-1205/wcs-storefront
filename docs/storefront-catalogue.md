@@ -446,13 +446,135 @@ Materialised products are appended after the file catalogue, newest first.
 
 Both reads are cached 60s under the tag `storefront-media`, which every admin
 catalogue write already revalidates (`revalidatePublic`), so publishing shows
-up immediately. Both fail soft: unreachable Supabase → the file catalogue
-exactly as before.
+up immediately.
+
+### When the catalogue cannot be read
+
+Neither read turns a failure into an empty list — an empty hidden list means
+"nothing is hidden", so that used to put every hidden product back on the site
+whenever Supabase was unreachable. A failed read (unreachable, timed out after
+8s, rejected by PostgREST) rejects instead, and
+`src/lib/storefront-catalog-resilience.ts` decides what the storefront knows:
+
+1. Next keeps serving the cache entry it already has while refreshes fail.
+2. Otherwise the last answer this server instance read (`last-good`).
+3. Otherwise, for the hidden slugs, the set mirrored outside Postgres
+   (`mirror`): `src/lib/catalog-visibility-mirror.ts` keeps slugs and a
+   timestamp in Upstash Redis, written on every confirmed storefront read and
+   by admin publish / unpublish / delete. It is a separate provider, so a
+   Supabase outage does not take it with it, and it is the only source that
+   knows about a product hidden *since* this deployment was built.
+4. Otherwise the snapshot taken when the deployment was built (`snapshot`):
+   `scripts/snapshot-catalog-visibility.mjs` runs in `prebuild`, writes the
+   git-ignored `.generated/catalog-visibility.json` (slugs and a timestamp
+   only), and `next.config.mjs` inlines it into the server bundle.
+5. With none of those, `unavailable` — reported to Sentry as "Storefront
+   cannot tell which products are hidden".
+
+Whichever of 2–4 last saw the database wins, rather than a fixed order: the
+mirror is usually newer than the snapshot, but right after a deploy the
+snapshot is newer than a mirror nobody has refreshed.
+
+A failed read is not retried for 30s, and is reported once per 30 minutes per
+instance (scope `storefront-catalog`). A production build on Vercel stops if
+the snapshot cannot be taken, leaving the live deployment in place; set
+`CATALOG_SNAPSHOT_OPTIONAL=1` to deploy without one. Local, CI and preview
+builds carry on without it.
+
+### Failing closed, without taking the site down
+
+A fallback says what was hidden when it was written. It cannot say that nothing
+has been hidden since, so its age is a risk window. Past
+**`VISIBILITY_MAX_STALE_MS` (default 15 minutes)** the honest answer is "ask
+again later", and `getStorefrontCatalog` throws `VisibilityUnconfirmedError`
+rather than return a catalogue that might contain a product an admin has taken
+down. Inside the budget, the fallback is served normally.
+
+Fifteen minutes is long enough to ride out an ordinary Supabase blip — during
+which the 60s cache, the instance's last good read and the Redis mirror all
+still answer — and short enough that an unnoticed hide cannot sit exposed for
+hours.
+
+That refusal must not become a dead website. Public surfaces go through
+`getPublicCatalog()` / `getLivePublicCatalog()`
+(`src/lib/storefront-overrides.ts`), which turn **only**
+`VisibilityUnconfirmedError` into `{ products: [], confirmed: false }` — any
+other error still throws, so a bug cannot hide behind an empty catalogue. What
+each surface then does:
+
+| Surface | With visibility unconfirmed |
+| --- | --- |
+| `/catalog`, `/catalog/[colour]`, `/search` | `<CatalogUnavailable>` instead of the grid. Never `notFound()`: the page exists, and a 404 would outlive the outage in search results |
+| `/sarees/[slug]` | The same notice, worded for one piece — not a 404, and not the product |
+| `/collections/[slug]` | The collection's story and cover still render; its pieces are replaced by the notice |
+| `/` (home) | Hero, story, ordering steps, sourcing and every WhatsApp route render as usual; the selection row carries the notice, the shelf a one-line version, and the colour strip falls back to a single "All sarees" link |
+| Footer (on every page) | Renders normally, minus its colour links. Letting this throw would 500 the whole site |
+| `/sitemap.xml` | Static pages, collections and guides stay; `/sarees/*` and `/catalog/<colour>` are omitted until visibility is confirmed |
+| `/admin/**` | Unaffected — admin screens pass `requireConfirmedVisibility: false`. They are behind `requireAdmin`, and an admin needs the catalogue *most* when the database is misbehaving |
+| Enquiry cart, `/enquiry`, `/contact`, pages | Unaffected — none of them depend on product visibility |
+
+**Status codes and crawlers.** These pages answer `200` with the notice.
+Next's App Router gives a Server Component no way to set a status, and the
+alternatives (a route handler per page, or middleware that cannot know what a
+page will read) would be a bigger change than the header is worth.
+`VisibilityUnconfirmedError` carries `retryAfterSeconds` for any caller that
+*can* set headers — a future route handler or `/api/health` — so the 503 is
+available where it is free. Because it is a 200, `<CatalogUnavailable>` renders
+`<meta name="robots" content="noindex, nofollow">`, which React hoists into
+`<head>`: a crawl during an outage cannot store "briefly unavailable" as a
+page's content, and the notice is still not the 404 that would tell a crawler
+a real product is gone.
+
+**The notice is never cached.** A render that shows it calls `uncacheable()`
+(`src/lib/no-cache-notice.ts`, a one-line wrapper around Next's
+`connection()`), on the degraded path only. Two things follow:
+
+- **At build time** the prerender bails out instead of writing the notice to a
+  static file, so a deployment built during an outage ships no stale notice.
+  Verified: a cold-cache production build against an unreachable database
+  produces **zero** prerendered `/sarees/*.html`, and the build still succeeds.
+- **At request time** the render is dynamic, so the notice is not put in the
+  ISR cache. Verified on `next start`: `/`, `/catalog`, `/catalog/<colour>`,
+  `/search`, `/sarees/<slug>` and `/collections/<slug>` all answer
+  `cache-control: private, no-cache, no-store, max-age=0, must-revalidate`
+  with the noindex meta in `<head>`, and `/sitemap.xml`
+  `public, max-age=0, must-revalidate`.
+
+Without this the notice would have been cached like any other render — up to
+the routes' own `revalidate = 3600` — and could have kept saying "briefly
+unavailable" for an hour after Supabase came back.
+
+The one thing that *can* persist briefly is the **footer** without its colour
+links: a page that is otherwise static (`/about`, `/privacy`, a guide) is still
+cached while the footer degrades, under the 60s window the catalogue's own
+`unstable_cache` tag imposes (observed: `s-maxage=60,
+stale-while-revalidate=...`, `x-nextjs-cache: STALE`). It costs some
+navigation links for up to a minute, never a product claim, so the footer
+deliberately does *not* call `uncacheable()` — doing so would make every page
+on the site dynamic for the duration of an outage.
+
+**`VISIBILITY_FAIL_OPEN=1`** is the emergency override: the refusal becomes a
+warning and the best available fallback is served, including the plain file
+catalogue when there is nothing at all. It is off by default and it can show a
+product an admin has hidden — use it only to choose availability over
+correctness during an incident, and unset it afterwards
+(`npm run check:env` warns while it is on). Both variables are read per call,
+so neither needs a code change to take effect.
+
+Counters for all of this — failures, which source served each read, refusals,
+the budget in force — are in `getCatalogResilienceStatus()`, ready for the
+health endpoint in T1.8. Coverage:
+`src/__tests__/storefront-catalog-resilience.test.ts` (the decision and the
+fallback chain) and `src/__tests__/catalog-visibility-degradation.test.ts`
+(footer, sitemap and the public-catalogue contract).
 
 `getLiveProducts()` / `getLiveCategories()` (`src/lib/storefront-overrides.ts`)
-are the whole-catalogue accessors — used by the sitemap, the footer's colour
-list, and the two admin pickers that choose from the storefront
-(`/admin/pages`, `/admin/storefront-availability`).
+are the whole-catalogue accessors that still throw on an unconfirmed read —
+used by the two admin pickers that choose from the storefront (`/admin/pages`,
+`/admin/storefront-availability`), which pass
+`requireConfirmedVisibility: false`. Public callers use the
+`getPublicCatalog` pair above, and the footer uses
+`getLiveCategoriesForNavigation()`.
 
 **Still file-only:** per-page content overrides (`EDITABLE_PAGES` in
 `src/lib/page-content.ts`) and `generateStaticParams` prerender seeds. A
