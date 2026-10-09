@@ -6,6 +6,7 @@ import { useState } from "react";
 import { getSource } from "@/lib/source-tracking";
 import { subscriberSchema } from "@/lib/validation";
 import { analytics } from "@/lib/analytics";
+import { describeSubmitFailure } from "@/lib/submit-errors";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -56,7 +57,7 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
 
     if (!res.ok) {
       setStatus("error");
-      setError("Something went wrong. Please try again.");
+      setError(describeSubmitFailure(res)?.message ?? "Something went wrong. Please try again.");
       return;
     }
 

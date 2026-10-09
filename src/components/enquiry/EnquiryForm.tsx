@@ -15,6 +15,7 @@ import {
 } from "@/lib/profile/useProfile";
 import { getSource } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
+import { describeSubmitFailure } from "@/lib/submit-errors";
 import {
   buildEnquiryWhatsAppURL,
   WHATSAPP_CONFIGURED,
@@ -168,6 +169,9 @@ export function EnquiryForm() {
         ? "wholesale"
         : "retail";
 
+    // Set before the throw below, so the catch can say something specific
+    // about a 429 or a 503 instead of the generic line.
+    let refusal: ReturnType<typeof describeSubmitFailure> = null;
     try {
       const response = await fetch("/api/inquiries", {
         method: "POST",
@@ -183,9 +187,14 @@ export function EnquiryForm() {
           source,
         }),
       });
+      if (!response.ok) refusal = describeSubmitFailure(response);
       if (!response.ok || (await response.json()).ok !== true) throw new Error("Inquiry was not confirmed");
     } catch {
-      setSubmitError("We could not confirm your enquiry was saved. Your selection and details are still here. Please try again.");
+      setSubmitError(
+        refusal
+          ? `${refusal.message} Your selection and details are still here.`
+          : "We could not confirm your enquiry was saved. Your selection and details are still here. Please try again.",
+      );
       submitting.current = false;
       setSubmittingState(false);
       return;

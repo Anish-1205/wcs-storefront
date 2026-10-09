@@ -25,12 +25,30 @@ beforeEach(() => {
   vi.stubGlobal("FormData", class { get(key: string) { return ({ name: "Asha", phone: "9876543210", city: "Delhi" } as Record<string,string>)[key] ?? ""; } });
 });
 afterEach(() => vi.unstubAllGlobals());
-it.each([500, 429, 400])("F19 stays on the form after HTTP %i, preserves inputs and unlocks retry", async (status) => {
+it.each([500, 400])("F19 stays on the form after HTTP %i, preserves inputs and unlocks retry", async (status) => {
   vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status })));
   await submit();
   expect(mocks.push).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled();
   expect(mocks.analytics).not.toHaveBeenCalled();
   expect(mocks.states).toContainEqual(expect.stringContaining("could not confirm"));
+  expect(mocks.states.at(-1)).toBe(false);
+});
+
+// T1.7: a refusal the customer can act on gets its own wording, and still
+// keeps every F19 guarantee — nothing navigates, nothing is stored, and the
+// submit button is unlocked for a retry.
+it.each([
+  [429, { "Retry-After": "600" }, "10 minutes"],
+  // WHATSAPP_CONFIGURED is false in this file's mock, so the 503 copy points
+  // at the contact page rather than WhatsApp.
+  [503, { "Retry-After": "30" }, "contact page"],
+])("explains an HTTP %i refusal without losing the selection", async (status, headers, expected) => {
+  vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status, headers })));
+  await submit();
+  expect(mocks.push).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled();
+  expect(mocks.analytics).not.toHaveBeenCalled();
+  expect(mocks.states).toContainEqual(expect.stringContaining(expected as string));
+  expect(mocks.states).toContainEqual(expect.stringContaining("still here"));
   expect(mocks.states.at(-1)).toBe(false);
 });
 it("waits for confirmed persistence before storing success or navigating", async () => {

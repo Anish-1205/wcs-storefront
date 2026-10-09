@@ -5,6 +5,7 @@ import { ContentRegion } from "@/components/content/ContentRegion";
 import { useState } from "react";
 import { getSource } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
+import { describeSubmitFailure } from "@/lib/submit-errors";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -66,7 +67,14 @@ export function InquiryForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("request failed");
+      if (!res.ok) {
+        // A rate-limited or limiter-unavailable refusal gets its own line;
+        // anything else falls through to the generic message below.
+        const refusal = describeSubmitFailure(res);
+        setStatus("error");
+        setError(refusal?.message ?? "Could not send your enquiry. Please try WhatsApp instead.");
+        return;
+      }
       analytics.inquirySubmit({ inquiry_type: payload.inquiry_type, source });
       setStatus("done");
       form.reset();
