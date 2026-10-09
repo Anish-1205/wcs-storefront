@@ -34,7 +34,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · M · EXISTING COST · depends on: none
 - [x] **T1.8** — `/api/health` and the free uptime monitor (code, tests and docs done; owner still needs to add the Sentry monitor and set `HEALTH_TOKEN`)  
   P0 · S · FREE WITH LIMITS · depends on: none (richer after T1.6)
-- [ ] **T1.12** — Main-branch protection and deployment gating (GitHub Free + Vercel Hobby)  
+- [x] **T1.12** — Main-branch protection and deployment gating (GitHub Free + Vercel Hobby) (docs done, settings pending owner; Option B — protection on, owner bypass allowed, required check: `Lint, types, unit tests, build`)  
   P0 · S · FREE · depends on: none (should precede T6.5 restructuring)
 - [ ] **T1.1** — Backup scope discovery, backup role and connectivity check  
   P0 · M · FREE · depends on: none
