@@ -11,7 +11,8 @@ export default async function StorefrontAvailabilityPage() {
 
   // Independent reads — the catalogue merge doesn't depend on the overrides.
   const [products, overridesResult] = await Promise.all([
-    getStorefrontCatalog(getAllProducts()),
+    // Admin-only screen: show the catalogue even when visibility is unconfirmed.
+    getStorefrontCatalog(getAllProducts(), { requireConfirmedVisibility: false }),
     admin.from("storefront_availability_overrides").select("slug, availability, availability_note"),
   ]);
   const { data, error } = overridesResult;

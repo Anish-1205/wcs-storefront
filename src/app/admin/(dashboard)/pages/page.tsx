@@ -37,7 +37,7 @@ export default async function PagesDashboard() {
   }
   // The live catalogue, so admin-created sarees can be chosen for the hero,
   // the current selection and the shelf order — not just the file ones.
-  const products = (await getLiveProducts()).map(({ slug, title, images }) => ({ slug, title, image: images[0]?.src ?? "" }));
+  const products = (await getLiveProducts({ requireConfirmedVisibility: false })).map(({ slug, title, images }) => ({ slug, title, image: images[0]?.src ?? "" }));
 
   return <div className="mx-auto max-w-7xl">
     <h1 className="font-serif text-3xl text-primary">Your website pages</h1>

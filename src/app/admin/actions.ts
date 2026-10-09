@@ -35,6 +35,7 @@ import {
   type ProductInputShape,
 } from "@/lib/validation";
 import { reportError, ExpectedError } from "@/lib/report-error";
+import { refreshVisibilityMirror } from "@/lib/catalog-hidden-slugs";
 
 /**
  * Next.js redacts thrown Server Action error messages in production builds
@@ -710,6 +711,7 @@ export async function saveProduct(input: ProductInputShape): Promise<ActionResul
     revalidatePath(`/sarees/${previousSlug}`);
   }
   revalidatePublic(slug);
+  await refreshVisibilityMirror();
   revalidateCatalogShell();
   return { id: productId };
   });
@@ -842,6 +844,9 @@ export async function updateProductStatus(id: string, status: ProductStatus): Pr
       .single();
     if (error) throw new Error(error.message);
     revalidatePublic(data.slug as string);
+    // Record the new hidden set outside Postgres while the database is still
+    // reachable — see refreshVisibilityMirror.
+    await refreshVisibilityMirror();
     revalidatePath("/admin/products");
     return {};
   });
@@ -874,6 +879,7 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
     const { error } = await admin.from("products").delete().eq("id", id);
     if (error) throw new Error(error.message);
     if (data?.slug) revalidatePublic(data.slug as string);
+    await refreshVisibilityMirror();
     revalidateCatalogShell();
     return {};
   });

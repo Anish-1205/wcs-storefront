@@ -8,6 +8,7 @@ import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
 import { getAllProducts, getCategories, type CategoryFacet, type Product } from "@/data/products";
 import { getStorefrontCatalog } from "@/lib/storefront-catalog";
+import { VisibilityUnconfirmedError, catalogRead } from "@/lib/storefront-catalog-resilience";
 
 export interface AvailabilityOverride {
   availability: Product["availability"];
@@ -22,12 +23,18 @@ interface OverrideRow {
 
 async function fetchOverrideRows(): Promise<OverrideRow[]> {
   try {
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("storefront_availability_overrides")
-      .select("slug, availability, availability_note");
-    if (error) throw new Error("Availability could not be confirmed");
-    return (data ?? []) as OverrideRow[];
+    // Timed out, backed off and reported like the other catalogue reads.
+    return await catalogRead(
+      "availability-overrides",
+      async () => {
+        const { data, error } = await createPublicClient()
+          .from("storefront_availability_overrides")
+          .select("slug, availability, availability_note");
+        if (error) throw error;
+        return (data ?? []) as OverrideRow[];
+      },
+      { backOffAfter: "timeout" },
+    );
   } catch {
     throw new Error("Availability could not be confirmed");
   }
@@ -90,19 +97,79 @@ export function applyAvailabilityOverrides<T extends Product>(
  * src/lib/storefront-catalog.ts), with live availability signals merged over
  * the top.
  */
-export async function getProductsWithOverrides(products: Product[]): Promise<Product[]> {
-  const [overrides, catalog] = await Promise.all([getAvailabilityOverrides(), getStorefrontCatalog(products)]);
+export interface CatalogReadOptions {
+  /** Admin screens pass false; see getStorefrontCatalog. */
+  requireConfirmedVisibility?: boolean;
+}
+
+export async function getProductsWithOverrides(
+  products: Product[],
+  options: CatalogReadOptions = {},
+): Promise<Product[]> {
+  const [overrides, catalog] = await Promise.all([
+    getAvailabilityOverrides(),
+    getStorefrontCatalog(products, options),
+  ]);
   return applyAvailabilityOverrides(catalog, overrides);
 }
 
 /** The whole live catalogue — for callers with no file list of their own to
  *  narrow (sitemap, footer, the admin pickers that choose from the storefront). */
-export async function getLiveProducts(): Promise<Product[]> {
-  return getProductsWithOverrides(getAllProducts());
+export async function getLiveProducts(options: CatalogReadOptions = {}): Promise<Product[]> {
+  return getProductsWithOverrides(getAllProducts(), options);
 }
 
 /** Colour facets derived from the live catalogue rather than the file alone,
  *  so an admin-created product's colour gets its own catalogue page. */
-export async function getLiveCategories(): Promise<CategoryFacet[]> {
-  return getCategories(await getLiveProducts());
+export async function getLiveCategories(options: CatalogReadOptions = {}): Promise<CategoryFacet[]> {
+  return getCategories(await getLiveProducts(options));
+}
+
+// ── Public surfaces: fail closed without taking the site down ─────────
+
+/**
+ * What a public page gets to render.
+ *
+ * `confirmed: false` means the storefront could not establish which products
+ * admin has hidden (see src/lib/storefront-catalog-resilience.ts). The
+ * products list is then empty — never a catalogue that might contain something
+ * taken down — and the page is expected to say so rather than render nothing,
+ * 404, or crash: the rest of the site (pages, contact, enquiry, WhatsApp) has
+ * nothing to do with product visibility and must stay up.
+ */
+export interface PublicCatalog {
+  products: Product[];
+  confirmed: boolean;
+}
+
+/**
+ * The catalogue for a public page, with an unconfirmed-visibility outage
+ * turned into `confirmed: false` instead of a thrown error.
+ *
+ * Only `VisibilityUnconfirmedError` is absorbed. Anything else is a real fault
+ * and still throws, so a bug cannot hide behind an empty catalogue.
+ */
+export async function getPublicCatalog(products: Product[]): Promise<PublicCatalog> {
+  try {
+    return { products: await getProductsWithOverrides(products), confirmed: true };
+  } catch (error) {
+    if (error instanceof VisibilityUnconfirmedError) return { products: [], confirmed: false };
+    throw error;
+  }
+}
+
+/** The whole live catalogue for a public page, same contract as above. */
+export async function getLivePublicCatalog(): Promise<PublicCatalog> {
+  return getPublicCatalog(getAllProducts());
+}
+
+/**
+ * Colour facets for chrome that is not itself about products — the footer's
+ * catalogue column. An unconfirmed read gives no facets, so the footer renders
+ * without its colour links rather than failing and taking every page with it:
+ * a missing link is a cosmetic loss, a 500 on every page is not.
+ */
+export async function getLiveCategoriesForNavigation(): Promise<CategoryFacet[]> {
+  const { products, confirmed } = await getLivePublicCatalog();
+  return confirmed ? getCategories(products) : [];
 }

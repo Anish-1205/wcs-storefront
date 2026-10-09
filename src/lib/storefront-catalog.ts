@@ -23,9 +23,12 @@
  *   row at a RETIRED_SLUGS slug    → dropped — the file catalogue has
  *                                   deliberately deleted that product
  *
- * Every read here fails soft: if Supabase is unreachable or a table/view is
- * missing, the storefront falls back to exactly the file catalogue, which is
- * what it rendered before this module existed.
+ * A failed read is never mistaken for an empty answer. If Supabase is
+ * unreachable, each read falls back to the last answer it gave (and, for the
+ * hidden slugs, to the snapshot taken at build time) rather than to "no rows",
+ * so an outage cannot put a product admin has hidden back on the site — see
+ * src/lib/storefront-catalog-resilience.ts. Only with nothing at all to fall
+ * back on does the storefront render exactly the file catalogue.
  */
 
 import { unstable_cache } from "next/cache";
@@ -35,6 +38,18 @@ import type { ProductWithRelations, VariantImage } from "@/lib/supabase/types";
 import { applyStorefrontMedia } from "@/lib/storefront-media";
 import { isVideoMedia } from "@/lib/variant-images";
 import { cldVideoThumbnail } from "@/lib/cloudinary";
+import {
+  assertVisibilityConfirmed,
+  catalogRead,
+  chooseHiddenFallback,
+  getVisibilitySnapshot,
+  noteServed,
+  recallGood,
+  rememberGood,
+  type CatalogSource,
+} from "@/lib/storefront-catalog-resilience";
+import { readVisibilityMirror, writeVisibilityMirror } from "@/lib/catalog-visibility-mirror";
+import { fetchHiddenSlugs } from "@/lib/catalog-hidden-slugs";
 
 /** Cloudinary delivers any size; these only reserve the box (4:5 portrait,
  *  the ratio every storefront card and the product hero are cropped to). */
@@ -51,20 +66,21 @@ const CATALOG_SELECT =
  * `storefront-media`, which every admin catalogue write already revalidates
  * (see revalidatePublic in src/app/admin/actions.ts) — so publishing in admin
  * shows up immediately rather than at the end of the window.
+ *
+ * Rejects on failure, deliberately: `unstable_cache` stores whatever this
+ * returns, so returning `[]` for an error would overwrite the good entry with
+ * an empty one. When it rejects, Next keeps serving the entry it already has.
  */
 const getPublishedRows = unstable_cache(
-  async (): Promise<ProductWithRelations[]> => {
-    try {
+  (): Promise<ProductWithRelations[]> =>
+    catalogRead("published-rows", async () => {
       const { data, error } = await createPublicClient()
         .from("products")
         .select(CATALOG_SELECT)
         .eq("status", "published");
       if (error) throw error;
       return (data ?? []) as unknown as ProductWithRelations[];
-    } catch {
-      return [];
-    }
-  },
+    }),
   ["storefront-catalog-rows"],
   { revalidate: 60, tags: ["storefront-media"] },
 );
@@ -76,22 +92,72 @@ const getPublishedRows = unstable_cache(
  * storefront cannot otherwise tell "admin hid this" apart from "this product
  * was never mirrored into Postgres" — and guessing wrong in that direction
  * would delete half the catalogue. `storefront_hidden_slugs` (migration 021)
- * is a slug-only view that answers exactly that one question. Missing view →
- * empty list → nothing is hidden, same as before.
+ * is a slug-only view that answers exactly that one question.
+ *
+ * An empty list from a successful read means nothing is hidden. A failed read
+ * (unreachable, timed out, view missing) throws instead — see
+ * `readHiddenSlugs` for what the storefront uses then.
  */
 const getHiddenSlugs = unstable_cache(
-  async (): Promise<string[]> => {
-    try {
-      const { data, error } = await createPublicClient().from("storefront_hidden_slugs").select("slug");
-      if (error) throw error;
-      return (data ?? []).map((row) => (row as { slug: string }).slug);
-    } catch {
-      return [];
-    }
-  },
+  (): Promise<string[]> => catalogRead("hidden-slugs", fetchHiddenSlugs),
   ["storefront-hidden-slugs"],
   { revalidate: 60, tags: ["storefront-media"] },
 );
+
+/**
+ * The published rows, or the last set this instance read when the read fails.
+ * With nothing remembered the answer is no rows: the file catalogue renders
+ * without its Postgres overlay and without admin-created products, which
+ * shows less than usual, never more.
+ */
+async function readPublishedRows(): Promise<ProductWithRelations[]> {
+  try {
+    const rows = await getPublishedRows();
+    rememberGood("published-rows", rows);
+    noteServed("published-rows", "live");
+    return rows;
+  } catch {
+    const remembered = recallGood<ProductWithRelations[]>("published-rows");
+    noteServed("published-rows", remembered ? "last-good" : "unavailable");
+    return remembered?.value ?? [];
+  }
+}
+
+/**
+ * The hidden slugs, from the best source there is: the live view, else
+ * whichever fallback last saw the database — the answer this instance read, the
+ * mirror written outside Postgres, or the snapshot taken when this deployment
+ * was built. Only when all of them are missing is the answer "unavailable",
+ * and that is reported: it is the one case left where a hidden product shows.
+ */
+export async function readHiddenSlugs(): Promise<{ slugs: string[]; source: CatalogSource; at: number | null }> {
+  try {
+    const slugs = await getHiddenSlugs();
+    rememberGood("hidden-slugs", slugs);
+    noteServed("hidden-slugs", "live");
+    // Keep the out-of-band copy current for the instances that come after this
+    // one. Only writes when the set has actually changed, and a mirror that
+    // cannot be written must never spoil a read that succeeded.
+    await writeVisibilityMirror(slugs).catch(() => {});
+    return { slugs, source: "live", at: Date.now() };
+  } catch {
+    const remembered = recallGood<string[]>("hidden-slugs");
+    const snapshot = getVisibilitySnapshot();
+    // Only worth a network call when this instance has nothing of its own:
+    // anything it read itself is at least as recent as the last admin write.
+    const mirrored = remembered ? null : await readVisibilityMirror();
+
+    const chosen = chooseHiddenFallback([
+      ...(remembered ? [{ source: "last-good" as const, slugs: remembered.value, at: remembered.at }] : []),
+      ...(mirrored ? [{ source: "mirror" as const, slugs: mirrored.slugs, at: mirrored.at }] : []),
+      ...(snapshot ? [{ source: "snapshot" as const, slugs: snapshot.hiddenSlugs, at: Date.parse(snapshot.generatedAt) }] : []),
+    ]);
+
+    const source = chosen?.source ?? "unavailable";
+    noteServed("hidden-slugs", source);
+    return { slugs: chosen?.slugs ?? [], source, at: chosen?.at ?? null };
+  }
+}
 
 // ── Materialising a Postgres row as a storefront product ──────────────
 
@@ -279,7 +345,10 @@ export function mergeStorefrontCatalog(
   const visible = hidden.size === 0 ? fileProducts : fileProducts.filter((product) => !hidden.has(product.slug));
   // A retired slug is a deliberate deletion, not a product waiting to be
   // mirrored — never materialise one back from its leftover Postgres row.
-  const liveRows = publishedRows.filter((row) => !RETIRED_SLUGS.has(row.slug));
+  // Hidden wins over published. The two never overlap when both reads are
+  // fresh, but during an outage the rows can be an older answer than the
+  // hidden list, and a product unpublished in between must stay off the site.
+  const liveRows = publishedRows.filter((row) => !RETIRED_SLUGS.has(row.slug) && !hidden.has(row.slug));
 
   // Only the mirror's own rows overlay a file entry's media and copy. An
   // admin-authored row that happens to sit at a file slug was written
@@ -306,8 +375,24 @@ export function mergeStorefrontCatalog(
   return [...merged, ...dbOnly];
 }
 
-/** The file catalogue reconciled against Postgres. Never throws. */
-export async function getStorefrontCatalog(fileProducts: Product[]): Promise<Product[]> {
-  const [rows, hidden] = await Promise.all([getPublishedRows(), getHiddenSlugs()]);
-  return mergeStorefrontCatalog(fileProducts, rows, hidden);
+/**
+ * The file catalogue reconciled against Postgres.
+ *
+ * For anything the public can see, leave `requireConfirmedVisibility` alone: a
+ * hidden-slug answer too old to trust makes this throw
+ * `VisibilityUnconfirmedError` rather than render a catalogue that might
+ * include a product an admin has taken down.
+ *
+ * Admin screens pass `false`. They are behind `requireAdmin`, they are not a
+ * public surface, and an admin needs the catalogue *most* when the database is
+ * misbehaving — refusing to render would take away the page they would use to
+ * fix it.
+ */
+export async function getStorefrontCatalog(
+  fileProducts: Product[],
+  { requireConfirmedVisibility = true }: { requireConfirmedVisibility?: boolean } = {},
+): Promise<Product[]> {
+  const [rows, hidden] = await Promise.all([readPublishedRows(), readHiddenSlugs()]);
+  if (requireConfirmedVisibility) assertVisibilityConfirmed(hidden.source, hidden.at);
+  return mergeStorefrontCatalog(fileProducts, rows, hidden.slugs);
 }
