@@ -32,7 +32,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE · depends on: T1.5
 - [x] **T1.7** — Rate-limit failure policy (code, tests and docs done; not deployed)  
   P0 · M · EXISTING COST · depends on: none
-- [ ] **T1.8** — `/api/health` and the free uptime monitor  
+- [x] **T1.8** — `/api/health` and the free uptime monitor (code, tests and docs done; owner still needs to add the Sentry monitor and set `HEALTH_TOKEN`)  
   P0 · S · FREE WITH LIMITS · depends on: none (richer after T1.6)
 - [ ] **T1.12** — Main-branch protection and deployment gating (GitHub Free + Vercel Hobby)  
   P0 · S · FREE · depends on: none (should precede T6.5 restructuring)

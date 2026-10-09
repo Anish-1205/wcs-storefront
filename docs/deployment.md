@@ -309,6 +309,22 @@ publish, until that gap is closed.
   deploy domain even if the env var is stale. Change `CANONICAL_URL` in that
   file if the domain ever changes.
 
+## 5a. Health endpoint and uptime monitor
+
+- `GET /api/health` is a public liveness probe — `{ ok: true }`, no backing
+  services touched. The homepage is file-driven and can be up while Supabase
+  is down, so this alone does not prove the database is reachable.
+- `GET /api/health?deep=1` additionally runs one lightweight query and
+  requires `Authorization: Bearer $HEALTH_TOKEN`. Set `HEALTH_TOKEN` in Vercel
+  (any long random string) to use it; without it, the deep check always
+  returns 401. It reports `db: ok|fail` plus the rate-limit and
+  catalog-fallback counters — never env values, hostnames, versions or raw
+  error text.
+- In Sentry: Alerts → Uptime Monitors → point it at the public
+  `https://<domain>/api/health` path (not `?deep=1`). The Developer plan
+  includes one uptime monitor; its one cron monitor is reserved for the
+  backup heartbeat, so don't also wire a cron monitor here.
+
 ## 6. Post-deploy checklist
 
 - [ ] `/admin/login` works and you can sign in.
@@ -321,6 +337,7 @@ publish, until that gap is closed.
 - [ ] Verify unsigned WhatsApp webhook requests return 401 and non-admin senders are ignored.
 - [ ] Confirm anonymous Supabase clients cannot insert leads or read draft-product assets.
 - [ ] Validate a product page at <https://validator.schema.org>.
+- [ ] `GET /api/health` returns `{ ok: true }`; Sentry Uptime Monitor is green.
 
 ## Caching / revalidation
 
