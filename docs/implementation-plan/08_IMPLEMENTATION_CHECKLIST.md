@@ -254,3 +254,15 @@ Planning only; nothing below has been started. Items are in dependency order wit
 - [ ] Weekly: review quota issue list (T2.7)
 - [ ] Monthly: Anthropic Console Usage, Cloudinary/Upstash/Sentry/Vercel dashboards (T2.3, T2.8)
 - [ ] Yearly: rotate age key and backup credentials; re-verify provider limits marked UNVERIFIED in `07`
+
+## Post-window follow-ups (raised 2026-10-12)
+- [ ] **Rotate the Postgres (Supabase) database password** — it was pasted into the wrong field during the
+  deploy window and must be treated as leaked. Rotate in Supabase → Settings → Database, then update
+  `DATABASE_URL` wherever it is held (Vercel env, vault, local shells). Do not reuse the exposed value.
+- [ ] **Regain Sentry access and set `NEXT_PUBLIC_SENTRY_DSN`** — the window ran blind on Sentry, so error
+  tracking and the T1.8 uptime monitor are both unavailable. Until the DSN is set, deploy verification
+  depends on reading Vercel runtime logs by hand.
+- [ ] **Fix `npm audit` findings before enabling branch protection** — protection that requires a passing
+  audit check would block every merge while the findings stand, so clear them first (T6.x).
+- [ ] **Point the QR code at `weaversclubsarees.com` directly** instead of routing through `qrto.org` —
+  removes a third-party redirect from the main acquisition path and the dependency on that service.
