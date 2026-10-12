@@ -331,43 +331,49 @@ hand, clean up before you debug.
 | Date | Artifact | Checks | Duration | Outcome |
 | --- | --- | --- | --- | --- |
 | 2026-10-12 | `pgdump-20261012T071625Z` (run 38216795013) | 15/16 | 4.2 s | Restore verified. Failed on the manifest ledger; T1.2 stays open. |
-| 2026-10-12 | `pgdump-20261012T080733Z` (run 38221650227) | 15/16 | 4.5 s | Re-drill after the owner granted `backup_reader` `select` on `supabase_migrations`. Restore verified again (new dump, sha `91873ab6150487f7`). **Ledger still `null`** — the grant did not take effect as intended; see below. T1.2 stays open. |
+| 2026-10-12 | `pgdump-20261012T080733Z` (run 38221650227) | 15/16 | 4.5 s | Re-drill after the owner granted `backup_reader` `select` on `supabase_migrations`. Restore verified again (new dump, sha `91873ab6150487f7`). **Ledger still `null`** — cause unknown at the time, because the workflow discarded the error. T1.2 stays open. |
+| 2026-10-12 | `pgdump-20261012T091457Z` (run 38228608546) | 15/16 | 4.8 s | First run with the ops repo's ledger diagnostics (`2c5a2f9`). Restore verified a third time (sha `23ed3c4dbb2129c9`). The log now names the cause: `schema_usage=false` and `ERROR: 42501: permission denied for schema supabase_migrations` — **the grants are not in place.** T1.2 stays open; the workflow side is done. |
 
-### Why the ledger is still null after the grant (2026-10-12)
+### Why the ledger is still null — measured, 2026-10-12
 
-The owner ran the two grants, a fresh backup was taken at `08:08:09Z`, and
-`ledger.sql` still failed — the job log shows only `migration ledger not
-readable by this role (recorded as null)`. The workflow captures the error
-into `ledger.err` and then `rm -f`s it, so **the actual Postgres error never
-reaches the log** and cannot be read after the fact.
+The ops workflow now says so itself. Run 38228608546 logged:
 
-What is already ruled out: the connection and role are fine (`manifest.json`
-records `current_role: backup_reader` and every other query in
-`manifest.sql` succeeded), and the archive is fine (restore passed again).
-So the failure is specifically on reaching
-`supabase_migrations.schema_migrations` as `backup_reader`.
+```
+ledger-grants: role=backup_reader schema=present schema_usage=false
+               table=present table_select=false columns=[version,statements,name]
+migration ledger not readable (recorded as null) — Postgres said:
+  ERROR:  42501: permission denied for schema supabase_migrations
+```
 
-Check which it is, in the Supabase SQL Editor — read-only, no changes:
+**The grants are not in place.** `backup_reader` has no `USAGE` on
+`supabase_migrations`, so the query never reaches the table. The schema and
+the table both exist and the table does have a `name` column, so the
+column-vintage theory is ruled out for this database — `ledger.sql` was
+nevertheless rewritten to stop naming columns, because that failure mode
+(`42703`) was indistinguishable from this one and would have cost another
+cycle to tell apart.
+
+Also ruled out: the connection and the role. `manifest.json` records
+`current_role: backup_reader` and every other manifest query succeeds, and
+the restore itself passed on all three drills.
+
+So the fix is still the two grants, and the thing to confirm is that they
+actually took. Likely reasons a run of them leaves `schema_usage=false`:
+the statements went to a different project, or the SQL Editor's role lacked
+grant option on a schema it does not own (`supabase_migrations` is created
+by the CLI/platform, not by the app's migrations). Re-run them and then
+**check before spending a workflow run** — read-only, no changes:
 
 ```sql
 select
   has_schema_privilege('backup_reader', 'supabase_migrations', 'usage') as schema_usage,
   has_table_privilege('backup_reader', 'supabase_migrations.schema_migrations', 'select') as table_select;
-
--- And confirm the table really is where ledger.sql looks for it:
-select table_schema, table_name
-  from information_schema.tables
- where table_name = 'schema_migrations';
 ```
 
-- Either flag `false` ⇒ the grant did not apply (wrong project, or the
-  editor's role lacked grant option on an object it does not own). Re-run
-  it and re-check the flags before spending another workflow run.
-- Both `true` ⇒ the grant is fine and `ledger.sql` is failing for another
-  reason, which cannot be diagnosed while the workflow discards
-  `ledger.err`. **Fix the workflow to print it** (it is a schema or
-  privilege error, not a secret) and re-run; one line in the ops repo's
-  `backup.yml` turns a blind failure into a named one. A plausible
-  candidate to check at the same time is the `name` column, which
-  `ledger.sql` selects and which does not exist on every vintage of the
-  Supabase CLI's tracking table.
+Both must come back `true`. If the grant itself errors in the editor, the
+editor's role cannot grant on that schema and the owner needs to run it as
+the schema's owner (check with
+`select nspowner::regrole from pg_namespace where nspname='supabase_migrations'`).
+
+Once both are `true`, the next backup captures the ledger and the drill
+should reach 16/16 without any further change — the workflow side is done.
