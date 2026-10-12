@@ -1,13 +1,28 @@
 # Applying `033_security_advisor_findings.sql`
 
-Plan for the four Supabase Security Advisor findings. The migration is written
-and committed; **nothing has been applied**. Written 2026-10-12.
+Plan for the four Supabase Security Advisor findings. Written 2026-10-12.
 
-## Blocked: `033` cannot be applied before the WhatsApp code ships
+**Update 2026-10-12 (deploy window):** applied in production. The 030/031-aware
+worker went out with `main` (`277a539`→`8429d40`, `Ready` 12:57:37Z), then
+`030`→`031`→`032`→`033` were applied in order 13:18:24–13:18:36Z via
+`scripts/run-migrations.mjs`. Ledger ends at `033` (33 rows, all four named).
+Verified live: `anon`/`authenticated` hold `SELECT` only on
+`storefront_hidden_slugs` and the view is no longer auto-updatable
+(`is_insertable_into`/`is_updatable` both `NO`); all eight `carts`/`profiles`
+policies use `(select auth.uid())`; `follow_product_availability` and
+`append_whatsapp_pending_media` have no `PUBLIC`/`anon` execute grant;
+`search_path=""` is set on all four trigger/helper functions; `backup_reader`
+still reads both `products` and the view. Gap audit: 0 products created
+between the push and the migrations, so no WhatsApp listing is missing a
+`product_source_texts` row from the unpatched-worker window described below.
+The section below is kept as the historical record of why the order mattered.
+
+## (Historical) Blocked: `033` cannot be applied before the WhatsApp code ships
 
 Checked 2026-10-12 against the live database and against `origin/main` (the
-code actually deployed). **Nothing was applied.** The reason is not `033`
-itself — `033` is safe — but the fact that it cannot be applied *alone*:
+code actually deployed, before the window above). At that time **nothing was
+applied.** The reason was not `033` itself — `033` is safe — but the fact
+that it could not be applied *alone*:
 
 1. **`030` is not backward-compatible with the deployed worker.** `030`
    introduces the review states (`whatsapp_batches.status = 'review'`,

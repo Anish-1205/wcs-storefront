@@ -12,7 +12,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 - [x] Backup destination = **private GitHub repo** (`Anish-1205/wcs-backup-ops`, no payment method on file, so overage blocks rather than bills) — R2 not taken
 - [x] Auth-data backup path: **B** — exclude `carts` + `profiles` row data, `public` schema only, no grants on `auth` (see `docs/runbooks/backup-scope.md`)
 - [ ] Release process for `main`: A PR-and-merge / B admin bypass / C promotion branch — before T1.12
-- [x] **Migrations `030`–`033` go out with their code, not before it** — checked 2026-10-12 and **not applied**. `030` is not backward-compatible with the deployed 029-era worker (contested media is built into a listing without a review, the batch never freezes, and its photos are later re-attached to the next listing), and `applyMigrations`' ledger preflight refuses a gap, so `032`/`033` cannot be applied without `030`/`031`. Reasoning and the live gate results: `docs/runbooks/security-advisor-033.md` — relevant to T1.10
+- [x] **Migrations `030`–`033` go out with their code, not before it** — deployed and applied together 2026-10-12: `main` (`277a539`→`8429d40`, the 030/031-aware worker) pushed and `Ready` at 12:57:37Z, then `030`→`031`→`032`→`033` applied in order 13:18:24–13:18:36Z via `scripts/run-migrations.mjs`. Ledger ends at `033` (33 rows); gap audit found 0 products created in the push→migration window. Reasoning and the live gate results: `docs/runbooks/security-advisor-033.md` — relevant to T1.10
 - [ ] Anthropic monthly spend limit value and dedicated workspace — T2.3
 - [ ] Idle/absolute admin session lengths — T3.5
 - [ ] Turnstile only if abuse is observed — T3.8
@@ -266,3 +266,16 @@ Planning only; nothing below has been started. Items are in dependency order wit
   audit check would block every merge while the findings stand, so clear them first (T6.x).
 - [ ] **Point the QR code at `weaversclubsarees.com` directly** instead of routing through `qrto.org` —
   removes a third-party redirect from the main acquisition path and the dependency on that service.
+
+## Post-window follow-ups (raised 2026-10-12, migration window)
+- [ ] **Add `HEALTH_TOKEN` (uppercase) to Vercel Production** — the dashboard still has only a stray
+  lowercase `health_token` that `src/app/api/health/route.ts` never reads, so `?deep=1` 401s. The window
+  deployed and migrated without it, by owner decision; delete the lowercase one when adding the real one.
+- [ ] **Homepage render is dynamic, not static, since this deploy** — every `GET /` hits
+  `catalog-visibility-mirror`'s Upstash read inside the render (`no-store fetch … /pipeline`), which Next
+  logs as `Page changed from static to dynamic at runtime /` on every request, and the mirror read itself
+  intermittently times out after 1500ms (`[catalog-visibility-mirror] Error: timed out after 1500ms`).
+  Functionally fine (fail-closed path holds, page still 200) but costs a function invocation per homepage
+  hit on Hobby. Seen in Vercel runtime logs at 12:57:37Z, 12:57:58Z, 13:00:59Z, 13:04:10Z, 13:06:07Z,
+  13:08:50Z, 13:10:15Z, 13:19:38Z (UTC) — present before and after the `030`–`033` migrations, so it is a
+  property of the new code, not the migration gap.
