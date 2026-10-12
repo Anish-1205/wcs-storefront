@@ -1,8 +1,14 @@
-# Backup scope (draft)
+# Backup scope
 
-Status: **draft** — decisions below are confirmed, nothing has been run
-against prod yet (see "Next: paste back to me"). This covers T1.1–T1.4 only;
-the backup workflow itself (T1.2 onward) is not started.
+Status: **scope settled, workflow written, nothing has run yet.** T1.1 is
+complete (role created, connectivity and dump size measured). T1.2's workflow
+exists in the ops repo and is unrun: the `age` keypair and the two repository
+secrets are the owner's to create, and **T1.2 is not done until T1.3 proves a
+real restore** — a green workflow run is not a backup.
+
+Ops repo: **`Anish-1205/wcs-backup-ops`** (private), local checkout at
+`C:\dev\wcs-backup-ops`. Its `README.md` is the operational reference;
+this file is the decision record.
 
 ## Decisions
 
@@ -16,8 +22,10 @@ the backup workflow itself (T1.2 onward) is not started.
    maintain).
 3. **Owner runs the SQL by hand** in the Supabase SQL Editor — no service
    role key or `DATABASE_URL` handed to a script for this phase.
-4. **1 backup/day** to start; revisit cadence once we've measured dump size
-   and egress against the private-repo and Supabase free-tier limits.
+4. **2 scheduled runs/day, ≈1 backup/day.** 02:00 and 14:00 UTC, with a
+   "skip if a backup newer than 20 h exists" guard. The second run is a
+   safety net for a dropped or delayed scheduled run (GitHub documents both),
+   not a second copy; it normally costs one billed minute and uploads nothing.
 5. **RPO 24h, RTO 4h (L0) / 1 working day (L1)** — confirmed. L0 = site/data
    serving is down or corrupted; L1 = degraded but serving.
 6. A **third copy of the `age` encryption key** is escrowed (in addition to
@@ -25,6 +33,21 @@ the backup workflow itself (T1.2 onward) is not started.
    key doesn't mean losing the ability to decrypt every backup.
 7. **Second admin on the ops repo** — so repo access survives the owner
    losing their own GitHub access.
+
+## Measured inputs (2026-10-12, production)
+
+| Fact | Value |
+| --- | --- |
+| Server version | PostgreSQL **17.6** (so `pg_dump` 17+ is required; `ubuntu-24.04` ships 16, hence PGDG in the workflow) |
+| Connection | session pooler, port **5432** (transaction mode, 6543, is not usable here) |
+| `backup_reader` | exists; `LOGIN`, `BYPASSRLS`, **not** superuser (read from `pg_roles`) |
+| `backup_reader` on `auth` | denied — measured in T1.1, so decision 1 holds in the database and not only in the flags |
+| `pg_dump -Fc` size | **507,589 bytes** |
+| Database size | 17,247,379 bytes |
+| Public base tables | 26 |
+| Largest row counts | `whatsapp_ingest_events` 752, `variant_images` 706, `whatsapp_inbox` 266, `product_variants` 110, `collection_products` 100, `products` 86 |
+| Rows excluded by decision 1 | `carts` 3, `profiles` 1 |
+| Migration ledger at measurement | 29 rows, `001`–`029`, max `029` (`013`/`014`/`015` have `name = null`: repaired in by hand, harmless) |
 
 ## Include / exclude matrix
 
@@ -45,23 +68,55 @@ the backup workflow itself (T1.2 onward) is not started.
 | `auth.*` (Supabase Auth) | **excluded entirely** | decision 1 — no privileged grants on `auth`, no auth data leaves Supabase in this phase |
 | `storage.*` / Cloudinary-hosted media | **excluded** | out of scope for this runbook; media lives in Cloudinary + `public/media` in git, not Postgres |
 
-## Open questions carried into T1.2 (not decided yet)
+Rows in `whatsapp_settings`, `product_source_texts`, `variant_hidden_media`
+and `product_media_labels` only exist once migrations `030`/`031` are applied;
+until then those tables are simply absent from the dump, which is correct
+rather than a gap.
 
-- Exact `pg_dump` flag set (format: plain SQL vs. custom `-Fc`; compression).
-- Where in the private ops repo backups land (path/branch convention) and
-  the `age` recipient/key rotation procedure.
-- Retention (how many daily backups are kept before pruning).
-- Who/what checks a backup actually restores cleanly (T1.3+ territory).
+## Settled in T1.2 (was "open questions")
 
-## Next: paste back to me
+- **`pg_dump` flag set:**
+  `--format=custom --compress=9 --no-owner --schema=public
+  --exclude-table-data=public.carts --exclude-table-data=public.profiles`.
+  Custom format so `pg_restore -l` can verify the archive on the runner and
+  so a partial restore is possible later.
+- **`--no-privileges` is never used.** The `grant`/`revoke` statements in
+  `supabase/migrations` *are* the security posture — `021`/`032`/`033` exist
+  to decide exactly who may read and write `storefront_hidden_slugs`. A dump
+  taken without privileges restores a database that hands `anon` more than
+  production does. `--no-owner` is used, so the archive does not require a
+  `postgres` role to exist.
+- **Where backups land:** GitHub Actions **artifacts** in the private ops
+  repo, one `*.age` per run, named `pgdump-<UTC timestamp>`. Not a branch and
+  not a commit: artifacts expire on their own, so retention needs no pruning
+  job and a backup can never be rewritten by a force-push.
+- **Retention:** 14 days for Mon–Sat, 56 days for the Sunday copy ⇒ 12 + 8 =
+  **20 artifacts** in steady state ⇒ ≈ 11 MB, **2.2 %** of the 500 MB
+  account-wide quota. The 400 MB (80 %) alert line is only reached at ≈ 20 MB
+  per copy, ~38× today's dump. Full arithmetic in the ops repo's README.
+- **Encryption:** `age`, single recipient, public key only in CI
+  (`AGE_PUBLIC_KEY`). Compromising the ops repo lets an attacker write a
+  backup nobody can read, not read one. Key custody and rotation are T1.4.
+- **Who checks a backup restores:** T1.3. The workflow's own checks
+  (`pg_restore -l`, TOC entry count, `carts`/`profiles` row data absent,
+  catalogue table data present, `age` header on the upload) prove the archive
+  is well-formed, not that it restores.
 
-Run the SQL pack below in the Supabase SQL Editor, **read-only blocks
-first**. Paste back:
+## Still open (deliberately, for T1.3/T1.4/T1.11)
 
-- The full result of block **a** (roles, extensions, version, DB size,
-  migration ledger).
-- The full result of block **b** (grants on `storefront_hidden_slugs`).
-- The full result of block **c** (which 030/031 objects exist).
+- The restore drill itself, recovery levels and timings — **T1.3**. Until it
+  passes, T1.2 stays open.
+- `age` key generation, three-way escrow and rotation — **T1.4**.
+- Backup-freshness watchdog and failure alerting — **T1.11**. The 80 %
+  storage alert is a warning, not a cap; the absence of a payment method on
+  the GitHub account is the cap.
+- Whether to trim regenerable high-churn rows (old `whatsapp_ingest_events` /
+  `whatsapp_inbox`) from the dump. Not needed at 0.5 MB; revisit if S
+  approaches 20 MB.
 
-Then tell me whether you want to run block **d** (creates `backup_reader`)
-now or hold it — it's a write, so I won't assume.
+## Owner-only steps
+
+Generating the `age` keypair and setting the two repository secrets are not
+done for you and must not be: the private key must never pass through a tool
+that logs. The exact commands are in the T1.2 report and in the ops repo's
+README.

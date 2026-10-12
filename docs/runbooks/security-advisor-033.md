@@ -3,6 +3,73 @@
 Plan for the four Supabase Security Advisor findings. The migration is written
 and committed; **nothing has been applied**. Written 2026-10-12.
 
+## Blocked: `033` cannot be applied before the WhatsApp code ships
+
+Checked 2026-10-12 against the live database and against `origin/main` (the
+code actually deployed). **Nothing was applied.** The reason is not `033`
+itself — `033` is safe — but the fact that it cannot be applied *alone*:
+
+1. **`030` is not backward-compatible with the deployed worker.** `030`
+   introduces the review states (`whatsapp_batches.status = 'review'`,
+   `review_state = 'needed'`) and relies on the worker calling
+   `resolve_whatsapp_review` before the listing is built. `whatsapp_message_blocked`
+   deliberately *unblocks* a finalize whose batch is awaiting review once the
+   forward has settled, so the 029-era worker on `origin/main` — which has no
+   `resolve_whatsapp_review` call and ignores the `review` key in
+   `whatsapp_take`'s result — claims it and builds the listing immediately.
+   Consequences, in order of severity:
+   - The "nothing is assigned on a guess" guarantee is not in force: contested
+     and `earlier_burst` media is merged into a listing without the sender ever
+     being asked.
+   - The batch is **never frozen**. Step 5 of `whatsapp_regroup` only visits
+     descriptions whose inbox row is not `done`/`dead`, so a batch whose
+     finalize has already run keeps `frozen_at is null` and
+     `review_state = 'needed'` for ever, and `whatsapp_sweep` keeps returning
+     that sender on every tick.
+   - Worse, that batch's media stays eligible for regrouping (`decided is
+     null`, batch unfrozen). On the next pass `whatsapp_claimable` is false for
+     its own finished description, so the burst falls through to the pool —
+     and is then attached to the **next** description's listing, or set aside
+     as "Unassigned WhatsApp media" after 30 minutes. Photos that are already
+     in one product reappear in a second one.
+   - This is not an edge case. Two photo forwards more than `burst_seconds`
+     apart followed by one description makes the *first* burst
+     `earlier_burst`/`uncertain` (the later burst's own description is not
+     `last_before` it), which is ordinary traffic.
+2. **A partial apply is not available.** `applyMigrations`
+   (`src/lib/db-migrations.mjs`, shared by `/admin/database` and
+   `scripts/run-migrations.mjs`) refuses to run at all when the ledger "has a
+   gap before an applied migration". Recording `032`/`033` while `030`/`031`
+   stay pending creates exactly that gap and **permanently disables both apply
+   paths** until it is filled. So the ledger-consistent methods apply
+   `030 → 031 → 032 → 033` as a set, or nothing.
+
+`031` is backward-compatible on its own (new tables with no public policy, and
+`whatsapp_after_product` keeps its signature and only acts on `p_plan->'hidden'`,
+which the deployed code never sends) but it depends on `030`, so it moves with it.
+
+**The fix is ordering, not a code change:** deploy the `030`/`031` worker code
+first — or in the same change window — and then apply all four in numeric
+order. Re-run the gate afterwards; nothing else about this migration changes.
+
+### Verified while gating (live, read-only)
+
+| Check | Result |
+| --- | --- |
+| Ledger | 29 rows, `001`–`029` contiguous, max `029`; `030`–`033` all pending |
+| `032` recorded? | **No** — but its effect is already present (see below), so applying the file is a no-op that only records it |
+| `033`'s dependencies | `021` view present (`security_invoker=off`, `select slug from products where status <> 'published'`); `022` trigger `product_availability_lifecycle` attached to `products` and enabled. `033` touches nothing from `030`/`031` |
+| View privileges | `anon` `SELECT`, `authenticated` `SELECT` only — `032` is in effect |
+| Finding 2 still open | all eight `carts`/`profiles` policies use bare `auth.uid() = user_id` |
+| Finding 3 still open | `set_updated_at`, `carts_touch_updated_at`, `profiles_touch_updated_at`, `append_whatsapp_pending_media` all have `proconfig = null` |
+| Finding 4 still open | `follow_product_availability` ACL includes `=X` (PUBLIC execute) |
+| `030`/`031` objects | none present, confirming both are unapplied |
+| Callers of the functions `033` revokes | `append_whatsapp_pending_media`: none on `origin/main`. `follow_product_availability`: none (trigger only) |
+| Reader of the view | `src/lib/storefront-catalog.ts` does an unfiltered `.select("slug")`, so `distinct` and `security_barrier` cannot affect it |
+
+So `033` on its own passes the backward-compatibility gate; it is held only by
+the apply mechanics above.
+
 ## Apply order
 
 Production is missing `030`, `031`, `032` and `033`. Apply in numeric order —
@@ -10,9 +77,16 @@ Production is missing `030`, `031`, `032` and `033`. Apply in numeric order —
 transaction and records the version in `supabase_migrations.schema_migrations`),
 and `033` is the only one of the four that is purely privileges and metadata.
 
+Use `/admin/database` (or `scripts/run-migrations.mjs`, the same core logic)
+rather than pasting into the SQL Editor: it writes
+`supabase_migrations.schema_migrations`, which is the table the Supabase CLI
+itself reads, so `supabase migration list` stays truthful and no `migration
+repair` is needed afterwards. `DATABASE_URL` must be the **session-mode**
+pooled string (port 5432) — DDL in a transaction needs session mode.
+
 `033` depends on `021` (the view) and `022` (the availability trigger). It is
-independent of `030`/`031`, so it can go first if those need to wait — but take
-them in file order unless there is a reason not to.
+independent of `030`/`031` in SQL terms, but see the blocker above: the ledger
+preflight means it cannot be applied without them.
 
 Every statement in the file is transactional DDL, so a failure anywhere rolls
 the whole file back and leaves the schema exactly as it was. There is no data

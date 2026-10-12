@@ -9,9 +9,10 @@ Planning only; nothing below has been started. Items are in dependency order wit
 **Backup completion rule:** no backup item is "done" until a real restore succeeded. A green workflow run alone does not count.
 
 **Decisions to record before the related task starts**
-- [ ] Backup destination = private GitHub repo (recommended) vs R2 (needs a payment method) — before T1.2
-- [ ] Auth-data backup path: A least-privilege grants / B exclude carts+profiles data / C privileged credential (opt-in) — result of T1.1
+- [x] Backup destination = **private GitHub repo** (`Anish-1205/wcs-backup-ops`, no payment method on file, so overage blocks rather than bills) — R2 not taken
+- [x] Auth-data backup path: **B** — exclude `carts` + `profiles` row data, `public` schema only, no grants on `auth` (see `docs/runbooks/backup-scope.md`)
 - [ ] Release process for `main`: A PR-and-merge / B admin bypass / C promotion branch — before T1.12
+- [x] **Migrations `030`–`033` go out with their code, not before it** — checked 2026-10-12 and **not applied**. `030` is not backward-compatible with the deployed 029-era worker (contested media is built into a listing without a review, the batch never freezes, and its photos are later re-attached to the next listing), and `applyMigrations`' ledger preflight refuses a gap, so `032`/`033` cannot be applied without `030`/`031`. Reasoning and the live gate results: `docs/runbooks/security-advisor-033.md` — relevant to T1.10
 - [ ] Anthropic monthly spend limit value and dedicated workspace — T2.3
 - [ ] Idle/absolute admin session lengths — T3.5
 - [ ] Turnstile only if abuse is observed — T3.8
@@ -36,9 +37,9 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · S · FREE WITH LIMITS · depends on: none (richer after T1.6)
 - [x] **T1.12** — Main-branch protection and deployment gating (GitHub Free + Vercel Hobby) (docs done, settings pending owner; Option B — protection on, owner bypass allowed, required check: `Lint, types, unit tests, build`)  
   P0 · S · FREE · depends on: none (should precede T6.5 restructuring)
-- [ ] **T1.1** — Backup scope discovery, backup role and connectivity check  
+- [x] **T1.1** — Backup scope discovery, backup role and connectivity check (`backup_reader` created with `SELECT` on `public` + `BYPASSRLS`, `auth` denied; PostgreSQL 17.6 over the session pooler (5432); `pg_dump -Fc` measured at 507,589 B)  
   P0 · M · FREE · depends on: none
-- [ ] **T1.2** — Scheduled encrypted backup workflow (private repo)  
+- [ ] **T1.2** — Scheduled encrypted backup workflow (private repo) — *workflow written and committed in `Anish-1205/wcs-backup-ops`, repo private with read-only workflow permissions, GitHub-owned-only + SHA-pinning-required actions; **unrun**: owner must generate the `age` keypair and set `AGE_PUBLIC_KEY` + `BACKUP_DATABASE_URL`, then run the self-test. Retention 14 d daily / 56 d Sunday ⇒ 20 artifacts ≈ 11 MB ≈ 2.2 % of the 500 MB quota. Stays open until T1.3.*  
   P0 · M · FREE WITH LIMITS · depends on: T1.1
 - [ ] **T1.3** — Restore drill, recovery levels and runbook (completion gate for T1.2)  
   P0 · M · FREE · depends on: T1.2
