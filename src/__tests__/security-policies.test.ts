@@ -140,8 +140,18 @@ describe("effective RLS state across all migrations", () => {
       const surviving = [...policies.entries()].filter(([key]) => key.startsWith(`${table}::`));
 
       expect(surviving).toHaveLength(4);
+      // One policy per command, and none of them naming a role: the same four
+      // doors, open to a request only for its own `user_id` row.
+      expect(surviving.map(([, body]) => body.match(/for\s+(select|insert|update|delete)/i)![1].toLowerCase()).sort())
+        .toEqual(["delete", "insert", "select", "update"]);
       for (const [key, body] of surviving) {
-        expect(body, `${key} is not owner-scoped`).toContain("auth.uid() = user_id");
+        expect(body, `${key} is scoped to a role`).not.toMatch(/\bto\s+(anon|authenticated|public)\b/i);
+        // 033 wrapped the call in a scalar subquery so the planner evaluates it
+        // once per statement as an InitPlan instead of once per candidate row.
+        // The comparison — and so who the policy lets in, including anon, for
+        // whom auth.uid() is null and the row is filtered out either way — is
+        // unchanged.
+        expect(body, `${key} is not owner-scoped`).toContain("(select auth.uid()) = user_id");
       }
     }
   });

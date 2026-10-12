@@ -1,8 +1,8 @@
 # 04 — Database Migration Plan
 
-**Numbering note (2026-10-08):** `032` is taken by the security hotfix `032_hidden_slugs_view_select_only.sql` (write privileges revoked on the `storefront_hidden_slugs` view), so every provisional number below was shifted up by one. Latest applied-or-written migration is `032`; production is still missing `030`, `031` and `032`.
+**Numbering note (2026-10-12):** `032` is taken by the security hotfix `032_hidden_slugs_view_select_only.sql` (write privileges revoked on the `storefront_hidden_slugs` view) and `033` by `033_security_advisor_findings.sql` (Supabase Security Advisor: the definer view, `(select auth.uid())` in the carts/profiles policies, fixed `search_path` on four functions, execute privileges on `follow_product_availability`). Every provisional number below has been shifted up twice in total. Latest applied-or-written migration is `033`; production is still missing `030`, `031`, `032` and `033`.
 
-**All SQL below is an illustrative example only. Nothing has been executed, no migration file has been created.** Numbers are provisional (latest existing: `031_hidden_media.sql`). Each real migration must be re-checked against the live schema, written as a new numbered file (never edit an applied one), applied via the D2 procedure in `03`, and followed by regenerating `src/lib/supabase/types.ts` (T6.1).
+**All SQL below is an illustrative example only. Nothing has been executed, no migration file has been created.** Numbers are provisional (latest existing: `033_security_advisor_findings.sql`). Each real migration must be re-checked against the live schema, written as a new numbered file (never edit an applied one), applied via the D2 procedure in `03`, and followed by regenerating `src/lib/supabase/types.ts` (T6.1).
 
 ## 0. Global rules
 
@@ -44,7 +44,7 @@ Recovery levels: **L0** database-only (restore into a new project after the defa
 Emergency rollback (R2): `drop owned by backup_reader; drop role backup_reader;`. Forward recovery: rotate the password and re-run the workflow.
 Check: `select rolname, rolcanlogin from pg_roles where rolname = 'backup_reader';`, a deliberate INSERT fails, and `pg_dump` of the granted objects succeeds.
 
-## 2. `ai_usage` (T2.1) — provisional `033_ai_usage.sql`
+## 2. `ai_usage` (T2.1) — provisional `034_ai_usage.sql`
 
 ```sql
 -- EXAMPLE ONLY
@@ -97,7 +97,7 @@ Notes: `day` uses the DB's `current_date` (UTC on Supabase); caps reset at 00:00
 Emergency rollback (R2 — export first; not the default): `drop function public.ai_try_reserve(text,integer); drop table public.ai_usage_daily, public.ai_settings;` (export first if rows matter).
 Check: `select count(*) from public.ai_usage_daily;` and a concurrent-reserve test on local PG (never above cap).
 
-## 3. `admin_audit_log` (T3.1) — provisional `034_admin_audit_log.sql`
+## 3. `admin_audit_log` (T3.1) — provisional `035_admin_audit_log.sql`
 
 ```sql
 -- EXAMPLE ONLY
@@ -122,7 +122,7 @@ Retention: 12 months (proposed); prune weekly. Backups contain this table — ac
 Emergency rollback (R2 — export first; not the default): export rows, then `drop table public.admin_audit_log;`.
 Check: anon key `select` returns permission error; helper insert succeeds with service role.
 
-## 4. Inquiry workflow (T4.3, T4.9) — provisional `035_inquiry_workflow.sql`
+## 4. Inquiry workflow (T4.3, T4.9) — provisional `036_inquiry_workflow.sql`
 
 ```sql
 -- EXAMPLE ONLY
@@ -167,7 +167,7 @@ alter table public.inquiries drop column status, drop column status_changed_at, 
 (Export `status`/`admin_notes` first — they are admin-authored data.)
 Check: `select status, count(*) from inquiries group by 1;` → all `new`.
 
-## 5. Admin list indexes (T4.7) — provisional `036_admin_list_indexes.sql`
+## 5. Admin list indexes (T4.7) — provisional `037_admin_list_indexes.sql`
 
 ```sql
 -- EXAMPLE ONLY (confirm with EXPLAIN on realistic data before adding each)
@@ -204,7 +204,7 @@ After each migration: `supabase db reset` locally → `supabase gen types typesc
 | Project B import | **Mandatory + restore-proven (T1.3 drill within the last 30 days)** | Yes |
 | Project B cutover | **Mandatory** | Yes |
 
-## 8. Project B — product data consolidation (T7.1–T7.8), provisional `037–039`
+## 8. Project B — product data consolidation (T7.1–T7.8), provisional `038–040`
 
 Principles: Postgres becomes authoritative; the file catalogue becomes a seed and a build-time snapshot input; zero URL loss; every stage reversible until the final retirement step.
 

@@ -94,6 +94,14 @@ const ok = (data: unknown) => ({ data, error: null });
 const hiddenRows = (...slugs: string[]) => ok(slugs.map((slug) => ({ slug })));
 /** What supabase-js resolves with when PostgREST rejects the query. */
 const postgrestError = { data: null, error: { message: "relation does not exist", code: "42P01" } };
+/** What the view answers if its select grant to anon is ever taken away —
+ *  the failure mode of "read it with the service role instead", rejected in
+ *  migration 033. It must behave like any other failed read, never like an
+ *  empty one. */
+const permissionDenied = {
+  data: null,
+  error: { message: "permission denied for view storefront_hidden_slugs", code: "42501" },
+};
 /** A connection that is accepted and then never answered. */
 const hangs = () => new Promise(() => {});
 const unreachable = () => Promise.reject(new TypeError("fetch failed"));
@@ -187,6 +195,7 @@ describe("a hidden product stays hidden when the read fails", () => {
   const failures: [string, () => void][] = [
     ["Supabase is unreachable", () => mocks.hidden.mockImplementation(unreachable)],
     ["PostgREST rejects the query", () => mocks.hidden.mockResolvedValue(postgrestError)],
+    ["the view's select privilege is gone", () => mocks.hidden.mockResolvedValue(permissionDenied)],
   ];
 
   it.each(failures)("when %s", async (_name, fail) => {
