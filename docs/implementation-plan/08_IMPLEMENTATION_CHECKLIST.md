@@ -37,11 +37,11 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · S · FREE WITH LIMITS · depends on: none (richer after T1.6)
 - [x] **T1.12** — Main-branch protection and deployment gating (GitHub Free + Vercel Hobby) (docs done, settings pending owner; Option B — protection on, owner bypass allowed, required check: `Lint, types, unit tests, build`)  
   P0 · S · FREE · depends on: none (should precede T6.5 restructuring)
-- [x] **T1.1** — Backup scope discovery, backup role and connectivity check (`backup_reader` created with `SELECT` on `public` + `BYPASSRLS`, `auth` denied; PostgreSQL 17.6 over the session pooler (5432); `pg_dump -Fc` measured at 507,589 B)  
+- [x] **T1.1** — Backup scope discovery, backup role and connectivity check (`backup_reader` created with `SELECT` on `public` + `BYPASSRLS`, `auth` denied; PostgreSQL 17.6 over the session pooler (5432); `pg_dump -Fc` measured at 507,589 B). *T1.3 found one scope miss: `backup_reader` has no grant on `supabase_migrations`, so scope item 5 (the migration ledger) is not actually captured — one `grant select` fixes it.*  
   P0 · M · FREE · depends on: none
-- [ ] **T1.2** — Scheduled encrypted backup workflow (private repo) — *workflow written and committed in `Anish-1205/wcs-backup-ops`, repo private with read-only workflow permissions, GitHub-owned-only + SHA-pinning-required actions; **unrun**: owner must generate the `age` keypair and set `AGE_PUBLIC_KEY` + `BACKUP_DATABASE_URL`, then run the self-test. Retention 14 d daily / 56 d Sunday ⇒ 20 artifacts ≈ 11 MB ≈ 2.2 % of the 500 MB quota. Stays open until T1.3.*  
+- [ ] **T1.2** — Scheduled encrypted backup workflow (private repo) — *workflow written, run, and **proven to restore** (T1.3 drill, 2026-10-12, artifact `pgdump-20261012T071625Z`: 26/26 tables, 16/16 policies, RLS intact, row counts match, 4.2 s). Measured artifact size 543,048 B — within the 0.55 MB budget, so retention (14 d daily / 56 d Sunday ⇒ 20 artifacts ≈ 11 MB ≈ 2.2 % of the 500 MB quota) stands. **Open on one item:** `manifest.json` records `"ledger": null`, so a restored database cannot be matched to a migration version and `/admin/database` refuses to run (fails closed). Owner: grant `backup_reader` `select` on `supabase_migrations.schema_migrations`, re-run the workflow, re-run the drill.*  
   P0 · M · FREE WITH LIMITS · depends on: T1.1
-- [ ] **T1.3** — Restore drill, recovery levels and runbook (completion gate for T1.2)  
+- [x] **T1.3** — Restore drill, recovery levels and runbook (completion gate for T1.2) — *`docs/runbooks/backup-restore.md` + `scripts/restore-drill.mjs` (manifest-driven, local-only, shreds the plaintext even on failure). Drill passed 15/16: the restore itself is verified; the one failure is T1.2's ledger gap, so T1.2 stays open. Measured RTO: 4.2 s for fetch → restore → verify; estimated L0 ≈ 1 h–1 h 50 m (target 4 h), L1 ≈ 2 h 30 m–4 h plus DNS (target 1 working day).*  
   P0 · M · FREE · depends on: T1.2
 - [ ] **T1.4** — Key custody, credential-loss recovery and secret rotation runbook  
   P0 · S · FREE · depends on: T1.2
@@ -54,7 +54,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 **Phase 1 checkpoint**
 - [ ] Visibility fail-open fixed and covered by a regression test (T1.5/T1.6); hidden products stay hidden in a simulated outage
-- [ ] **A real restore from an actual encrypted artifact succeeded (T1.3)** — T1.2 is not complete before this
+- [x] **A real restore from an actual encrypted artifact succeeded (T1.3)** — 2026-10-12, `pgdump-20261012T071625Z` into a throwaway local Postgres; see `docs/runbooks/backup-restore.md`. T1.2 still open on the manifest ledger.
 - [ ] Encryption/decryption self-test passed; both age-key copies verified; no unencrypted file ever uploaded
 - [ ] Backup failure, stale-backup and storage ≥ 80 % alerts each fired once in a test (T1.11)
 - [ ] Limiter outage no longer returns 500 on public forms

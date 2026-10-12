@@ -1,10 +1,15 @@
 # Backup scope
 
-Status: **scope settled, workflow written, nothing has run yet.** T1.1 is
-complete (role created, connectivity and dump size measured). T1.2's workflow
-exists in the ops repo and is unrun: the `age` keypair and the two repository
-secrets are the owner's to create, and **T1.2 is not done until T1.3 proves a
-real restore** — a green workflow run is not a backup.
+Status: **scope settled, workflow run, restore proven — T1.2 open on one
+item.** T1.1 is complete (role created, connectivity and dump size measured)
+and the T1.3 drill restored a real artifact on 2026-10-12. What is still
+missing is the **migration ledger**: scope item 5 below says the manifest
+records `supabase_migrations.schema_migrations`, and it does not, because
+`backup_reader` has no grant there. See
+[backup-restore.md](backup-restore.md#the-ledger-gap) for the measured
+consequence and the one-statement fix. Until that lands and the drill is
+re-run, **T1.2 stays open** — a green workflow run is not a backup, and a
+restore you cannot match to a schema version is not a recovery.
 
 Ops repo: **`Anish-1205/wcs-backup-ops`** (private), local checkout at
 `C:\dev\wcs-backup-ops`. Its `README.md` is the operational reference;
@@ -102,10 +107,40 @@ rather than a gap.
   catalogue table data present, `age` header on the upload) prove the archive
   is well-formed, not that it restores.
 
-## Still open (deliberately, for T1.3/T1.4/T1.11)
+## Measured by the T1.3 drill (2026-10-12)
 
-- The restore drill itself, recovery levels and timings — **T1.3**. Until it
-  passes, T1.2 stays open.
+Artifact `pgdump-20261012T071625Z` (run 38216795013), restored into the
+throwaway local cluster. Full table in
+[backup-restore.md](backup-restore.md).
+
+| Fact | Value |
+| --- | --- |
+| Uploaded `.age` artifact | **543,048 B** — against the 0.55 MB budget, so the retention arithmetic above holds unchanged |
+| `bundle.tar` / dump / manifest / toc | 542,720 / 503,823 / 9,561 / 25,048 B |
+| Restore of the whole archive | **0.5 s**; fetch → verify → restore → sanity checks → cleanup **4.2 s** |
+| Restored objects | 26 tables, 2 views, 34 functions, 75 indexes, 28 FKs, 13 triggers, 16 policies, RLS on all 26 |
+| Row counts | match the manifest exactly; `carts`/`profiles` empty as decision 1 intends |
+| `pg_restore` exit code | **1**, with exactly one ignored error — `schema "public" already exists`. Unavoidable on any target that already has a public schema; judge the stderr, not the exit code |
+| Roles the archive's ACLs need | `anon`, `authenticated`, `service_role`, `postgres`, `supabase_admin`, **`backup_reader`** — the last one does not exist on a fresh Supabase project and must be created before the restore |
+| Also needed on a non-Supabase target | an `auth` shim (`auth.users`, `auth.uid()`): 10 policies call `auth.uid()` and `carts`/`profiles` have FKs to `auth.users`, none of which `--schema=public` carries |
+| `anon` on restored tables | `SELECT` (in fact `ALL`) on 22 of 26 tables — **the grants are broad and RLS is the only control.** `anon` reads 0 rows from `inquiries` because RLS has no `SELECT` policy there, not because the grant is missing |
+| `storefront_hidden_slugs` | `anon`/`authenticated` hold `SELECT` + `MAINTAIN` only — **no write privilege**, measured on the restored copy of production. `security_invoker` is `off`, so reads do bypass RLS, which is the intent |
+| Migration level of the archive | `029`. The `030`/`031` tables are absent, and the ledger itself is not captured (below) |
+
+## Still open
+
+- **The migration ledger is not captured** — the one blocker on T1.2.
+  `scripts/ledger.sql` in the ops repo is allowed to fail and does, because
+  `supabase_migrations` is outside `backup_reader`'s `SELECT` grant on
+  `public`, and the dump is `--schema=public` so the table is not in the
+  archive either. Measured consequence: a restored database has no
+  `supabase_migrations` schema, so `applyMigrations()`
+  (`src/lib/db-migrations.mjs`) refuses with "existing public tables without
+  a migration ledger" — correctly fail-closed, but it means hand archaeology
+  during an outage. Owner fix, one statement, no migration:
+  `grant usage on schema supabase_migrations to backup_reader; grant select
+  on supabase_migrations.schema_migrations to backup_reader;` then re-run the
+  workflow and the drill.
 - `age` key generation, three-way escrow and rotation — **T1.4**.
 - Backup-freshness watchdog and failure alerting — **T1.11**. The 80 %
   storage alert is a warning, not a cap; the absence of a payment method on
@@ -116,7 +151,24 @@ rather than a gap.
 
 ## Owner-only steps
 
-Generating the `age` keypair and setting the two repository secrets are not
-done for you and must not be: the private key must never pass through a tool
-that logs. The exact commands are in the T1.2 report and in the ops repo's
-README.
+Generating the `age` keypair and setting the two repository secrets were
+not done for you and must not be: the private key must never pass through a
+tool that logs. Both are **done** as of 2026-10-12 — the keypair exists, the
+secrets are set, the workflow has produced a real artifact and T1.3 decrypted
+and restored it. The exact commands are in the T1.2 report and in the ops
+repo's README.
+
+Still owner-only, and the last thing holding T1.2 open:
+
+```sql
+-- Supabase SQL Editor, production. A grant to the backup role; not a
+-- migration and not an app schema change.
+grant usage on schema supabase_migrations to backup_reader;
+grant select on supabase_migrations.schema_migrations to backup_reader;
+```
+
+Then `gh workflow run backup.yml -R Anish-1205/wcs-backup-ops -f
+mode=backup -f force=true` and re-run the drill
+(`node scripts/restore-drill.mjs --run <new-run-id> --key …`). The ledger
+check should report a version count and `max_version`; at that point T1.2 is
+complete.
