@@ -331,3 +331,43 @@ hand, clean up before you debug.
 | Date | Artifact | Checks | Duration | Outcome |
 | --- | --- | --- | --- | --- |
 | 2026-10-12 | `pgdump-20261012T071625Z` (run 38216795013) | 15/16 | 4.2 s | Restore verified. Failed on the manifest ledger; T1.2 stays open. |
+| 2026-10-12 | `pgdump-20261012T080733Z` (run 38221650227) | 15/16 | 4.5 s | Re-drill after the owner granted `backup_reader` `select` on `supabase_migrations`. Restore verified again (new dump, sha `91873ab6150487f7`). **Ledger still `null`** — the grant did not take effect as intended; see below. T1.2 stays open. |
+
+### Why the ledger is still null after the grant (2026-10-12)
+
+The owner ran the two grants, a fresh backup was taken at `08:08:09Z`, and
+`ledger.sql` still failed — the job log shows only `migration ledger not
+readable by this role (recorded as null)`. The workflow captures the error
+into `ledger.err` and then `rm -f`s it, so **the actual Postgres error never
+reaches the log** and cannot be read after the fact.
+
+What is already ruled out: the connection and role are fine (`manifest.json`
+records `current_role: backup_reader` and every other query in
+`manifest.sql` succeeded), and the archive is fine (restore passed again).
+So the failure is specifically on reaching
+`supabase_migrations.schema_migrations` as `backup_reader`.
+
+Check which it is, in the Supabase SQL Editor — read-only, no changes:
+
+```sql
+select
+  has_schema_privilege('backup_reader', 'supabase_migrations', 'usage') as schema_usage,
+  has_table_privilege('backup_reader', 'supabase_migrations.schema_migrations', 'select') as table_select;
+
+-- And confirm the table really is where ledger.sql looks for it:
+select table_schema, table_name
+  from information_schema.tables
+ where table_name = 'schema_migrations';
+```
+
+- Either flag `false` ⇒ the grant did not apply (wrong project, or the
+  editor's role lacked grant option on an object it does not own). Re-run
+  it and re-check the flags before spending another workflow run.
+- Both `true` ⇒ the grant is fine and `ledger.sql` is failing for another
+  reason, which cannot be diagnosed while the workflow discards
+  `ledger.err`. **Fix the workflow to print it** (it is a schema or
+  privilege error, not a secret) and re-run; one line in the ops repo's
+  `backup.yml` turns a blind failure into a named one. A plausible
+  candidate to check at the same time is the `name` column, which
+  `ledger.sql` selects and which does not exist on every vintage of the
+  Supabase CLI's tracking table.
