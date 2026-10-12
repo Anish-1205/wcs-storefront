@@ -1,15 +1,17 @@
 # Backup scope
 
-Status: **scope settled, workflow run, restore proven — T1.2 open on one
-item.** T1.1 is complete (role created, connectivity and dump size measured)
-and the T1.3 drill restored a real artifact on 2026-10-12. What is still
-missing is the **migration ledger**: scope item 5 below says the manifest
-records `supabase_migrations.schema_migrations`, and it does not, because
-`backup_reader` has no grant there. See
-[backup-restore.md](backup-restore.md#the-ledger-gap) for the measured
-consequence and the one-statement fix. Until that lands and the drill is
-re-run, **T1.2 stays open** — a green workflow run is not a backup, and a
-restore you cannot match to a schema version is not a recovery.
+Status: **complete.** T1.1 and T1.2 are both done as of 2026-10-12: the
+scope is settled, `backup_reader` exists, the workflow runs and produces
+encrypted artifacts, and the T1.3 drill restored a real one and passed
+**16/16** — including the migration ledger, which the manifest now records
+(29 versions, max `029`). A green workflow run was never the bar; a restored
+database was.
+
+The one item that held T1.2 open — `backup_reader` having no grant on
+`supabase_migrations`, so a restored database could not be matched to a
+schema version — is fixed. See
+[backup-restore.md](backup-restore.md#the-ledger-gap) for the history and
+the diagnostics the workflow now prints on every run.
 
 Ops repo: **`Anish-1205/wcs-backup-ops`** (private), local checkout at
 `C:\dev\wcs-backup-ops`. Its `README.md` is the operational reference;
@@ -129,19 +131,21 @@ throwaway local cluster. Full table in
 
 ## Still open
 
-- **The migration ledger is not captured** — the one blocker on T1.2.
-  `scripts/ledger.sql` in the ops repo is allowed to fail and does, because
-  `supabase_migrations` is outside `backup_reader`'s `SELECT` grant on
-  `public`, and the dump is `--schema=public` so the table is not in the
-  archive either. Measured consequence: a restored database has no
-  `supabase_migrations` schema, so `applyMigrations()`
-  (`src/lib/db-migrations.mjs`) refuses with "existing public tables without
-  a migration ledger" — correctly fail-closed, but it means hand archaeology
-  during an outage. Owner fix, one statement, no migration:
-  `grant usage on schema supabase_migrations to backup_reader; grant select
-  on supabase_migrations.schema_migrations to backup_reader;` then re-run the
-  workflow and the drill.
-- `age` key generation, three-way escrow and rotation — **T1.4**.
+- **Key custody: the three copies, the escrow copy and the second ops-repo
+  admin** — **T1.4**. The procedures are written
+  ([secrets-and-keys.md](secrets-and-keys.md)); the physical custody work is
+  the owner's and is the one thing the backup chain still depends on that
+  nothing here can verify. Losing the `age` private key makes every artifact
+  unreadable, so this is now the weakest link, not the dump.
+- **A note on the restored ledger:** the manifest carries the ledger, but the
+  dump is still `--schema=public`, so `supabase_migrations` itself is not in
+  the archive. A restored database therefore still has no ledger *table*
+  until one is rebuilt — `applyMigrations()` (`src/lib/db-migrations.mjs`)
+  refuses with "existing public tables without a migration ledger" until it
+  is. The difference the fix makes is that the manifest now **tells you what
+  to rebuild it to** (29 versions, max `029`) instead of leaving it to
+  archaeology. The reconstruction SQL is in
+  [backup-restore.md](backup-restore.md#the-ledger-gap).
 - Backup-freshness watchdog and failure alerting — **T1.11**. The 80 %
   storage alert is a warning, not a cap; the absence of a payment method on
   the GitHub account is the cap.
@@ -158,17 +162,20 @@ secrets are set, the workflow has produced a real artifact and T1.3 decrypted
 and restored it. The exact commands are in the T1.2 report and in the ops
 repo's README.
 
-Still owner-only, and the last thing holding T1.2 open:
+The migration-ledger grants were the last thing holding T1.2 open, and they
+are **done** (2026-10-12):
 
 ```sql
--- Supabase SQL Editor, production. A grant to the backup role; not a
--- migration and not an app schema change.
 grant usage on schema supabase_migrations to backup_reader;
 grant select on supabase_migrations.schema_migrations to backup_reader;
 ```
 
-Then `gh workflow run backup.yml -R Anish-1205/wcs-backup-ops -f
-mode=backup -f force=true` and re-run the drill
-(`node scripts/restore-drill.mjs --run <new-run-id> --key …`). The ledger
-check should report a version count and `max_version`; at that point T1.2 is
-complete.
+The next backup captured the ledger and the drill reached 16/16, so T1.2 is
+complete. The workflow logs the grant state on every run
+(`ledger-grants: role=… schema_usage=true table_select=true`), so if the
+ledger ever goes back to `null` the reason is in the job log rather than
+needing to be guessed.
+
+Nothing in the backup chain is owner-only any more. What remains owner-only
+is **key custody** — see
+[secrets-and-keys.md](secrets-and-keys.md#owner-steps-still-outstanding).

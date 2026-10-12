@@ -3,15 +3,17 @@
 Scope decisions and what is in the dump: [backup-scope.md](backup-scope.md).
 The workflow that produces the artifacts: `Anish-1205/wcs-backup-ops`.
 
-**Drill status: the restore works; T1.2 stays open on one item.** A real
-artifact was fetched, decrypted, restored and verified on 2026-10-12 —
-15 of 16 checks passed in **4.2 s**. The one failure is not the data: the
-manifest's migration ledger is `null`, so a restored database cannot be
-matched to a migration version. That is a recovery blocker, not a cosmetic
-gap (see [The ledger gap](#the-ledger-gap)), and T1.1's own scope list
-requires the ledger in the manifest. Per T1.3's acceptance criteria, **T1.2
-is not ticked until the ledger lands in the manifest and the drill is
-re-run.**
+**Drill status: passed 16/16 on 2026-10-12** (artifact
+`pgdump-20261012T092528Z`, run 38229750733, **4.7 s**). A real encrypted
+artifact was fetched, decrypted, restored into a throwaway local Postgres
+and verified against its own manifest — 26/26 tables, matching row counts,
+16 policies, RLS intact, `anon` locked out of leads and the inbox, and the
+migration ledger recorded (29 versions, max `029`). **T1.2 is complete.**
+
+It took four runs to get there; the three before it are in the
+[drill log](#drill-log), and the ledger history is in
+[The ledger gap](#the-ledger-gap). The restore itself passed every time —
+the ledger was the only thing that ever failed.
 
 ---
 
@@ -156,15 +158,16 @@ trustworthy; read the stderr rather than the exit code.
 ### Pass criteria
 
 Measured against the bundle's manifest, not against numbers written here, so
-they stay true as the database grows. From the 2026-10-12 drill:
+they stay true as the database grows. From the passing 2026-10-12 drill
+(`pgdump-20261012T092528Z`):
 
 | Check | Result |
 | --- | --- |
-| Artifact starts with the `age-encryption.org/v1` header | PASS (543,048 bytes) |
-| Decrypts to a tar bundle | PASS (542,720 bytes) |
+| Artifact starts with the `age-encryption.org/v1` header | PASS (553,288 bytes) |
+| Decrypts to a tar bundle | PASS (552,960 bytes) |
 | Manifest names the dump in the bundle | PASS (503,823 bytes) |
-| **Manifest records the migration ledger** | **FAIL — `ledger` is `null`** |
-| Dump matches the manifest's SHA-256 | PASS (`c15154d01d27e119…`) |
+| Manifest records the migration ledger | PASS (29 versions, max `029`) |
+| Dump matches the manifest's SHA-256 | PASS (`a3f6daf65aec89b5…`) |
 | Dump kept its privileges (no `--no-privileges`) | PASS |
 | `pg_restore -l` reads the archive | PASS (333 TOC entries) |
 | Restore reported no unexpected error | PASS (1 tolerated) |
@@ -179,7 +182,7 @@ they stay true as the database grows. From the 2026-10-12 drill:
 
 Newest rows in the restored copy: product `2026-10-12 07:05:19+05:30`,
 inquiry `2026-09-19 17:58:15+05:30`, inbox message `2026-10-12 07:05:06+05:30`
-— against a dump taken at `2026-10-12T07:16:59Z`.
+— against a dump taken at `2026-10-12T09:26:03Z`.
 
 **Why `anon cannot read inquiries` is checked as "reads 0 rows" and not as
 "permission denied":** Supabase grants `anon` `SELECT` (in fact `ALL`) on 22
@@ -193,40 +196,48 @@ the actual row count: any one of them alone would miss it.
 
 ## The ledger gap
 
-`manifest.json` records `"ledger": null`. The ops repo's `scripts/ledger.sql`
-is run separately and allowed to fail, because `supabase_migrations` sits
-outside the `SELECT` grant `backup_reader` holds on `public`. The dump
-itself is `--schema=public`, so the ledger table is not in the archive
-either.
-
-**Measured consequence:** the restored database has no `supabase_migrations`
-schema at all. `getAppliedVersions()` then returns an empty set, and
-`applyMigrations()` refuses outright —
-`src/lib/db-migrations.mjs` fails closed on "existing public tables without
-a migration ledger". So after an L0 restore, `/admin/database` and
-`scripts/run-migrations.mjs` will not apply anything until the ledger is
-rebuilt by hand, and nothing in the backup says which versions to write.
-Failing closed is the right behaviour; needing archaeology during an outage
-is not.
-
-**Fix (owner, one statement, no migration — it is a grant to the backup
-role, not an app schema change):**
+**Closed 2026-10-12.** `manifest.json` now records the ledger —
+`{"count": 29, "max_version": "029", "versions": [...]}` — after
+`backup_reader` was granted read access to it:
 
 ```sql
 grant usage on schema supabase_migrations to backup_reader;
 grant select on supabase_migrations.schema_migrations to backup_reader;
 ```
 
-Then re-run the backup workflow and re-run the drill; the ledger check
-should report the version count and max version. **Until then T1.2 stays
-open.**
+**You still rebuild the ledger table on an L0 restore.** The dump is
+`--schema=public`, so `supabase_migrations` is not in the archive and a
+restored database has no ledger table at all. `getAppliedVersions()` returns
+an empty set and `applyMigrations()` refuses outright —
+`src/lib/db-migrations.mjs` fails closed on "existing public tables without
+a migration ledger", which is correct. What changed is that **the manifest
+now tells you what to rebuild it to** instead of leaving it to archaeology
+during an outage. Read `max_version` and `count` from the manifest and write
+exactly those versions ([below](#rebuilding-the-ledger-table)).
 
-**Interim workaround if a real L0 restore is needed before the fix:** the
-dump's object set tells you where production was. Objects introduced by
-migrations `030`/`031` (`whatsapp_settings`, `product_source_texts`,
-`variant_hidden_media`, `product_media_labels`) were **absent** from the
-2026-10-12 archive, so that dump is at `029`. Rebuild the ledger to match
-what you restored before touching `/admin/database`:
+Every run now logs the grant state, so a regression names itself instead of
+appearing as a silent `null`:
+
+```
+ledger-grants: role=backup_reader schema=present schema_usage=true
+               table=present table_select=true columns=[version,statements,name]
+migration ledger captured
+```
+
+If that line ever shows `schema_usage=false`, the grants above have been
+lost — re-run them and confirm with
+`select has_schema_privilege('backup_reader','supabase_migrations','usage')`
+before spending a backup run. If the grant is refused in the SQL Editor,
+`supabase_migrations` is platform-owned, not created by the app's
+migrations; find its owner with
+`select nspowner::regrole from pg_namespace where nspname='supabase_migrations'`.
+
+### Rebuilding the ledger table
+
+Do this after `pg_restore` and **before** touching `/admin/database`. Take
+the versions from the bundle's `manifest.json` — `ledger.versions` is the
+authoritative list, `ledger.max_version` and `ledger.count` are the quick
+check. For the 2026-10-12 archive that is 29 versions, `001`–`029`:
 
 ```sql
 create schema if not exists supabase_migrations;
@@ -237,9 +248,12 @@ select lpad(generate_series(1, 29)::text, 3, '0')
 on conflict do nothing;
 ```
 
-Confirm the upper bound against the archive before running it — writing a
-version that was not restored is worse than writing none, because the
-applier trusts the ledger.
+Cross-check the upper bound against the archive as well as the manifest —
+writing a version that was not restored is worse than writing none, because
+the applier trusts the ledger. The dump's object set is the independent
+witness: objects introduced by `030`/`031` (`whatsapp_settings`,
+`product_source_texts`, `variant_hidden_media`, `product_media_labels`) were
+absent from the 2026-10-12 archive, which agrees with `max_version: 029`.
 
 **Stopping at `029` is deliberate even though the archive contains `032`'s
 effects.** Migration `032` was applied to production by hand and intentionally
@@ -262,8 +276,8 @@ Paper walkthrough, 2026-10-12. Only the marked rows are measured.
 | 1 | Create a new Supabase project (region, strong DB password, keep the password in the vault) | ~5–10 min provisioning (est.) |
 | 2 | SQL Editor: `create role backup_reader nologin;` — the other five roles and the `auth` schema already exist on a Supabase project | ~2 min (est.) |
 | 3 | SQL Editor: the three `alter default privileges … revoke all … from anon, authenticated` statements | ~2 min (est.) |
-| 4 | Fetch, decrypt, verify and `pg_restore` over the **session pooler, port 5432** (transaction mode on 6543 cannot run this DDL) | **4.2 s measured locally**; ~2–5 min over the network (est.) |
-| 5 | Rebuild the migration ledger ([above](#the-ledger-gap)) and apply any migration the archive predates | ~10–20 min (est.), **and the reason this gap is a blocker** |
+| 4 | Fetch, decrypt, verify and `pg_restore` over the **session pooler, port 5432** (transaction mode on 6543 cannot run this DDL) | **4.7 s measured locally**; ~2–5 min over the network (est.) |
+| 5 | Rebuild the migration ledger from the manifest ([above](#rebuilding-the-ledger-table)) and apply any migration the archive predates | ~5–10 min (est.) now the manifest says which versions to write |
 | 6 | Re-run the sanity queries against the restored project | ~5 min (est.) |
 | 7 | Vercel: re-point `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (and `DATABASE_URL` if set) and redeploy | ~10–15 min incl. build (est.) |
 | 8 | Supabase Auth → URL Configuration: Site URL and the `https://<domain>/**` redirect allowlist; re-enable the Google provider | ~10 min (est.) |
@@ -333,6 +347,17 @@ hand, clean up before you debug.
 | 2026-10-12 | `pgdump-20261012T071625Z` (run 38216795013) | 15/16 | 4.2 s | Restore verified. Failed on the manifest ledger; T1.2 stays open. |
 | 2026-10-12 | `pgdump-20261012T080733Z` (run 38221650227) | 15/16 | 4.5 s | Re-drill after the owner granted `backup_reader` `select` on `supabase_migrations`. Restore verified again (new dump, sha `91873ab6150487f7`). **Ledger still `null`** — cause unknown at the time, because the workflow discarded the error. T1.2 stays open. |
 | 2026-10-12 | `pgdump-20261012T091457Z` (run 38228608546) | 15/16 | 4.8 s | First run with the ops repo's ledger diagnostics (`2c5a2f9`). Restore verified a third time (sha `23ed3c4dbb2129c9`). The log now names the cause: `schema_usage=false` and `ERROR: 42501: permission denied for schema supabase_migrations` — **the grants are not in place.** T1.2 stays open; the workflow side is done. |
+| 2026-10-12 | `pgdump-20261012T092528Z` (run 38229750733) | **16/16** | 4.7 s | Grants confirmed (`schema_usage=true table_select=true`), `migration ledger captured`, manifest holds 29 versions, max `029`. Restore verified a fourth time (sha `a3f6daf65aec89b5`). **T1.2 complete.** Artifact grew to 553,464 B — the manifest now carries the ledger; still well inside the 0.55 MB budget. |
+
+**Note on the 16/16 run:** the first invocation of the drill was interrupted
+mid-run (truncated output, exit 127) **after** the checks had passed but
+**before** the cleanup step, which left the decrypted dump and the scratch
+database in place; both were shredded and dropped by hand and the drill was
+re-run cleanly end to end. The lesson is the one the cleanup `finally` block
+cannot cover: a killed process runs no cleanup at all, so after any drill
+that does not print its own `cleaned up:` line, check `$TEMP` for a
+`wcs-restore-drill-*` directory and the cluster for a `restore_drill_*`
+database before walking away.
 
 ### Why the ledger is still null — measured, 2026-10-12
 
