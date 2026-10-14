@@ -1,13 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /** The hidden-slug copy kept in Redis, used only when Supabase cannot answer. */
-const mocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn(), report: vi.fn(), constructed: 0 }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  set: vi.fn(),
+  report: vi.fn(),
+  constructed: 0,
+  config: undefined as unknown,
+}));
 
 vi.mock("@/lib/report-error", () => ({ reportError: mocks.report }));
 vi.mock("@upstash/redis", () => ({
   Redis: class {
-    constructor() {
+    constructor(config: unknown) {
       mocks.constructed += 1;
+      mocks.config = config;
     }
     get = mocks.get;
     set = mocks.set;
@@ -81,6 +88,13 @@ describe("reading the mirror", () => {
     await vi.advanceTimersByTimeAsync(1500);
 
     expect(await pending).toBeNull();
+  });
+
+  it("never asks for a no-store fetch, which would turn a static page dynamic mid-render", async () => {
+    mocks.get.mockResolvedValue(null);
+    await readVisibilityMirror();
+
+    expect(mocks.config).toMatchObject({ cache: "default" });
   });
 
   it("does nothing at all when Upstash is not configured", async () => {

@@ -71,7 +71,11 @@ function redis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   try {
-    client = url && token ? new Redis({ url, token }) : null;
+    // Upstash defaults to `cache: "no-store"`, which Next treats as dynamic usage:
+    // a mirror call during an ISR render then fails it with "static to dynamic at
+    // runtime" (a 500 on a cold path). "default" on these POSTs is not cached
+    // at runtime and leaves the page static.
+    client = url && token ? new Redis({ url, token, cache: "default" }) : null;
   } catch (error) {
     client = null;
     note("connect", error);
