@@ -264,14 +264,23 @@ Planning only; nothing below has been started. Items are in dependency order wit
   depends on reading Vercel runtime logs by hand.
 - [ ] **Fix `npm audit` findings before enabling branch protection** — protection that requires a passing
   audit check would block every merge while the findings stand, so clear them first (T6.x).
-- [ ] **Point the QR code at `weaversclubsarees.com` directly** instead of routing through `qrto.org` —
+  *2026-10-14: 14 → 9. `npm audit fix` plus `next`/`eslint-config-next` 15.5.25 → 15.5.27 (Next cache-poisoning
+  advisories), `sharp` 0.35.5. The rest (`braces`, `postcss-selector-parser`) come only through
+  `tailwindcss@3` (build-time CSS tooling) and have no fix short of the Tailwind v4 migration.*
+- [x] **Point the QR code at `weaversclubsarees.com` directly** instead of routing through `qrto.org` —
   removes a third-party redirect from the main acquisition path and the dependency on that service.
+  *2026-10-14: `public/brand/qr.jpg` now encodes `https://weaversclubsarees.com` (ECC H, same monogram;
+  decode-verified). Already-printed codes still go through `qrto.org/FBfK7l` — keep that link alive until
+  they are replaced.*
 
 ## Post-window follow-ups (raised 2026-10-12, migration window)
 - [ ] **Add `HEALTH_TOKEN` (uppercase) to Vercel Production** — the dashboard still has only a stray
   lowercase `health_token` that `src/app/api/health/route.ts` never reads, so `?deep=1` 401s. The window
   deployed and migrated without it, by owner decision; delete the lowercase one when adding the real one.
-- [ ] **Homepage render is dynamic, not static, since this deploy** — every `GET /` hits
+- [x] **Homepage render is dynamic, not static, since this deploy** — *fixed 2026-10-14 (not yet deployed):
+  the mirror's Upstash client now sends `cache: "default"` instead of its built-in `no-store`, which Next
+  neither caches at runtime nor counts as dynamic usage. Worse than first logged: on a cold ISR path the
+  same fetch made `/sarees/[slug]` answer **500** (twice on 2026-10-14, 05:41Z and 06:08Z).* Every `GET /` hits
   `catalog-visibility-mirror`'s Upstash read inside the render (`no-store fetch … /pipeline`), which Next
   logs as `Page changed from static to dynamic at runtime /` on every request, and the mirror read itself
   intermittently times out after 1500ms (`[catalog-visibility-mirror] Error: timed out after 1500ms`).
