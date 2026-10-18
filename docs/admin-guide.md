@@ -83,7 +83,8 @@ Price missing, please send it."*
   you are asked before anything is created: reply `YES` or `NO` to a
   suggestion, or `1`, `2` or `3` to choose. If you do not reply in 10 minutes
   those photos are saved as a draft called "Unassigned WhatsApp media" for you
-  to sort; nothing is ever merged on a guess.
+  to sort; nothing is ever merged on a guess. Deleting that draft is final:
+  it is not created again.
 - Voice notes, documents and contact cards cannot be used; you get a short
   reply saying so and the rest of your listing is unaffected.
 

@@ -212,7 +212,9 @@ arrival order:
   decides at 0.85 confidence or better. Otherwise the sender is asked: a
   proposal answered with `YES`/`NO`, or `1`/`2`/`3`. No answer in 10 minutes
   (or photos with no description for 30 minutes) saves the uncertain photos as
-  a draft named "Unassigned WhatsApp media".
+  a draft named "Unassigned WhatsApp media". Each set-aside batch builds that
+  draft once (`whatsapp_batches.built_at`, migration 034); deleting it in the
+  admin panel does not bring it back.
 
 The thresholds are rows in `whatsapp_settings` (`burst_seconds` 8,
 `skew_seconds` 6, `tight_seconds` 15, `late_review_seconds` 30,
