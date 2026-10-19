@@ -430,6 +430,29 @@ export const adminProductsQuerySchema = adminPaginationSchema.extend({
   dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
+export const INQUIRY_STATUSES = ["new", "contacted", "won", "lost"] as const;
+export type InquiryStatus = (typeof INQUIRY_STATUSES)[number];
+
+/** /admin/inquiries: filters and paging live in the URL (T4.7). */
+export const adminInquiriesQuerySchema = adminPaginationSchema.extend({
+  type: z.enum(["", "retail", "wholesale", "general"]).catch(""),
+  source: z.string().max(40).regex(/^[a-z_]*$/).catch(""),
+  status: z.enum(["", ...INQUIRY_STATUSES]).catch(""),
+  due: z.enum(["", "due"]).catch(""),
+});
+export type AdminInquiriesQueryShape = z.infer<typeof adminInquiriesQuerySchema>;
+
+export const inquiryStatusUpdateSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(INQUIRY_STATUSES),
+});
+
+export const inquiryNotesSchema = z.object({
+  id: z.string().uuid(),
+  admin_notes: z.string().max(4000).transform((v) => v.trim() || null).nullable(),
+  follow_up_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().or(z.literal("").transform(() => null)),
+});
+
 // ── Import pipeline ────────────────────────────────────────────────
 
 export const ALLOWED_IMPORT_IMAGE_MIME_TYPES = [

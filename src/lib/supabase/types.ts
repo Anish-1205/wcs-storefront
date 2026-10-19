@@ -147,6 +147,11 @@ export interface Inquiry {
   message: string | null;
   source: string;
   created_at: string;
+  /** Migration 037 (T4.3). Absent on a database without it. */
+  status?: "new" | "contacted" | "won" | "lost";
+  status_changed_at?: string | null;
+  admin_notes?: string | null;
+  follow_up_on?: string | null;
 }
 
 export interface WhatsAppSubscriber {

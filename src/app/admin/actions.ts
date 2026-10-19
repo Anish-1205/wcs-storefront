@@ -37,6 +37,7 @@ import {
 import { reportError, ExpectedError } from "@/lib/report-error";
 import { refreshVisibilityMirror } from "@/lib/catalog-hidden-slugs";
 import { auditAdminAction } from "@/lib/audit";
+import { csvCell } from "@/lib/csv";
 
 /**
  * Next.js redacts thrown Server Action error messages in production builds
@@ -183,10 +184,8 @@ async function ensurePublishAllowed(
   }
 }
 
-function csvEscape(value: unknown) {
-  const text = value == null ? "" : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
-}
+// Quoted and formula-safe (src/lib/csv.ts): contacts hold customer-entered text.
+const csvEscape = csvCell;
 
 function parseCsvLine(line: string) {
   const cells: string[] = [];

@@ -134,9 +134,9 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE WITH LIMITS · depends on: T4.2 for consent gating (events are queued/dropped when denied)
 - [ ] **T4.7** — Server-side pagination and indexes for expensive admin lists  
   P2 · L · FREE · depends on: T4.3 (inquiry indexes)
-- [ ] **T4.4** — Inquiry admin UI (status, notes, export)  
+- [x] **T4.4** — Inquiry admin UI (status, notes, export) — *2026-10-19: status per row (history via `inquiry_set_status`), notes + follow-up date, filtered CSV export (formula-safe; contacts export fixed too), dashboard "New inquiries" card; all audited; works without migration 037 (workflow hidden until applied)*  
   P1 · L · FREE · depends on: T4.3, T3.1 (audit), T4.7 (pagination)
-- [ ] **T4.5** — Follow-up reminders (minimal)  
+- [x] **T4.5** — Follow-up reminders (minimal) — *2026-10-19: "Follow-ups due" card on the dashboard and a `due` filter on /admin/inquiries (India date). The optional daily e-mail digest is not built: Hobby allows it, but the dashboard covers the need without spending Resend quota*  
   P2 · M · FREE WITH LIMITS · depends on: T4.3, T4.4
 - [ ] **T4.6** — Lead-source reporting  
   P2 · M · FREE · depends on: T4.3
