@@ -71,6 +71,13 @@ function LoginForm() {
             />
           </div>
 
+          {!error && params.get("expired") && (
+            <p className="text-sm text-muted-foreground">
+              {params.get("expired") === "idle"
+                ? "You were signed out after a period of inactivity."
+                : "Your session reached its time limit. Please sign in again."}
+            </p>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>

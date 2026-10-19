@@ -388,6 +388,23 @@ intended.
 Backups do not contain `auth.*` (backup-scope path B), so after an L1 restore
 the admin enrols again.
 
+## 5a-4. Admin session length
+
+Off until set. The lengths are the owner's call; proposed 30 minutes idle and
+12 hours absolute:
+
+| Variable | Purpose |
+| --- | --- |
+| `ADMIN_IDLE_TIMEOUT_MINUTES` | sign out after this long with no admin page request |
+| `ADMIN_MAX_SESSION_HOURS` | sign out this long after the password sign-in, however active |
+| `ADMIN_SESSION_SECRET` | 32+ random characters; signs the last-seen cookie. The idle limit stays off without it |
+
+Enforced by the middleware on `/admin/*` pages: the session is ended
+(`signOut`, this browser only) and the login page says why. The upload/import
+API routes are not covered by the idle clock; they still need a valid admin
+session and, once enrolled, two-factor. Turning it on signs out sessions that
+are already older than the limits, once. To switch off, unset the variables.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { decideMfa, MFA_PATHS } from "@/lib/admin-mfa";
+import { evaluateSession, LAST_SEEN_COOKIE, readLastSeen, sessionPolicy, signLastSeen } from "@/lib/admin-session";
 
 /**
  * Builds the CSP. script-src allows 'unsafe-inline' rather than nonces: the
@@ -123,6 +124,38 @@ export async function middleware(req: NextRequest) {
     const redirectRes = NextResponse.redirect(url);
     redirectRes.headers.set("Content-Security-Policy", csp);
     return redirectRes;
+  }
+
+  // Session lifetime (T3.5): idle and absolute limits, each off until set.
+  const policy = sessionPolicy();
+  if (user && !isLogin && (policy.idleMs !== null || policy.maxMs !== null)) {
+    const now = Date.now();
+    const lastSeen = policy.secret
+      ? await readLastSeen(req.cookies.get(LAST_SEEN_COOKIE)?.value, user.id, policy.secret)
+      : null;
+    const verdict = evaluateSession({ now, lastSeen, lastSignInAt: user.last_sign_in_at, policy });
+    if (verdict !== "ok") {
+      // Ends this browser's session only; the cookie deletions it produces land on `res`.
+      await supabase.auth.signOut({ scope: "local" });
+      const url = req.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = "";
+      url.searchParams.set("expired", verdict);
+      url.searchParams.set("redirect", pathname);
+      const expiredRes = NextResponse.redirect(url);
+      res.cookies.getAll().forEach((cookie) => expiredRes.cookies.set(cookie));
+      expiredRes.cookies.delete(LAST_SEEN_COOKIE);
+      expiredRes.headers.set("Content-Security-Policy", csp);
+      return expiredRes;
+    }
+    if (policy.secret && policy.idleMs !== null) {
+      res.cookies.set(LAST_SEEN_COOKIE, await signLastSeen(user.id, now, policy.secret), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/admin",
+      });
+    }
   }
 
   // Two-factor (T3.3): a session that owes its TOTP code (or, once required,

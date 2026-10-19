@@ -100,7 +100,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE · depends on: T3.1
 - [x] **T3.3** — TOTP MFA for the admin account — *code done 2026-10-19 (`/admin/security`, `/admin/mfa`, guards in middleware, `requireAdmin`/`assertAdmin` and the admin API routes; audited). **Owner rollout pending**: enrol two devices, test, then `ADMIN_REQUIRE_MFA=1` (deployment.md §5a-3)*  
   P1 · L · UNVERIFIED · depends on: T3.1 (audit enroll/unenroll)
-- [ ] **T3.5** — Session lifetime policy  
+- [x] **T3.5** — Session lifetime policy — *code done 2026-10-19, **off until the owner picks the lengths** (`ADMIN_IDLE_TIMEOUT_MINUTES`, `ADMIN_MAX_SESSION_HOURS`, `ADMIN_SESSION_SECRET`; proposed 30 min / 12 h — deployment.md §5a-4)*  
   P2 · M · UNVERIFIED · depends on: T3.3
 - [ ] **T3.6** — CSP report-only rollout  
   P1 · M · FREE WITH LIMITS · depends on: T1.7
