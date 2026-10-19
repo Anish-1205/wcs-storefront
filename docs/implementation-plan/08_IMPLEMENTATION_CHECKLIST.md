@@ -186,7 +186,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · L · FREE · depends on: T6.3
 - [x] **T6.4** — Run the WhatsApp ingest replay in CI — *2026-10-20: `npm run test:ingest` in the `Database` workflow against a Postgres service container. Retry cases: out-of-order arrival, redelivery without duplicates and double reply were already covered (`ingest.test.ts`, `replies.test.ts`); crash mid-claim with lease expiry and token fencing, plus dead-lettering after five lost leases, added in `lease-expiry.test.ts`*  
   P2 · M · FREE WITH LIMITS · depends on: T6.3
-- [ ] **T6.5** — CI pipeline structure and caching  
+- [x] **T6.5** — CI pipeline structure and caching — *2026-10-20: `ci.yml` split into parallel Audit / Lint and types / Unit tests / Production build; the required name `Lint, types, unit tests, build` is kept as an `if: always()` gate that fails unless all succeeded. npm cache already on; e2e uses the runner's Chrome (`channel: chrome`), so no browser cache is needed*  
   P2 · M · FREE · depends on: T1.12, T3.10
 - [ ] **T6.6** — Coverage thresholds for `src/lib`  
   P3 · S · FREE · depends on: none

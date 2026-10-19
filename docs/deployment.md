@@ -13,18 +13,26 @@ include the required live-save smoke check; applying SQL is separate from deploy
 
 GitHub Actions run on every PR and every push to `main` (`.github/workflows/`):
 
-- **CI** (`ci.yml`) — `npm audit` → `lint` → `types` → `npm test --coverage` →
-  `npm run build`. The audit step fails the build on a **high or critical**
-  advisory in a production dependency; dev-only tooling is excluded, since it
-  never reaches a user. The build uses placeholder `NEXT_PUBLIC_*` env (no
-  secrets); it only prerenders the file-driven storefront.
+- **CI** (`ci.yml`): four parallel jobs (`Audit`, `Lint and types`, `Unit
+  tests`, `Production build`), gathered by **`Lint, types, unit tests,
+  build`**, the job to require in branch protection. It fails unless all four
+  succeeded. The audit step fails on a **high or critical** advisory in a
+  production dependency; dev-only tooling is excluded, since it never reaches
+  a user. The build uses placeholder `NEXT_PUBLIC_*` env (no secrets); it only
+  prerenders the file-driven storefront.
+- **Database** (`db.yml`): on a scratch Postgres only. Applies every
+  migration, checks the ledger, RLS and that new migrations are additive,
+  checks `database.types.ts` is current, and runs `npm run test:ingest`.
+- **Secret scan** (`secrets.yml`): gitleaks over the full history.
+- **Lighthouse** (`lighthouse.yml`, PRs, warn-only) and **Media budget**
+  (`media.yml`, PRs touching `public/`).
 - **E2E** (`e2e.yml`) — spins up the local Supabase stack, seeds the
   `admin@example.com` / `staff@example.com` users, and runs the Playwright suite.
 - **CodeQL** (`codeql.yml`) — `security-and-quality` static analysis, also weekly.
 - **Dependabot** (`.github/dependabot.yml`) — weekly grouped npm + actions
   updates, minor/patch only. Major bumps are done deliberately in their own PR.
 
-Make CI + E2E required status checks on the `main` branch protection rule.
+Make `Lint, types, unit tests, build`, `Playwright (storefront + admin)`, `Database checks (migrations, types, ingest replay)` and `Secret scan (gitleaks)` required status checks on `main`.
 
 ### Before merging to `main`
 
