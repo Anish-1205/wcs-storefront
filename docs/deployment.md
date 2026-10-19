@@ -428,6 +428,25 @@ banner's wording are the owner's decision (legal review). The text is in
 `src/components/consent/ConsentBanner.tsx`. Expect lower measured traffic
 once it is on.
 
+## 5a-7. Business facts for search results (structured data)
+
+Search engines read structured data from the product and About pages. It
+states only what the business has stated (`src/lib/structured-data.ts`).
+These optional variables add facts once you supply them; unset, they are left
+out (never guessed). They are build-time variables, so redeploy after
+setting them.
+
+| Variable | Example | Used for |
+| --- | --- | --- |
+| `NEXT_PUBLIC_BUSINESS_STREET` / `_LOCALITY` / `_REGION` / `_POSTCODE` | `Sector 17` / `Navi Mumbai` / `MH` / `400703` | About page address |
+| `NEXT_PUBLIC_BUSINESS_PHONE` | `+91 22 1234 5678` | About page telephone |
+| `NEXT_PUBLIC_BUSINESS_HOURS` | `Mo-Sa 10:00-19:00` (several separated by `;`) | About page opening hours |
+| `NEXT_PUBLIC_SHIPPING_HANDLING_DAYS` and `NEXT_PUBLIC_SHIPPING_TRANSIT_DAYS` | `0-3` and `2-10` | product delivery estimate; both are needed |
+
+The 0–3 / 2–10 day shipping estimate used to be hard-coded into every
+product. It is now off until confirmed: the shipping page says dispatch and
+delivery are confirmed per order on WhatsApp.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

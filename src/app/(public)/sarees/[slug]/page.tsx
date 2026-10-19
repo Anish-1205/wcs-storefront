@@ -18,6 +18,7 @@ import { WHATSAPP_CONFIGURED } from "@/lib/whatsapp";
 import { priceLabel, availabilityLabel } from "@/lib/catalog-format";
 import { CONCIERGE_NOTE } from "@/lib/copy";
 import { jsonLdScript } from "@/lib/json-ld";
+import { productJsonLd } from "@/lib/structured-data";
 import { breadcrumbList } from "@/lib/breadcrumbs";
 import { ProductMedia } from "@/components/product/ProductMedia";
 import { ProductViewTracker } from "@/components/product/ProductViewTracker";
@@ -97,68 +98,8 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
   const derived = derivedColourways(product);
   const pageUrl = `${SITE.url}/sarees/${product.slug}`;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.title,
-    sku: product.reference,
-    mpn: product.reference,
-    description: product.description,
-    image: product.images.map((i) => new URL(i.src, SITE.url).href),
-    color: product.colour,
-    ...(product.material ? { material: product.material } : {}),
-    ...(product.weave ? { pattern: product.weave } : {}),
-    brand: { "@type": "Brand", name: SITE.name },
-    offers: {
-      "@type": "Offer",
-      url: pageUrl,
-      priceCurrency: "INR",
-      ...(product.price != null ? { price: product.price } : {}),
-      availability:
-        product.availability === "available"
-          ? "https://schema.org/InStock"
-          : product.availability === "sold"
-            ? "https://schema.org/OutOfStock"
-            : product.availability === "pre-order"
-              ? "https://schema.org/PreOrder"
-              : "https://schema.org/LimitedAvailability",
-      // There is no change-of-mind return window — returns are only for items
-      // that arrive faulty or not as confirmed (see /shipping-returns). Google
-      // rejects "MerchantReturnUnspecified", so this is declared as
-      // NotPermitted, which is the accurate mapping for that stance.
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "IN",
-        returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
-        merchantReturnLink: `${SITE.url}/shipping-returns`,
-      },
-      // The shipping charge is quoted per order (it depends on the item and
-      // quantity) so no shippingRate is declared, but the delivery-time range
-      // below is a genuine domestic estimate.
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingDestination: {
-          "@type": "DefinedRegion",
-          addressCountry: "IN",
-        },
-        deliveryTime: {
-          "@type": "ShippingDeliveryTime",
-          handlingTime: {
-            "@type": "QuantitativeValue",
-            minValue: 0,
-            maxValue: 3,
-            unitCode: "DAY",
-          },
-          transitTime: {
-            "@type": "QuantitativeValue",
-            minValue: 2,
-            maxValue: 10,
-            unitCode: "DAY",
-          },
-        },
-      },
-    },
-  };
+  // Only what the business has stated (src/lib/structured-data.ts, T5.2).
+  const jsonLd = productJsonLd(product, { siteUrl: SITE.url, brand: SITE.name, pageUrl });
 
   const breadcrumbs = breadcrumbList([
     { name: "Catalog", path: "/catalog" },

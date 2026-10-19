@@ -1,4 +1,5 @@
 
+import { businessFacts } from "@/lib/structured-data";
 import { ContentRegion } from "@/components/content/ContentRegion";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -25,6 +26,8 @@ const schema = {
   logo: logoUrl,
   image: logoUrl,
   ...(SITE.gstin ? { taxID: SITE.gstin } : {}),
+  // Address, phone and hours only when the owner has supplied them (T5.2).
+  ...businessFacts(),
   ...(SOCIAL_LINKS.length > 0 ? { sameAs: SOCIAL_LINKS.map((s) => s.url) } : {}),
 };
 

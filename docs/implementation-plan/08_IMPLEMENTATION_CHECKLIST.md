@@ -155,7 +155,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 - [x] **T5.1** — Sitemap correctness — *2026-10-19: product `lastModified` from `products.updated_at` (published rows, public key), omitted where there is no real date; `/guides` added; tests*  
   P2 · S · FREE · depends on: none
-- [ ] **T5.2** — Structured-data correctness (no invented facts)  
+- [x] **T5.2** — Structured-data correctness (no invented facts) — *2026-10-19: no `priceCurrency` without a price; `on-request` no longer claims `LimitedAvailability`; no Offer when neither price nor availability is stated; the hard-coded 0–3/2–10-day shipping estimate is off until the owner sets it; address/phone/hours from env when supplied. `og:type` stays `website` (Next's metadata has no `product` type). **Owner**: supply the business facts (deployment.md §5a-7); run Rich Results Test after deploy*  
   P2 · M · FREE · depends on: none
 - [ ] **T5.3** — Redirect validation and permanence  
   P2 · S · FREE · depends on: none
