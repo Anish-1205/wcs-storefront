@@ -153,7 +153,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 5 — SEO and performance
 
-- [ ] **T5.1** — Sitemap correctness  
+- [x] **T5.1** — Sitemap correctness — *2026-10-19: product `lastModified` from `products.updated_at` (published rows, public key), omitted where there is no real date; `/guides` added; tests*  
   P2 · S · FREE · depends on: none
 - [ ] **T5.2** — Structured-data correctness (no invented facts)  
   P2 · M · FREE · depends on: none
