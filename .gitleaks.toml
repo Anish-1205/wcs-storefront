@@ -1,0 +1,24 @@
+# Secret scanning (T3.9). Default gitleaks rules, plus this allowlist of
+# known-public values. Keep each entry exact: a broad allowlist is how a real
+# key gets through.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-public values"
+regexTarget = "match"
+regexes = [
+  # The Supabase CLI's local demo JWTs (payload starts {"iss":"supabase-demo"):
+  # identical in every local Supabase stack, used by e2e (playwright.config.ts,
+  # .github/workflows/e2e.yml). They sign nothing outside a developer machine.
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIi[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+''',
+  # localStorage key names such as "wcs.enquiry.v1".
+  '''"wcs(\.[a-z]+)+\.v[0-9]+"''',
+]
+
+# gitleaks 8.21 has no rule for Anthropic keys, the one this project relies on.
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key"
+regex = '''sk-ant-(?:api03|admin01)-[A-Za-z0-9_\-]{80,120}'''
+keywords = ["sk-ant-"]

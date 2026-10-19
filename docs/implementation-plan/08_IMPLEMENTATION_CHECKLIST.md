@@ -108,7 +108,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · L · FREE · depends on: T3.6
 - [ ] **T3.8** — Cloudflare Turnstile on public forms — *not started: owner decision "only if abuse is observed"*  
   P2 · M · UNVERIFIED · depends on: T1.7, T3.6
-- [ ] **T3.9** — Secret scanning in CI  
+- [x] **T3.9** — Secret scanning in CI — *2026-10-19: `.github/workflows/secrets.yml` (gitleaks 8.21.2, SHA-256 checked, full history), `.gitleaks.toml` (two exact allowlist entries for public demo keys + an Anthropic-key rule). Verified locally: history clean, planted GitHub/AWS/Anthropic keys caught. **Owner**: enable native secret scanning + push protection in repo settings*  
   P1 · S · FREE · depends on: none
 - [ ] **T3.10** — Pin actions, least privilege, SECURITY.md  
   P2 · S · FREE · depends on: none
