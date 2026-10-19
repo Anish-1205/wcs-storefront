@@ -109,6 +109,8 @@ describe("effective RLS state across all migrations", () => {
       // AI usage ledger and kill switch (035).
       "ai_usage_daily",
       "ai_settings",
+      // Admin audit log (036).
+      "admin_audit_log",
     ];
 
     const reachable = serverOnly.filter((table) =>

@@ -92,7 +92,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 3 — Security hardening
 
-- [ ] **T3.1** — Admin audit log table and helper  
+- [x] **T3.1** — Admin audit log table and helper — *2026-10-19: migration `036_admin_audit_log.sql` (append-only for service_role, age-only prune; tested on local PG, **not applied**), `src/lib/audit.ts` (never throws, allowlisted meta)*  
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T2.6 (request id; optional)
 - [ ] **T3.4** — Server-side login throttling  
   P1 · M · EXISTING COST · depends on: T1.7

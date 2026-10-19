@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "eval:ingest": "vitest run --config vitest.ingest.config.ts ingest-eval/eval.test.ts && node ingest-eval/print-report.mjs",
-    "test:ingest": "vitest run --config vitest.ingest.config.ts ingest-eval/ingest.test.ts ingest-eval/behaviour.test.ts ingest-eval/hidden-media.test.ts ingest-eval/curation.test.ts ingest-eval/replies.test.ts ingest-eval/unassigned-rebuild.test.ts ingest-eval/ai-usage.test.ts",
+    "test:ingest": "vitest run --config vitest.ingest.config.ts ingest-eval/ingest.test.ts ingest-eval/behaviour.test.ts ingest-eval/hidden-media.test.ts ingest-eval/curation.test.ts ingest-eval/replies.test.ts ingest-eval/unassigned-rebuild.test.ts ingest-eval/ai-usage.test.ts ingest-eval/admin-audit.test.ts",
     "audit:lighthouse": "lighthouse http://localhost:3000 --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=reports/lighthouse.json --quiet",
     "check:env": "node scripts/check-env.mjs --production",
     "media:colours": "node scripts/extract-colour-variants.mjs",
