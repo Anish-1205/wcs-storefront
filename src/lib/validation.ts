@@ -430,6 +430,16 @@ export const adminProductsQuerySchema = adminPaginationSchema.extend({
   dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
+/** /admin/contacts with paging (T4.7): the CRM filters plus page/per. */
+export const contactsPageQuerySchema = contactsQuerySchema.merge(adminPaginationSchema);
+export type ContactsPageQueryShape = z.infer<typeof contactsPageQuerySchema>;
+
+/** /admin/subscribers (T4.7). */
+export const adminSubscribersQuerySchema = adminPaginationSchema.extend({
+  source: z.string().max(40).regex(/^[a-z_]*$/).catch(""),
+});
+export type AdminSubscribersQueryShape = z.infer<typeof adminSubscribersQuerySchema>;
+
 export const INQUIRY_STATUSES = ["new", "contacted", "won", "lost"] as const;
 export type InquiryStatus = (typeof INQUIRY_STATUSES)[number];
 

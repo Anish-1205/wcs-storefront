@@ -132,7 +132,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE · depends on: T3.12
 - [x] **T4.1** — GA4 funnel events on the existing tag — *2026-10-19: `view_item` (once per product page), `add_to_enquiry_cart`, `enquiry_start` (first focus), `generate_lead` (after server confirmation only), `whatsapp_click` with `placement`; allowlisted params. **Owner**: register the custom definitions in GA4 and check DebugView*  
   P1 · M · FREE WITH LIMITS · depends on: T4.2 for consent gating (events are queued/dropped when denied)
-- [ ] **T4.7** — Server-side pagination and indexes for expensive admin lists  
+- [x] **T4.7** — Server-side pagination and indexes for expensive admin lists — *2026-10-19: inquiries, subscribers and contacts read one page with explicit columns and an exact count; exports are server actions over the filtered set; migration `038_admin_list_indexes.sql` (**not applied**)*  
   P2 · L · FREE · depends on: T4.3 (inquiry indexes)
 - [x] **T4.4** — Inquiry admin UI (status, notes, export) — *2026-10-19: status per row (history via `inquiry_set_status`), notes + follow-up date, filtered CSV export (formula-safe; contacts export fixed too), dashboard "New inquiries" card; all audited; works without migration 037 (workflow hidden until applied)*  
   P1 · L · FREE · depends on: T4.3, T3.1 (audit), T4.7 (pagination)
