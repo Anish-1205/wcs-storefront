@@ -64,7 +64,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 2 — Visibility and cost protection
 
-- [ ] **T2.3** — Provider-side Anthropic spending restriction and usage review  
+- [ ] **T2.3** — Provider-side Anthropic spending restriction and usage review — *runbook written (`docs/runbooks/ai-cost-controls.md`); **owner steps pending** in the Console*  
   P0 · S · EXISTING COST · depends on: none
 - [x] **T2.1** — AI usage ledger, caps, concurrency limit and kill switch (data + gate) — *2026-10-19: migration `035_ai_usage.sql` (written + tested on local PG, **not applied**), `src/lib/ai/budget.ts`; races never exceed the cap (`ingest-eval/ai-usage.test.ts`)*  
   P0 · M · FREE · depends on: T1.10, T1.2 (backup before D2)
@@ -78,9 +78,9 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE · depends on: T1.6, T1.8
 - [x] **T2.6** — Correlation IDs and safe structured logging — *2026-10-19: middleware sets/forwards `x-request-id`; `src/lib/logger.ts` (JSON lines, key- and pattern-based redaction); `reportError` tags `request_id`; route-level warnings moved onto it*  
   P2 · M · FREE · depends on: T2.4
-- [ ] **T2.7** — Weekly quota check workflow (verified APIs only)  
+- [x] **T2.7** — Weekly quota check workflow (verified APIs only) — *2026-10-19 in `wcs-backup-ops` (`quota-check.yml`, `scripts/quota.py` + tests; DB size and artifacts by API, the rest MANUAL; 80 % issue, 95 % failure, `inject_db_bytes` test input). Not pushed yet*  
   P1 · M · FREE WITH LIMITS · depends on: T1.1 (credential pattern), T1.2
-- [ ] **T2.8** — Provider dashboard alert checklist  
+- [x] **T2.8** — Provider dashboard alert checklist — *`docs/runbooks/quota-monitoring.md` (cap type per service); owner still switches the alerts on and logs the first one received*  
   P1 · S · FREE · depends on: none
 
 **Phase 2 checkpoint**
