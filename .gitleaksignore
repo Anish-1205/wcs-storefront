@@ -1,0 +1,5 @@
+# Findings in past commits that are known not to be secrets. One exact
+# fingerprint per line (commit:file:rule:line); never a pattern.
+
+# A made-up IndexNow key in a test (cf63fab), replaced by a low-entropy one since.
+cf63fab34a0efc43a7d91474619ec788413a79e7:src/__tests__/indexnow.test.ts:generic-api-key:9

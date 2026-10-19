@@ -65,7 +65,7 @@ jobs:
             -e PG_META_GENERATE_TYPES=typescript \
             -e PG_META_GENERATE_TYPES_INCLUDED_SCHEMAS=public \
             -e PG_META_GENERATE_TYPES_DETECT_ONE_TO_ONE_RELATIONSHIPS=true \
-            public.ecr.aws/supabase/postgres-meta:v0.98.0 node dist/server/server.js \
+            supabase/postgres-meta:v0.98.0 node dist/server/server.js \
             > src/lib/supabase/database.types.ts
           if ! git diff --exit-code -- src/lib/supabase/database.types.ts; then
             echo "::error::src/lib/supabase/database.types.ts is out of date. Regenerate it (docs/runbooks/migration-safety.md) and commit."

@@ -6,7 +6,7 @@ vi.mock("@/lib/report-error", () => ({ reportError: (...a: unknown[]) => reportE
 import { resetIndexNow, submitToIndexNow } from "@/lib/indexnow";
 import { GET } from "@/app/api/indexnow-key/route";
 
-const KEY = "0123456789abcdef";
+const KEY = "test-key-test-key";
 let fetchSpy: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   resetIndexNow();
