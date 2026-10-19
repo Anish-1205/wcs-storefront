@@ -140,7 +140,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE WITH LIMITS · depends on: T4.3, T4.4
 - [ ] **T4.6** — Lead-source reporting  
   P2 · M · FREE · depends on: T4.3
-- [ ] **T4.9** — Inquiry idempotency key  
+- [x] **T4.9** — Inquiry idempotency key — *2026-10-19: forms send a per-fill `client_request_id`; the route upserts with `ignoreDuplicates` and skips the e-mail on a repeat; before migration 037 it saves without the key instead of failing*  
   P2 · S · FREE · depends on: T4.3
 - [ ] **T4.8** — Stock-check request / notify-me (minimal)  
   P3 · S · OPTIONAL · depends on: T4.3

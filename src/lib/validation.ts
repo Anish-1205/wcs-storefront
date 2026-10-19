@@ -42,6 +42,8 @@ export const inquirySchema = z.object({
   source: z.enum([...VALID_SOURCES, "unknown"]).default("unknown"),
   // Honeypot — must be empty for a real human.
   website: z.string().max(500).optional().or(z.literal("")),
+  // Idempotency key (T4.9): the same value on a retry stores nothing new.
+  client_request_id: z.string().uuid().optional(),
 });
 
 export type InquiryInput = z.infer<typeof inquirySchema>;

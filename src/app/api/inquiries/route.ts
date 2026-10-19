@@ -43,7 +43,38 @@ export async function POST(req: Request) {
 
   // Write server-side so anonymous clients cannot bypass validation/rate limits.
   const supabase = createAdminClient();
-  const { error: dbError } = await supabase.from("inquiries").insert({
+  const { error: dbError, duplicate } = await saveInquiry(supabase, data);
+
+  if (dbError) {
+    // A lost enquiry is a lost lead — this is the highest-value failure on the
+    // site, so it must page rather than sit in a log line.
+    reportError(dbError, { scope: "inquiry-insert", inquiry_type: data.inquiry_type, source: data.source });
+    return NextResponse.json({ error: "Could not save inquiry" }, { status: 500 });
+  }
+
+  // A retry of an enquiry already saved: same answer, no second e-mail.
+  if (duplicate) return NextResponse.json({ ok: true });
+
+  // The inquiry is saved even if its optional notification fails.
+  await sendNotification(data).catch((e) =>
+    reportError(e, { scope: "inquiry-notification" }),
+  );
+
+  return NextResponse.json({ ok: true });
+}
+
+type InquiryData = ReturnType<typeof inquirySchema.parse>;
+
+/**
+ * Insert once per client_request_id (T4.9). A database from before migration
+ * 037 has no such column: then the enquiry is saved without it rather than
+ * lost, whatever order the code and the migration are deployed in.
+ */
+async function saveInquiry(
+  supabase: ReturnType<typeof createAdminClient>,
+  data: InquiryData,
+): Promise<{ error: { message: string; code?: string } | null; duplicate: boolean }> {
+  const row = {
     name: data.name,
     phone: data.phone,
     email: data.email || null,
@@ -53,21 +84,20 @@ export async function POST(req: Request) {
     variant_id: data.variant_id ?? null,
     product_name: data.product_name ?? null,
     source: data.source,
-  });
-
-  if (dbError) {
-    // A lost enquiry is a lost lead — this is the highest-value failure on the
-    // site, so it must page rather than sit in a log line.
-    reportError(dbError, { scope: "inquiry-insert", inquiry_type: data.inquiry_type, source: data.source });
-    return NextResponse.json({ error: "Could not save inquiry" }, { status: 500 });
+  };
+  if (!data.client_request_id) {
+    const { error } = await supabase.from("inquiries").insert(row);
+    return { error, duplicate: false };
   }
-
-  // The inquiry is saved even if its optional notification fails.
-  await sendNotification(data).catch((e) =>
-    reportError(e, { scope: "inquiry-notification" }),
-  );
-
-  return NextResponse.json({ ok: true });
+  const { data: inserted, error } = await supabase
+    .from("inquiries")
+    .upsert({ ...row, client_request_id: data.client_request_id }, { onConflict: "client_request_id", ignoreDuplicates: true })
+    .select("id");
+  if (error && (error.code === "PGRST204" || error.code === "42P10" || /client_request_id/.test(error.message))) {
+    const { error: plainError } = await supabase.from("inquiries").insert(row);
+    return { error: plainError, duplicate: false };
+  }
+  return { error, duplicate: !error && (inserted ?? []).length === 0 };
 }
 
 async function sendNotification(data: {

@@ -6,10 +6,13 @@ vi.mock("resend", () => ({ Resend: class { emails = { send: mockSend }; } }));
 vi.mock("@/lib/report-error", () => ({ reportError: mockReportError }));
 
 const mockInsert = vi.hoisted(() => vi.fn());
+const mockUpsert = vi.hoisted(() => vi.fn());
 const mockCheckRateLimit = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/server", () => ({
-  createAdminClient: () => ({ from: () => ({ insert: mockInsert }) }),
+  createAdminClient: () => ({
+    from: () => ({ insert: mockInsert, upsert: (...args: unknown[]) => ({ select: () => mockUpsert(...args) }) }),
+  }),
 }));
 
 // The real rateLimitResponse, so 429 vs 503 is decided by the helper itself.
@@ -36,7 +39,50 @@ const validPayload = {
 describe("inquiry route", () => {
   beforeEach(() => {
     mockInsert.mockReset().mockResolvedValue({ error: null });
+    mockUpsert.mockReset();
+    mockSend.mockReset().mockResolvedValue({ error: null });
     mockCheckRateLimit.mockReset().mockResolvedValue({ success: true });
+  });
+
+  describe("idempotency key (T4.9)", () => {
+    const KEY = "11111111-2222-4333-8444-555555555555";
+    const post = () => POST(new Request("http://localhost/api/inquiries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...validPayload, client_request_id: KEY }),
+    }));
+
+    it("two identical POSTs store one enquiry and send one e-mail", async () => {
+      process.env.RESEND_API_KEY = "re_test";
+      process.env.INQUIRY_NOTIFICATION_EMAIL = "owner@example.com";
+      try {
+        mockUpsert.mockResolvedValueOnce({ data: [{ id: "i-1" }], error: null }).mockResolvedValueOnce({ data: [], error: null });
+        expect((await post()).status).toBe(200);
+        expect((await post()).status).toBe(200);
+        expect(mockUpsert).toHaveBeenCalledTimes(2);
+        expect(mockUpsert.mock.calls[0][0]).toMatchObject({ client_request_id: KEY });
+        expect(mockUpsert.mock.calls[0][1]).toEqual({ onConflict: "client_request_id", ignoreDuplicates: true });
+        expect(mockSend).toHaveBeenCalledTimes(1);
+      } finally {
+        delete process.env.RESEND_API_KEY;
+        delete process.env.INQUIRY_NOTIFICATION_EMAIL;
+      }
+    });
+
+    it("a database from before migration 037 still gets the enquiry, without the key", async () => {
+      mockUpsert.mockResolvedValue({ data: null, error: { code: "PGRST204", message: "Could not find the 'client_request_id' column of 'inquiries'" } });
+      expect((await post()).status).toBe(200);
+      expect(mockInsert).toHaveBeenCalledWith(expect.not.objectContaining({ client_request_id: expect.anything() }));
+    });
+
+    it("rejects a key that is not a UUID", async () => {
+      const response = await POST(new Request("http://localhost/api/inquiries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...validPayload, client_request_id: "not-a-uuid" }),
+      }));
+      expect(response.status).toBe(400);
+    });
   });
 
   it("stores a validated inquiry through the server client", async () => {

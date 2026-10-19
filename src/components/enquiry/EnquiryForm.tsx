@@ -3,6 +3,7 @@
 import { ContentRegion } from "@/components/content/ContentRegion";
 
 import { useRef, useState } from "react";
+import { newClientRequestId } from "@/lib/client-request-id";
 import { useRouter } from "next/navigation";
 import { SafeImage as Image } from "@/components/media/SafeImage";
 import Link from "next/link";
@@ -45,6 +46,8 @@ export function EnquiryForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const submitting = useRef(false);
+  // One key per filled-in form, reused on retry (T4.9).
+  const clientRequestId = useRef<string | null>(null);
   const [submittingState, setSubmittingState] = useState(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -185,6 +188,7 @@ export function EnquiryForm() {
           product_name: items.map((i) => i.title).join(", ").slice(0, 200),
           website: "",
           source,
+          client_request_id: (clientRequestId.current ??= newClientRequestId()),
         }),
       });
       if (!response.ok) refusal = describeSubmitFailure(response);

@@ -2,7 +2,8 @@
 
 import { ContentRegion } from "@/components/content/ContentRegion";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { newClientRequestId } from "@/lib/client-request-id";
 import { getSource } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
 import { describeSubmitFailure } from "@/lib/submit-errors";
@@ -38,6 +39,8 @@ export function InquiryForm({
 }: Props) {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  // One key per filled-in form, reused on retry, renewed after a success (T4.9).
+  const clientRequestId = useRef<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -59,6 +62,7 @@ export function InquiryForm({
       variant_id: variantId,
       product_name: productName,
       source,
+      client_request_id: (clientRequestId.current ??= newClientRequestId()),
     };
 
     try {
@@ -77,6 +81,7 @@ export function InquiryForm({
       }
       analytics.inquirySubmit({ inquiry_type: payload.inquiry_type, source });
       setStatus("done");
+      clientRequestId.current = null;
       form.reset();
     } catch {
       setStatus("error");
