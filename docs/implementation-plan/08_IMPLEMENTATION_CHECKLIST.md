@@ -188,7 +188,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE WITH LIMITS · depends on: T6.3
 - [x] **T6.5** — CI pipeline structure and caching — *2026-10-20: `ci.yml` split into parallel Audit / Lint and types / Unit tests / Production build; the required name `Lint, types, unit tests, build` is kept as an `if: always()` gate that fails unless all succeeded. npm cache already on; e2e uses the runner's Chrome (`channel: chrome`), so no browser cache is needed*  
   P2 · M · FREE · depends on: T1.12, T3.10
-- [ ] **T6.6** — Coverage thresholds for `src/lib`  
+- [x] **T6.6** — Coverage thresholds for `src/lib` — *2026-10-20: baseline 80.5 / 75.2 / 80.0 / 81.5 (statements/branches/functions/lines); thresholds 78 / 72 / 77 / 79 in `vitest.config.ts`, enforced by CI's `npm test -- --coverage`. Also `testTimeout` 20 s: two import-pipeline tests flaked at 5 s under load*  
   P3 · S · FREE · depends on: none
 - [ ] **T6.7** — WhatsApp sweep scheduler cadence  
   P2 · M · FREE WITH LIMITS · depends on: T6.4, T1.12
