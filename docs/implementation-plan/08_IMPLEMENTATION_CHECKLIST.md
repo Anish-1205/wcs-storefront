@@ -142,7 +142,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE · depends on: T4.3
 - [x] **T4.9** — Inquiry idempotency key — *2026-10-19: forms send a per-fill `client_request_id`; the route upserts with `ignoreDuplicates` and skips the e-mail on a repeat; before migration 037 it saves without the key instead of failing*  
   P2 · S · FREE · depends on: T4.3
-- [ ] **T4.8** — Stock-check request / notify-me (minimal)  
+- [ ] **T4.8** — Stock-check request / notify-me (minimal) — *2026-10-19: no code needed for the minimal version. The product page already has "Add to enquiry" and "Ask about this saree" (WhatsApp, prefilled with the product), so an availability question goes through the existing enquiry flow. **Owner decision**: is there a restock process that would make "notify me" meaningful?*  
   P3 · S · OPTIONAL · depends on: T4.3
 
 **Phase 4 checkpoint**
