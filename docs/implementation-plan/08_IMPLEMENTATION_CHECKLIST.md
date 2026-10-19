@@ -126,7 +126,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 4 — Analytics and business functionality
 
-- [ ] **T4.3** — Inquiry workflow schema (statuses, notes, history, indexes)  
+- [x] **T4.3** — Inquiry workflow schema (statuses, notes, history, indexes) — *2026-10-19: migration `037_inquiry_workflow.sql` (status/notes/follow-up/idempotency/UTM columns, history table, `inquiry_set_status` RPC, indexes; tested on local PG, **not applied**). Also restores 004's `ON DELETE SET NULL` on `inquiries.product_id/variant_id`: production was found on NO ACTION, so deleting a product with an enquiry failed*  
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T1.2
 - [ ] **T4.2** — Consent controls  
   P1 · M · FREE · depends on: T3.12

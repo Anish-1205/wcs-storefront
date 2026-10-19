@@ -111,6 +111,8 @@ describe("effective RLS state across all migrations", () => {
       "ai_settings",
       // Admin audit log (036).
       "admin_audit_log",
+      // Inquiry status history (037).
+      "inquiry_status_history",
     ];
 
     const reachable = serverOnly.filter((table) =>
