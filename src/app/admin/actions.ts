@@ -36,6 +36,7 @@ import {
 } from "@/lib/validation";
 import { reportError, ExpectedError } from "@/lib/report-error";
 import { refreshVisibilityMirror } from "@/lib/catalog-hidden-slugs";
+import { auditAdminAction } from "@/lib/audit";
 
 /**
  * Next.js redacts thrown Server Action error messages in production builds
@@ -307,9 +308,10 @@ export async function saveContact(input: ContactInputShape): Promise<ActionResul
 
 export async function deleteContact(id: string): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const { error } = await admin.from("contacts").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    await auditAdminAction(user, "contact.delete", { entity: "contact", entityId: id });
     revalidatePath("/admin/contacts");
     return {};
   });
@@ -366,7 +368,7 @@ export async function saveCategory(input: CategoryInputShape): Promise<ActionRes
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const { data: category } = await admin.from("categories").select("slug").eq("id", id).maybeSingle();
     const { count } = await admin
       .from("products")
@@ -381,6 +383,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
     if (error) throw new Error(error.message);
 
     const slug = (category as { slug?: string } | null)?.slug;
+    await auditAdminAction(user, "category.delete", { entity: "category", entityId: id, meta: { slug: slug ?? null } });
     if (slug) revalidatePath(`/catalog/${slug}`);
     revalidatePath("/");
     revalidatePath("/catalog");
@@ -392,10 +395,12 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
 export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {}): Promise<ActionResult<{ csv: string }>> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const parsed = contactsQuerySchema.safeParse(query);
     if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid contacts query");
     const rows = await listContactsInternal(admin, parsed.data);
+    // Customer names and phone numbers leave the system: who, when and how many.
+    await auditAdminAction(user, "contact.export", { entity: "contact", meta: { rows: rows.length } });
     const header = [
       "name",
       "phone",
@@ -430,7 +435,7 @@ export async function exportContactsCsv(query: Partial<ContactsQueryShape> = {})
 }
 
 export async function importContactsCsv(csvText: string) {
-  const { admin } = await assertAdmin();
+  const { admin, user } = await assertAdmin();
   const lines = csvText.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length === 0) {
     return { total: 0, inserted: 0, updated: 0, skipped: 0, errors: [] as Array<{ row: number; message: string }> };
@@ -495,6 +500,7 @@ export async function importContactsCsv(csvText: string) {
     }
   }
 
+  await auditAdminAction(user, "contact.import", { entity: "contact", meta: { total: rows.length, inserted, updated, skipped } });
   revalidatePath("/admin/contacts");
   return { total: rows.length, inserted, updated, skipped, errors };
 }
@@ -834,7 +840,7 @@ export async function updateProductDetails(input: ProductDetailsShape): Promise<
 
 export async function updateProductStatus(id: string, status: ProductStatus): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     await ensurePublishAllowed(admin, id, status);
     const { data, error } = await admin
       .from("products")
@@ -843,6 +849,7 @@ export async function updateProductStatus(id: string, status: ProductStatus): Pr
       .select("slug")
       .single();
     if (error) throw new Error(error.message);
+    await auditAdminAction(user, "product.status", { entity: "product", entityId: id, meta: { status, slug: data.slug as string } });
     revalidatePublic(data.slug as string);
     // Record the new hidden set outside Postgres while the database is still
     // reachable — see refreshVisibilityMirror.
@@ -870,7 +877,7 @@ export async function toggleFeatured(id: string, is_featured: boolean): Promise<
 
 export async function deleteProduct(id: string): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const { data } = await admin
       .from("products")
       .select("slug")
@@ -878,6 +885,7 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
       .single();
     const { error } = await admin.from("products").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    await auditAdminAction(user, "product.delete", { entity: "product", entityId: id, meta: { slug: (data?.slug as string | undefined) ?? null } });
     if (data?.slug) revalidatePublic(data.slug as string);
     await refreshVisibilityMirror();
     revalidateCatalogShell();

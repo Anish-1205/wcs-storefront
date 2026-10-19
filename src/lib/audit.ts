@@ -65,3 +65,22 @@ export async function recordAudit(entry: AuditEntry): Promise<void> {
     reportError(error, { scope: "admin-audit", action: entry.action });
   }
 }
+
+/**
+ * recordAudit for a server action that has just passed `assertAdmin()`:
+ * takes the actor from that user and the request id from the request headers.
+ */
+export async function auditAdminAction(
+  user: { id: string } | null | undefined,
+  action: string,
+  entry: Omit<AuditEntry, "action" | "actorId" | "requestId"> = {},
+): Promise<void> {
+  let requestId: string | null = null;
+  try {
+    const { headers } = await import("next/headers");
+    requestId = (await headers()).get("x-request-id");
+  } catch {
+    // Outside a request (tests, scripts): no id.
+  }
+  await recordAudit({ ...entry, action, actorId: user?.id ?? null, requestId });
+}

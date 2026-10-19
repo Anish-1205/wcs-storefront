@@ -11,6 +11,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
+import { auditAdminAction } from "@/lib/audit";
 import { toResult, type ActionResult } from "@/app/admin/actions";
 import { PRODUCTS, primaryImage } from "@/data/products";
 import { COLLECTIONS } from "@/data/collections";
@@ -299,12 +300,13 @@ export async function syncFileProducts(): Promise<
   }>
 > {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
 
     const categoryIdBySlug = await syncCategories(admin);
     const { created, updated, skippedNames, movedCodes, failures, productIdBySlug } =
       await syncProducts(admin, categoryIdBySlug);
     await syncCollections(admin, productIdBySlug);
+    await auditAdminAction(user, "catalog.sync", { meta: { created, updated, skipped: skippedNames.length, failed: failures.length } });
     revalidateTag("storefront-media");
     revalidateTag("storefront-collections");
 

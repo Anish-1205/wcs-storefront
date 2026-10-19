@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
+import { auditAdminAction } from "@/lib/audit";
 import { getAiProvider } from "@/lib/ai";
 import { enforceNameStyle, normalizeHighlights, resolveProductName } from "@/lib/ai/style-guide";
 import { classifyGroupCollection } from "@/lib/import/collection-classification";
@@ -262,7 +263,7 @@ export async function deleteImportAsset(assetId: string): Promise<ActionResult> 
  */
 export async function deleteImportedDraftProduct(input: { group_id: string; product_id: string }): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const { data: product } = await admin
       .from("products")
       .select("status, slug")
@@ -275,6 +276,7 @@ export async function deleteImportedDraftProduct(input: { group_id: string; prod
 
     const { error: deleteError } = await admin.from("products").delete().eq("id", input.product_id);
     if (deleteError) throw new Error(deleteError.message);
+    await auditAdminAction(user, "product.delete", { entity: "product", entityId: input.product_id, meta: { slug: (product as { slug: string }).slug, source: "import_draft" } });
 
     const { data: group, error: groupError } = await admin
       .from("import_product_groups")
@@ -1100,9 +1102,10 @@ export async function createProductFromGroup(
 
 export async function approveImportedProductReview(productId: string): Promise<ActionResult> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const { error } = await admin.from("products").update({ review_status: "approved" }).eq("id", productId);
     if (error) throw new Error(error.message);
+    await auditAdminAction(user, "product.review_approve", { entity: "product", entityId: productId });
     revalidatePath("/admin/products");
     return {};
   });

@@ -125,6 +125,24 @@ Third-party accounting: Next.js inline bootstrap, GTM/GA, Clarity, Pinterest, Cl
 ## 4. Admin audit-log design
 Fields: actor id, action, entity, entity id, timestamp, request id, allowlisted meta. Never store: passwords, tokens, secrets, full message bodies, phone numbers, e-mails. Retention 12 months (proposed). Failure to write must not break the admin action but must be reported. Append-only by convention (no update/delete in app code). Covered actions listed in T3.2.
 
+**As built (2026-10-19, migration 036, `src/lib/audit.ts`).** Append-only is enforced by grants, not convention: `service_role` has `select, insert` only, and rows leave only through `admin_audit_prune()` (age-based, never under 30 days). Audited actions, checked by `src/__tests__/admin-audit-actions.test.ts`:
+
+| `action` | Where |
+| --- | --- |
+| `login.success` / `login.failure` / `login.throttled` | `adminSignIn` |
+| `product.delete` | `deleteProduct`, `deleteImportedDraftProduct` |
+| `product.status` | `updateProductStatus` (publish / draft / archive) |
+| `product.enrich` / `product.identifiers` / `product.color_split` | the three bulk applies in `enrichment-actions.ts` |
+| `product.review_approve` | `approveImportedProductReview` |
+| `contact.delete` / `contact.import` / `contact.export` | contacts actions (counts only) |
+| `category.delete` | `deleteCategory` |
+| `page.publish` / `page.restore` | `page-content-actions.ts` |
+| `catalog.sync` | `syncFileProducts` |
+| `availability.change` | every stock-signal write (points at `storefront_availability_history` ids) |
+| `ai.kill_switch` | `setAiKillSwitch` |
+
+Migration apply is not audited because one-click apply is disabled.
+
 ## 5. Privacy safeguards (T3.12)
 Sentry `sendDefaultPii` off (already default); keep replay `maskAllText`; review `blockAllMedia:false`; GA4 events contain no PII; consent default-denied; backups encrypted and access-listed; contact deletion procedure documented; Clarity masking mode confirmed. Legal advice is outside this plan.
 

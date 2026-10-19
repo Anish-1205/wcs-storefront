@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
+import { auditAdminAction } from "@/lib/audit";
 import { toResult } from "@/app/admin/actions";
 import { ExpectedError } from "@/lib/report-error";
 import { getProductBySlug } from "@/data/products";
@@ -41,8 +42,14 @@ async function write(changes: Change[], session: Awaited<ReturnType<typeof asser
     changes: changes.map((change) => ({ ...change, product_id: products?.find((p) => p.slug === change.slug)?.id ?? null })), actor_email: user.email ?? user.id,
   });
   if (error) throw new Error(error.message);
+  const written = data as Array<{ slug: string; id: number }>;
+  // The history table already holds who/what/before/after; the audit row points at it.
+  await auditAdminAction(user, "availability.change", {
+    entity: "storefront_availability_history",
+    meta: { count: written.length, history_ids: written.map((change) => change.id) },
+  });
   refresh(slugs);
-  return { changes: data as Array<{ slug: string; id: number }> };
+  return { changes: written };
 }
 
 export async function setStorefrontAvailability(input: z.infer<typeof storefrontAvailabilitySchema>) {

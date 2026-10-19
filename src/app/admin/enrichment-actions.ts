@@ -19,6 +19,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { assertAdmin } from "@/lib/admin-auth";
+import { auditAdminAction } from "@/lib/audit";
 import { getAiProvider } from "@/lib/ai";
 import {
   buildEnrichmentProposal,
@@ -302,7 +303,7 @@ export async function applyProductEnrichment(input: {
   }>;
 }): Promise<ActionResult<{ updated: number; skipped: number }>> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const parsed = enrichmentApplySchema.safeParse(input);
     if (!parsed.success) throw new Error("That set of changes isn't valid — re-run the preview and try again.");
 
@@ -397,6 +398,7 @@ export async function applyProductEnrichment(input: {
     revalidatePath("/collections/[slug]", "page");
     revalidatePath("/");
 
+    await auditAdminAction(user, "product.enrich", { entity: "product", meta: { updated, skipped, product_ids: productIds } });
     return { updated, skipped };
   });
 }
@@ -531,7 +533,7 @@ export async function applyProductIdentifiers(input: {
   normalize_slugs?: boolean;
 }): Promise<ActionResult<{ updated: number; skipped: number; moved: Array<{ from: string; to: string }> }>> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const parsed = identifierApplySchema.safeParse(input);
     if (!parsed.success) throw new Error("That selection isn't valid — re-run the preview and try again.");
 
@@ -567,6 +569,7 @@ export async function applyProductIdentifiers(input: {
     revalidatePath("/catalog");
     revalidatePath("/search");
     revalidatePath("/");
+    await auditAdminAction(user, "product.identifiers", { entity: "product", meta: { updated, skipped, slugs_moved: moved.length, codes: !!parsed.data.normalize_codes, slugs: !!parsed.data.normalize_slugs } });
     return { updated, skipped, moved };
   });
 }
@@ -737,7 +740,7 @@ export async function applyColorSplit(input: {
   plans: ColorSplitApplyShape["plans"];
 }): Promise<ActionResult<{ split: number; skipped: number }>> {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const parsed = colorSplitApplySchema.safeParse(input);
     if (!parsed.success) throw new Error("That split isn't valid — re-run the preview and try again.");
 
@@ -836,6 +839,7 @@ export async function applyColorSplit(input: {
 
     revalidateTag("storefront-media");
     revalidatePath("/admin/products");
+    await auditAdminAction(user, "product.color_split", { entity: "product", meta: { split, skipped } });
     return { split, skipped };
   });
 }

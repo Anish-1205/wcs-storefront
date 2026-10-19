@@ -96,7 +96,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T2.6 (request id; optional)
 - [x] **T3.4** — Server-side login throttling — *2026-10-19: `adminSignIn` server action, `login` bucket 5/15 min on IP + e-mail hash, fail closed with `LOGIN_RATE_LIMIT_FAILURE=open` break-glass, every attempt audited; same answer for wrong password and unknown e-mail*  
   P1 · M · EXISTING COST · depends on: T1.7
-- [ ] **T3.2** — Wire audit logging into destructive/privileged admin actions  
+- [x] **T3.2** — Wire audit logging into destructive/privileged admin actions — *2026-10-19: 13 actions + sign-in, list in `06_SECURITY_PLAN.md` §4, runtime and static tests*  
   P1 · M · FREE · depends on: T3.1
 - [ ] **T3.3** — TOTP MFA for the admin account  
   P1 · L · UNVERIFIED · depends on: T3.1 (audit enroll/unenroll)

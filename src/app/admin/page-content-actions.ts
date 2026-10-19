@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/admin-auth";
+import { auditAdminAction } from "@/lib/audit";
 import { toResult } from "@/app/admin/actions";
 import { ExpectedError } from "@/lib/report-error";
 import { homepageSchema } from "@/lib/homepage-content";
@@ -41,7 +42,7 @@ export async function savePageDraft(page: string, input: unknown) {
 /** Makes the given content live, keeping the previous live version for undo. */
 export async function publishPageContent(page: string, input: unknown) {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const scope = scopeFor(page);
     const content = parseFor(scope, input);
     const { data: existing } = await admin
@@ -51,6 +52,7 @@ export async function publishPageContent(page: string, input: unknown) {
       page: scope, content, draft_content: content, updated_at: new Date().toISOString(),
     }, { onConflict: "page" });
     if (error) throw new Error("Could not publish. Check that the page-content database migrations have been applied.", { cause: error });
+    await auditAdminAction(user, "page.publish", { entity: "page", entityId: scope });
     revalidatePublic();
     return {};
   });
@@ -59,7 +61,7 @@ export async function publishPageContent(page: string, input: unknown) {
 /** Puts an earlier published version back on the website. */
 export async function restorePageVersion(page: string, versionId: string) {
   return toResult(async () => {
-    const { admin } = await assertAdmin();
+    const { admin, user } = await assertAdmin();
     const scope = scopeFor(page);
     const id = versionIdSchema.parse(versionId);
     const { data: version } = await admin
@@ -73,6 +75,7 @@ export async function restorePageVersion(page: string, versionId: string) {
       page: scope, content, draft_content: content, updated_at: new Date().toISOString(),
     }, { onConflict: "page" });
     if (error) throw new Error("Could not restore that version.", { cause: error });
+    await auditAdminAction(user, "page.restore", { entity: "page", entityId: scope, meta: { version_id: id } });
     revalidatePublic();
     return { content };
   });
