@@ -351,6 +351,16 @@ publish, until that gap is closed.
   includes one uptime monitor; its one cron monitor is reserved for the
   backup heartbeat, so don't also wire a cron monitor here.
 
+## 5a-2. Admin sign-in throttling
+
+Admin password sign-in runs on the server and allows 5 attempts per 15
+minutes per IP and e-mail (Upstash). If Upstash is down or its free budget is
+spent, sign-in is **refused** ("temporarily unavailable"). That is the fail-closed
+policy. To get in during such an outage, set `LOGIN_RATE_LIMIT_FAILURE=open`
+in Vercel, redeploy, and remove it afterwards. Supabase's own sign-in limits
+still apply either way. Every attempt is written to `admin_audit_log`
+(`login.success` / `login.failure` / `login.throttled`, no e-mail stored).
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

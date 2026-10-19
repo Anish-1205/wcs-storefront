@@ -37,6 +37,7 @@ vi.mock("@upstash/ratelimit", () => ({
 
 import {
   checkImportRateLimit,
+  checkLoginRateLimit,
   checkRateLimit,
   getRateLimitStatus,
   rateLimitResponse,
@@ -303,5 +304,28 @@ describe("the key the budget is spent against", () => {
 
     expect(mocks.limit).toHaveBeenNthCalledWith(1, "unknown");
     expect(mocks.limit).toHaveBeenNthCalledWith(2, "unknown");
+  });
+});
+
+describe("admin sign-in bucket (T3.4)", () => {
+  afterEach(() => {
+    delete process.env.LOGIN_RATE_LIMIT_FAILURE;
+  });
+
+  it("keys on the platform IP and a hash of the normalised e-mail, never the e-mail itself", async () => {
+    await checkLoginRateLimit(request({ "x-vercel-forwarded-for": "203.0.113.9" }), " Admin@Example.com ");
+    await checkLoginRateLimit(request({ "x-vercel-forwarded-for": "203.0.113.9" }), "admin@example.com");
+    const [first, second] = mocks.limit.mock.calls.map(([key]) => key as string);
+    expect(first).toMatch(/^203\.0\.113\.9:[0-9a-f]{32}$/);
+    expect(second).toBe(first);
+    expect(first).not.toContain("example");
+  });
+
+  it("fails closed when Upstash is down, unless LOGIN_RATE_LIMIT_FAILURE=open", async () => {
+    mocks.limit.mockImplementation(unreachable);
+    expect(await checkLoginRateLimit(request(), "a@b.co")).toMatchObject({ success: false, degraded: true });
+    resetRateLimitState();
+    process.env.LOGIN_RATE_LIMIT_FAILURE = "open";
+    expect(await checkLoginRateLimit(request(), "a@b.co")).toMatchObject({ success: true, degraded: true });
   });
 });

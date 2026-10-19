@@ -26,6 +26,10 @@ const E2E_SERVER_ENV = {
   ADMIN_EMAILS: "admin@example.com",
   UPSTASH_REDIS_REST_URL: "http://127.0.0.1:8079",
   UPSTASH_REDIS_REST_TOKEN: "local-test-token",
+  // Admin sign-in is rate-limited and fails closed when Upstash is unreachable
+  // (T3.4); nothing listens on 8079 outside the import spec, so let the specs
+  // that log in through. Throttling itself is covered by unit tests.
+  LOGIN_RATE_LIMIT_FAILURE: "open",
   // Relaxes the middleware CSP's connect-src to the local Supabase CLI. The
   // suite runs a production build (NODE_ENV=production), which would otherwise
   // only allow https://*.supabase.co. Never set in a real deployment.

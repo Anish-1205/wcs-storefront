@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { reportError } from "@/lib/report-error";
 
@@ -60,7 +61,7 @@ const REPORT_WINDOW_MS = 30 * 60 * 1000;
  *  actually retried. */
 const DEGRADED_RETRY_AFTER_SECONDS = Math.ceil(UNAVAILABLE_FOR_MS / 1000);
 
-type BucketName = "public" | "import";
+type BucketName = "public" | "import" | "login";
 
 /**
  * Admin-only bulk upload endpoints (import sign/complete) are already gated
@@ -71,6 +72,8 @@ type BucketName = "public" | "import";
 const BUCKETS: Record<BucketName, { limit: number; window: `${number} ${"s" | "m"}`; prefix: string }> = {
   public: { limit: 5, window: "10 m", prefix: "wcs:ratelimit" },
   import: { limit: 600, window: "10 m", prefix: "wcs:ratelimit:import" },
+  // Admin password sign-in (T3.4): 5 attempts per 15 minutes per IP and e-mail.
+  login: { limit: 5, window: "15 m", prefix: "wcs:ratelimit:login" },
 };
 
 let client: Redis | null | undefined;
@@ -197,6 +200,7 @@ async function limitWith(
   name: BucketName,
   req: Request,
   failure: RateLimitFailurePolicy,
+  key: string = clientIp(req),
 ): Promise<RateLimitResult> {
   const waitUntil = unavailableUntil.get(name);
   if (waitUntil !== undefined && Date.now() < waitUntil) return decide(name, failure);
@@ -209,7 +213,7 @@ async function limitWith(
   }
 
   try {
-    const { success, limit, remaining, reset } = await withTimeout(limiter.limit(clientIp(req)));
+    const { success, limit, remaining, reset } = await withTimeout(limiter.limit(key));
     unavailableUntil.delete(name);
     return {
       success,
@@ -239,6 +243,22 @@ export async function checkImportRateLimit(
   { failure = "closed" }: { failure?: RateLimitFailurePolicy } = {},
 ): Promise<RateLimitResult> {
   return limitWith("import", req, failure);
+}
+
+/**
+ * The admin sign-in bucket (T3.4): 5 attempts per 15 minutes, keyed on the IP
+ * and a hash of the normalised e-mail. Keying on both means an attacker
+ * guessing one account cannot lock its owner out from another network, and no
+ * e-mail address is ever written to Redis.
+ *
+ * Fails closed by default (the T3.4 policy). LOGIN_RATE_LIMIT_FAILURE=open is
+ * the documented break-glass for an Upstash outage that would otherwise lock
+ * the admin out; Supabase's own sign-in limits still apply either way.
+ */
+export async function checkLoginRateLimit(req: Request, email: string): Promise<RateLimitResult> {
+  const emailHash = createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32);
+  const failure: RateLimitFailurePolicy = process.env.LOGIN_RATE_LIMIT_FAILURE === "open" ? "open" : "closed";
+  return limitWith("login", req, failure, `${clientIp(req)}:${emailHash}`);
 }
 
 /**

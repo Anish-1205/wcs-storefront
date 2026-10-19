@@ -94,7 +94,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 - [x] **T3.1** — Admin audit log table and helper — *2026-10-19: migration `036_admin_audit_log.sql` (append-only for service_role, age-only prune; tested on local PG, **not applied**), `src/lib/audit.ts` (never throws, allowlisted meta)*  
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T2.6 (request id; optional)
-- [ ] **T3.4** — Server-side login throttling  
+- [x] **T3.4** — Server-side login throttling — *2026-10-19: `adminSignIn` server action, `login` bucket 5/15 min on IP + e-mail hash, fail closed with `LOGIN_RATE_LIMIT_FAILURE=open` break-glass, every attempt audited; same answer for wrong password and unknown e-mail*  
   P1 · M · EXISTING COST · depends on: T1.7
 - [ ] **T3.2** — Wire audit logging into destructive/privileged admin actions  
   P1 · M · FREE · depends on: T3.1

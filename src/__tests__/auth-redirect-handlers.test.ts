@@ -6,6 +6,8 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
   useRef: (v: unknown) => ({ current: v }), useState: (v: unknown) => [["test@example.invalid", "password123"][mocks.index++] ?? v, vi.fn()] }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: vi.fn() }), useSearchParams: () => ({ get: (key: string) => key === "error" ? null : mocks.target }) }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({ auth: { signInWithPassword: async () => ({ error: null }) } }) }));
+// Admin sign-in runs on the server since T3.4; only the redirect after it is under test here.
+vi.mock("@/app/admin/login/actions", () => ({ adminSignIn: async () => ({ ok: true }) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { exchangeCodeForSession: async () => ({ error: null }) } }) }));
 import AdminLoginPage from "@/app/admin/login/page";
 import { AuthForm } from "@/components/auth/AuthForm";

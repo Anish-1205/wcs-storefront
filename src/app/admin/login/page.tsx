@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { safeRedirect } from "@/lib/safe-redirect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { adminSignIn } from "./actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,10 @@ function LoginForm() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (signInError) {
-      setError("Invalid email or password.");
+    // Server-side, so it can be rate-limited (T3.4); the session cookie comes back with the response.
+    const result = await adminSignIn({ email, password });
+    if (!result.ok) {
+      setError(result.error);
       setLoading(false);
       return;
     }
