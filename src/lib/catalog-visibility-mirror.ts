@@ -49,11 +49,14 @@ let client: Redis | null | undefined;
 let lastWritten: string | null = null;
 let unavailableUntil = 0;
 const lastReportedAt = new Map<string, number>();
+const failureCounts = new Map<string, number>();
+let lastWriteOkAt: number | null = null;
 
 /** Reports a mirror failure at most once per window, and never throws: this is
  *  the safety net's own error path. */
 function note(op: string, error: unknown, extra: Record<string, unknown> = {}): void {
   unavailableUntil = Date.now() + UNAVAILABLE_FOR_MS;
+  failureCounts.set(op, (failureCounts.get(op) ?? 0) + 1);
   try {
     const previous = lastReportedAt.get(op);
     if (previous !== undefined && Date.now() - previous < REPORT_WINDOW_MS) return;
@@ -150,6 +153,7 @@ export async function writeVisibilityMirror(slugs: string[], at = Date.now()): P
     const payload: MirroredVisibility = { slugs: sorted, at };
     await withTimeout(store.set(KEY, JSON.stringify(payload), { ex: TTL_SECONDS }));
     lastWritten = signature;
+    lastWriteOkAt = Date.now();
     return true;
   } catch (error) {
     // Worth knowing about: until the next successful write the mirror is
@@ -159,10 +163,22 @@ export async function writeVisibilityMirror(slugs: string[], at = Date.now()): P
   }
 }
 
+/** Counters for the deep health check (T2.5). Per instance; no customer data. */
+export function getVisibilityMirrorStatus() {
+  return {
+    configured: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+    backingOff: backingOff(),
+    failures: Object.fromEntries(failureCounts),
+    lastWriteOkAt: lastWriteOkAt === null ? null : new Date(lastWriteOkAt).toISOString(),
+  };
+}
+
 /** Test-only: forget the client, the write dedupe and the back-off. */
 export function resetVisibilityMirrorClient(): void {
   client = undefined;
   lastWritten = null;
   unavailableUntil = 0;
   lastReportedAt.clear();
+  failureCounts.clear();
+  lastWriteOkAt = null;
 }

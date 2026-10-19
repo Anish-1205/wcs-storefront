@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/report-error";
 import { getRateLimitStatus } from "@/lib/rate-limit";
 import { getCatalogResilienceStatus } from "@/lib/storefront-catalog-resilience";
+import { getVisibilityMirrorStatus } from "@/lib/catalog-visibility-mirror";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ export async function GET(req: Request) {
       db,
       rateLimit: getRateLimitStatus(),
       catalog: getCatalogResilienceStatus(),
+      visibilityMirror: getVisibilityMirrorStatus(),
     },
     db === "ok" ? 200 : 503,
   );

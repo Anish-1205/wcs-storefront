@@ -342,8 +342,10 @@ publish, until that gap is closed.
   requires `Authorization: Bearer $HEALTH_TOKEN`. Set `HEALTH_TOKEN` in Vercel
   (any long random string) to use it; without it, the deep check always
   returns 401. It reports `db: ok|fail` plus the rate-limit and
-  catalog-fallback counters — never env values, hostnames, versions or raw
-  error text.
+  catalog-fallback counters, `catalog.lastSuccessfulCatalogReadAgeSec` (how
+  stale this instance's view of the database is) and `visibilityMirror`
+  (Upstash mirror failures and back-off). It never returns env values,
+  hostnames, versions or raw error text. Counters are per server instance.
 - In Sentry: Alerts → Uptime Monitors → point it at the public
   `https://<domain>/api/health` path (not `?deep=1`). The Developer plan
   includes one uptime monitor; its one cron monitor is reserved for the

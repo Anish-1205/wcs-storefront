@@ -51,6 +51,9 @@ describe("health route", () => {
     expect(body.db).toBe("ok");
     expect(body.rateLimit).toBeTypeOf("object");
     expect(body.catalog).toBeTypeOf("object");
+    // T2.5: how stale this instance's view is, and the Upstash mirror's state.
+    expect(body.catalog).toHaveProperty("lastSuccessfulCatalogReadAgeSec");
+    expect(body.visibilityMirror).toMatchObject({ backingOff: expect.any(Boolean), failures: expect.any(Object) });
   });
 
   it("flips db to fail and returns 503 with Retry-After when the query errors", async () => {

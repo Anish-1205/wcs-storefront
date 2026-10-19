@@ -74,7 +74,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · S · FREE · depends on: T2.1, T2.2
 - [x] **T2.4** — Sentry tuning (environment, sampling, noise) — *2026-10-19: `src/lib/sentry-options.ts` shared by all three runtimes (environment, preview filter, ignore list, replay-on-error 0.2); `scope` is now a tag*  
   P1 · S · FREE WITH LIMITS · depends on: none
-- [ ] **T2.5** — Cache and fallback instrumentation  
+- [x] **T2.5** — Cache and fallback instrumentation — *2026-10-19: deep health adds `lastSuccessfulCatalogReadAgeSec` (+ per read) and `visibilityMirror` (failures per op, back-off, last good write) beside the existing fallback counters; per instance*  
   P1 · M · FREE · depends on: T1.6, T1.8
 - [ ] **T2.6** — Correlation IDs and safe structured logging  
   P2 · M · FREE · depends on: T2.4

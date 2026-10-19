@@ -176,6 +176,7 @@ export async function catalogRead<T>(
       }),
     ]);
     retryAt.delete(read);
+    lastSuccess.set(read, Date.now());
     return result;
   } catch (error) {
     if (backOffAfter === "failure" || timedOut) retryAt.set(read, Date.now() + RETRY_AFTER_MS);
@@ -187,6 +188,8 @@ export async function catalogRead<T>(
 }
 
 const lastGood = new Map<CatalogRead, Remembered<unknown>>();
+/** When each read last got an answer from the database (T2.5). */
+const lastSuccess = new Map<CatalogRead, number>();
 const lastReportedAt = new Map<string, number>();
 const failures = new Map<CatalogRead, number>();
 const served = new Map<string, number>();
@@ -313,7 +316,12 @@ export function noteServed(read: CatalogRead, source: CatalogSource): void {
 /** Counters for a health check to read. Nothing here is customer data. */
 export function getCatalogResilienceStatus() {
   const snapshot = getVisibilitySnapshot();
+  const now = Date.now();
+  const newestSuccess = lastSuccess.size ? Math.max(...lastSuccess.values()) : null;
   return {
+    // How stale this instance's view of the database is. null: never read yet.
+    lastSuccessfulCatalogReadAgeSec: newestSuccess === null ? null : Math.round((now - newestSuccess) / 1000),
+    lastSuccessfulReadAgeSec: Object.fromEntries([...lastSuccess].map(([read, at]) => [read, Math.round((now - at) / 1000)])),
     failures: Object.fromEntries(failures),
     served: Object.fromEntries(served),
     lastFailureAt: lastFailureAt === null ? null : new Date(lastFailureAt).toISOString(),
@@ -330,6 +338,7 @@ export function getCatalogResilienceStatus() {
 /** Test-only: forget everything this instance has learned. */
 export function resetCatalogResilience(): void {
   lastGood.clear();
+  lastSuccess.clear();
   retryAt.clear();
   lastReportedAt.clear();
   failures.clear();
