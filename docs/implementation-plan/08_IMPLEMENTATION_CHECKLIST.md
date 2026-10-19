@@ -102,11 +102,11 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · L · UNVERIFIED · depends on: T3.1 (audit enroll/unenroll)
 - [x] **T3.5** — Session lifetime policy — *code done 2026-10-19, **off until the owner picks the lengths** (`ADMIN_IDLE_TIMEOUT_MINUTES`, `ADMIN_MAX_SESSION_HOURS`, `ADMIN_SESSION_SECRET`; proposed 30 min / 12 h — deployment.md §5a-4)*  
   P2 · M · UNVERIFIED · depends on: T3.3
-- [ ] **T3.6** — CSP report-only rollout  
+- [x] **T3.6** — CSP report-only rollout — *2026-10-19: sampled `Content-Security-Policy-Report-Only` (nonce candidate), `/api/csp-report` (capped, grouped, throttled to Sentry), `worker-src 'self' blob:` added to the enforced policy. **Review window starts at deploy***  
   P1 · M · FREE WITH LIMITS · depends on: T1.7
-- [ ] **T3.7** — CSP tightening (nonce) — conditional  
+- [ ] **T3.7** — CSP tightening (nonce) — conditional — *waits for 1–2 weeks of T3.6 reports from production*  
   P2 · L · FREE · depends on: T3.6
-- [ ] **T3.8** — Cloudflare Turnstile on public forms  
+- [ ] **T3.8** — Cloudflare Turnstile on public forms — *not started: owner decision "only if abuse is observed"*  
   P2 · M · UNVERIFIED · depends on: T1.7, T3.6
 - [ ] **T3.9** — Secret scanning in CI  
   P1 · S · FREE · depends on: none

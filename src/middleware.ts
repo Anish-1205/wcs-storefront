@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { decideMfa, MFA_PATHS } from "@/lib/admin-mfa";
+import { buildReportOnlyCsp, reportSampleRate } from "@/lib/csp-report-only";
 import { evaluateSession, LAST_SEEN_COOKIE, readLastSeen, sessionPolicy, signLastSeen } from "@/lib/admin-session";
 
 /**
@@ -49,6 +50,8 @@ function buildCsp(isProd: boolean) {
     `media-src 'self' https://res.cloudinary.com`,
     `font-src 'self'`,
     `connect-src ${connectSrc}`,
+    // Sentry's replay compresses in a blob: worker; without this it falls back to script-src.
+    `worker-src 'self' blob:`,
     `frame-ancestors 'self'`,
     `object-src 'none'`,
     `base-uri 'self'`,
@@ -83,6 +86,10 @@ export async function middleware(req: NextRequest) {
     const res = NextResponse.next({ request: req });
     res.headers.set("Content-Security-Policy", csp);
     res.headers.set("x-request-id", requestId);
+    // T3.6: the stricter candidate, report-only and sampled; blocks nothing.
+    if (process.env.NODE_ENV === "production" && Math.random() < reportSampleRate()) {
+      res.headers.set("Content-Security-Policy-Report-Only", buildReportOnlyCsp(crypto.randomUUID().replace(/-/g, "")));
+    }
     return res;
   }
 

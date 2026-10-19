@@ -405,6 +405,18 @@ API routes are not covered by the idle clock; they still need a valid admin
 session and, once enrolled, two-factor. Turning it on signs out sessions that
 are already older than the limits, once. To switch off, unset the variables.
 
+## 5a-5. Content-Security-Policy report-only
+
+The enforced CSP (middleware) still allows inline scripts. A stricter
+candidate (nonce-based scripts, no `'unsafe-inline'`) is sent as
+`Content-Security-Policy-Report-Only` on `CSP_REPORT_SAMPLE_RATE` of public
+page responses (default 0.05, production only). Browsers report what it
+*would* block to `/api/csp-report`, and nothing is blocked. Each distinct
+(directive, blocked origin) becomes one Sentry issue (`scope:csp-report`) at
+most every 30 minutes per instance, with a count. Review after one to two
+weeks: that list decides T3.7 (whether nonces are practical, given that they
+make every page dynamic). Set `CSP_REPORT_SAMPLE_RATE=0` to stop it.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the
