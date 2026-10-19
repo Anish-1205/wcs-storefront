@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/server";
 import { subscriberSchema } from "@/lib/validation";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
 
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const runtime = "nodejs";
 
@@ -36,15 +35,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (!serviceRoleKey) {
+  // Built per request (T3.11): a missing service-role key is a handled 500
+  // here, not a client built at module load.
+  let supabase: ReturnType<typeof createAdminClient>;
+  try {
+    supabase = createAdminClient();
+  } catch (error) {
+    reportError(error, { scope: "subscriber-insert" });
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
 
   const { error: dbError } = await supabase.from("whatsapp_subscribers").insert({
     name: data.name,

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkLoginRateLimit } from "@/lib/rate-limit";
 import { recordAudit } from "@/lib/audit";
 import { reportError } from "@/lib/report-error";
+import { isEmailAllowed } from "@/lib/admin-allowlist";
 
 /**
  * Admin password sign-in, on the server (T3.4), so it can be rate-limited:
@@ -44,6 +45,13 @@ export async function adminSignIn(input: { email: string; password: string }): P
         ? "Sign-in is temporarily unavailable. Please try again in a minute."
         : `Too many sign-in attempts. Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
     };
+  }
+
+  // Not on ADMIN_EMAILS: refused before Supabase is asked (T3.11), with the
+  // same answer as a wrong password, so the list cannot be probed.
+  if (!isEmailAllowed(email)) {
+    await recordAudit({ action: "login.failure", requestId, meta: { reason: "not_allowlisted" } });
+    return { ok: false, error: INVALID };
   }
 
   try {

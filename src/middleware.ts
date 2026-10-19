@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { decideMfa, MFA_PATHS } from "@/lib/admin-mfa";
+import { isEmailAllowed } from "@/lib/admin-allowlist";
 import { buildReportOnlyCsp, reportSampleRate } from "@/lib/csp-report-only";
 import { evaluateSession, LAST_SEEN_COOKIE, readLastSeen, sessionPolicy, signLastSeen } from "@/lib/admin-session";
 
@@ -82,7 +83,11 @@ export async function middleware(req: NextRequest) {
   const requestId = incoming && /^[A-Za-z0-9:_-]{8,80}$/.test(incoming) ? incoming : crypto.randomUUID();
   req.headers.set("x-request-id", requestId);
 
-  if (!pathname.startsWith("/admin")) {
+  // The admin-only API routes get the same edge check as /admin pages (T3.11);
+  // each route still verifies for itself.
+  const isAdminApi = pathname === "/api/upload" || pathname.startsWith("/api/import/");
+
+  if (!pathname.startsWith("/admin") && !isAdminApi) {
     const res = NextResponse.next({ request: req });
     res.headers.set("Content-Security-Policy", csp);
     res.headers.set("x-request-id", requestId);
@@ -122,7 +127,25 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (isAdminApi) {
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!isEmailAllowed(user.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    res.headers.set("x-request-id", requestId);
+    return res;
+  }
+
   const isLogin = pathname === "/admin/login";
+  // Signed in, but not on ADMIN_EMAILS: no admin page, at the edge (T3.11).
+  const allowed = !!user && isEmailAllowed(user.email);
+
+  if (user && !allowed && !isLogin) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/admin/login";
+    url.search = "";
+    const forbiddenRes = NextResponse.redirect(url);
+    forbiddenRes.headers.set("Content-Security-Policy", csp);
+    return forbiddenRes;
+  }
 
   if (!user && !isLogin) {
     const url = req.nextUrl.clone();
@@ -135,7 +158,7 @@ export async function middleware(req: NextRequest) {
 
   // Session lifetime (T3.5): idle and absolute limits, each off until set.
   const policy = sessionPolicy();
-  if (user && !isLogin && (policy.idleMs !== null || policy.maxMs !== null)) {
+  if (allowed && !isLogin && (policy.idleMs !== null || policy.maxMs !== null)) {
     const now = Date.now();
     const lastSeen = policy.secret
       ? await readLastSeen(req.cookies.get(LAST_SEEN_COOKIE)?.value, user.id, policy.secret)
@@ -167,7 +190,7 @@ export async function middleware(req: NextRequest) {
 
   // Two-factor (T3.3): a session that owes its TOTP code (or, once required,
   // has no factor yet) reaches only the page that resolves that.
-  if (user && !isLogin && pathname !== MFA_PATHS.challenge && pathname !== MFA_PATHS.enroll) {
+  if (allowed && !isLogin && pathname !== MFA_PATHS.challenge && pathname !== MFA_PATHS.enroll) {
     const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     const status = levels ? decideMfa(levels) : "ok";
     if (status !== "ok") {
@@ -181,8 +204,9 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Already signed in but visiting the login page → send to dashboard.
-  if (user && isLogin) {
+  // Already signed in as an admin but visiting the login page → send to dashboard.
+  // (A signed-in non-admin stays on the login page; sending it on would loop.)
+  if (allowed && isLogin) {
     const url = req.nextUrl.clone();
     url.pathname = "/admin";
     url.search = "";

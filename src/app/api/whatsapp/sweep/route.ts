@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { sameSecret } from "@/lib/webhook-security";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/report-error";
@@ -8,12 +8,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 const SWEEP_MS = 110_000;
-
-/** Constant-time comparison that does not leak the secret's length. */
-function sameSecret(given: string, expected: string): boolean {
-  const digest = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(given), digest(expected));
-}
 
 /**
  * Scheduler entry point for the WhatsApp inbox: applies quiet periods and

@@ -1,6 +1,12 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export const MAX_WEBHOOK_BYTES = 1_000_000;
+
+/** Constant-time comparison of a shared secret that does not leak its length. */
+export function sameSecret(given: string, expected: string): boolean {
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(given), digest(expected));
+}
 
 export function normalizePhone(value: string): string {
   return value.replace(/\D/g, "");

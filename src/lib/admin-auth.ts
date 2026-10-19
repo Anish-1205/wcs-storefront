@@ -3,14 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getAdminMfaStatus, MFA_PATHS, type AdminMfaStatus } from "@/lib/admin-mfa";
 
-export function isEmailAllowed(email: string | null | undefined) {
-  const allowedEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-
-  return !!email && allowedEmails.includes(email.trim().toLowerCase());
-}
+export { isEmailAllowed } from "@/lib/admin-allowlist";
+import { isEmailAllowed } from "@/lib/admin-allowlist";
 
 /**
  * The actual session lookup, memoized per request by React's `cache`.

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   isAllowedWhatsAppAdmin,
   MAX_WEBHOOK_BYTES,
+  sameSecret,
   verifyWhatsAppSignature,
 } from "@/lib/webhook-security";
 import { reportError } from "@/lib/report-error";
@@ -12,7 +13,6 @@ import {
   drainSender,
   DRAIN_BUDGET_MS,
   DRAIN_POLL_MS,
-  getWhatsAppVerifyToken,
   isSettled,
   lingerSender,
   MAX_DRAIN_POLLS,
@@ -154,7 +154,9 @@ export async function GET(req: Request) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === getWhatsAppVerifyToken()) {
+  // Constant-time (T3.11); an unset token refuses rather than throwing a 500.
+  const expected = process.env.WHATSAPP_VERIFY_TOKEN;
+  if (mode === "subscribe" && expected && token !== null && sameSecret(token, expected)) {
     return new NextResponse(challenge ?? "", { status: 200 });
   }
 

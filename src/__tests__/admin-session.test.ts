@@ -65,6 +65,7 @@ describe("middleware enforcement", () => {
     vi.stubEnv("ADMIN_IDLE_TIMEOUT_MINUTES", "30");
     vi.stubEnv("ADMIN_MAX_SESSION_HOURS", "12");
     vi.stubEnv("ADMIN_SESSION_SECRET", SECRET);
+    vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     mocks.signOut.mockReset().mockResolvedValue({ error: null });
@@ -81,21 +82,21 @@ describe("middleware enforcement", () => {
   };
 
   it("an active session passes and its last-seen cookie moves forward", async () => {
-    mocks.user = { id: "user-1", last_sign_in_at: iso(minutesAgo(60)) };
+    mocks.user = { id: "user-1", email: "admin@example.com", last_sign_in_at: iso(minutesAgo(60)) };
     const res = await go(await signLastSeen("user-1", minutesAgo(5), SECRET));
     expect(res.headers.get("location")).toBeNull();
     expect(await readLastSeen(res.cookies.get(LAST_SEEN_COOKIE)?.value, "user-1", SECRET)).toBe(NOW);
   });
 
   it("an idle session is signed out and sent to the login page with the reason", async () => {
-    mocks.user = { id: "user-1", last_sign_in_at: iso(minutesAgo(60)) };
+    mocks.user = { id: "user-1", email: "admin@example.com", last_sign_in_at: iso(minutesAgo(60)) };
     const res = await go(await signLastSeen("user-1", minutesAgo(45), SECRET));
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(res.headers.get("location")).toBe("http://localhost/admin/login?expired=idle&redirect=%2Fadmin%2Fproducts");
   });
 
   it("an over-age session is signed out even if it was just active", async () => {
-    mocks.user = { id: "user-1", last_sign_in_at: iso(minutesAgo(13 * 60)) };
+    mocks.user = { id: "user-1", email: "admin@example.com", last_sign_in_at: iso(minutesAgo(13 * 60)) };
     const res = await go(await signLastSeen("user-1", minutesAgo(1), SECRET));
     expect(res.headers.get("location")).toContain("expired=absolute");
   });

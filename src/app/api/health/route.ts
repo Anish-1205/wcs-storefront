@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { sameSecret } from "@/lib/webhook-security";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/report-error";
@@ -8,12 +8,6 @@ import { getVisibilityMirrorStatus } from "@/lib/catalog-visibility-mirror";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** Constant-time comparison that does not leak the secret's length. */
-function sameSecret(given: string, expected: string): boolean {
-  const digest = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(given), digest(expected));
-}
 
 function noStore(body: Record<string, unknown>, status: number): NextResponse {
   const response = NextResponse.json(body, { status });

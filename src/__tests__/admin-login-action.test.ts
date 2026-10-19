@@ -17,6 +17,7 @@ import { adminSignIn } from "@/app/admin/login/actions";
 const allowed = { success: true, degraded: false, retryAfter: 0, limit: 5, remaining: 4, reset: 0 };
 
 beforeEach(() => {
+  process.env.ADMIN_EMAILS = "admin@example.com";
   mocks.signIn.mockReset();
   mocks.limit.mockReset().mockResolvedValue(allowed);
   mocks.audit.mockReset();
@@ -39,6 +40,13 @@ describe("admin sign-in on the server (T3.4)", () => {
     expect(wrong).toEqual({ ok: false, error: "Invalid email or password." });
     expect(unknown).toEqual(wrong);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "login.failure" }));
+  });
+
+  it("refuses an e-mail that is not on ADMIN_EMAILS before asking Supabase, with the same answer (T3.11)", async () => {
+    const result = await adminSignIn({ email: "staff@example.com", password: "pw" });
+    expect(result).toEqual({ ok: false, error: "Invalid email or password." });
+    expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "login.failure", meta: { reason: "not_allowlisted" } }));
   });
 
   it("refuses without calling Supabase once throttled (6th attempt)", async () => {

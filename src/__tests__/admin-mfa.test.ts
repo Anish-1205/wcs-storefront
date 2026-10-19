@@ -94,3 +94,22 @@ describe("middleware", () => {
     expect((await go("/admin/products")).headers.get("location")).toBeNull();
   });
 });
+
+describe("edge allowlist (T3.11)", () => {
+  const go = (path: string) => middleware(new NextRequest(`http://localhost${path}`));
+
+  it("a signed-in non-admin gets no admin page and is not bounced in a loop", async () => {
+    mocks.user = { id: "u-2", email: "staff@example.com" };
+    expect((await go("/admin/products")).headers.get("location")).toBe("http://localhost/admin/login");
+    expect((await go("/admin/login")).headers.get("location")).toBeNull();
+  });
+
+  it("the admin API routes answer 401/403 at the edge", async () => {
+    mocks.user = null;
+    expect((await go("/api/upload")).status).toBe(401);
+    mocks.user = { id: "u-2", email: "staff@example.com" };
+    expect((await go("/api/import/sign")).status).toBe(403);
+    mocks.user = admin;
+    expect((await go("/api/import/complete")).status).toBe(200);
+  });
+});
