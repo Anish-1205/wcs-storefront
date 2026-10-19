@@ -25,11 +25,11 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 1 — Immediate production protection
 
-- [ ] **T1.5** — Fix product-visibility fail-open in the catalogue (Project A-1) — DO FIRST  
+- [x] **T1.5** — Fix product-visibility fail-open in the catalogue (Project A-1) — DO FIRST — *verified 2026-10-19: loaders throw instead of caching `[]`, last-good/mirror/snapshot fallbacks in `src/lib/storefront-catalog-resilience.ts`, fail-closed `VisibilityUnconfirmedError`; 124 catalogue tests pass*  
   P0 · M · FREE · depends on: none (independent of Project B and of the backup chain)
-- [ ] **T1.6** — Catalogue fallback logging, throttling and regression tests (Project A-2)  
+- [x] **T1.6** — Catalogue fallback logging, throttling and regression tests (Project A-2) — *verified 2026-10-19: `reportError` scope `storefront-catalog`, one report per 30 min per read; counters on `/api/health?deep=1`*  
   P0 · S · FREE WITH LIMITS · depends on: T1.5
-- [ ] **T1.13** — Build-time hidden-slug snapshot (cold-start fail-closed for visibility)  
+- [x] **T1.13** — Build-time hidden-slug snapshot (cold-start fail-closed for visibility) — *verified 2026-10-19: `scripts/snapshot-catalog-visibility.mjs` in `prebuild`; snapshot age and `stale` (> 7 d) on the deep health check*  
   P1 · M · FREE · depends on: T1.5
 - [x] **T1.7** — Rate-limit failure policy (code, tests and docs done; not deployed)  
   P0 · M · EXISTING COST · depends on: none
@@ -45,11 +45,11 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · M · FREE · depends on: T1.2
 - [x] **T1.4** — Key custody, credential-loss recovery and secret rotation runbook — *docs done (`docs/runbooks/secrets-and-keys.md`); **owner steps pending**. Decisions made: three private-key copies (vault + offline medium + **escrow: yes**), **second ops-repo admin: yes**, key never in CI/chat/cloud-sync and only ever passed as a path. Covers the quarterly test-decrypt (per copy, exact commands), yearly `age` rotation with a 56-day old-key overlap bounded by artifact retention, loss procedures for the age key / DB password / GitHub / Vercel / Supabase, `backup_reader` rotation and revocation SQL with a prompt-based `gh secret set` so no value touches a command line, a name-and-location-only secret inventory, and the calendar reminders. Owner steps: save the three key copies, place the escrow copy, add the second repo admin, confirm GitHub has no payment method, store GitHub recovery codes offline, then shred the loose `wcs-backup-age.key`.*  
   P0 · S · FREE · depends on: T1.2
-- [ ] **T1.11** — Backup freshness watchdog and failure alerts  
+- [x] **T1.11** — Backup freshness watchdog and failure alerts — *code done 2026-10-19 in `wcs-backup-ops` (`freshness.yml`, `cleanup` job, Sentry heartbeat, `scripts/artifacts.py` + offline tests); **owner steps pending**: `SENTRY_CRON_DSN` secret + Sentry alert rule, Actions failure e-mails, and the two-day disable test*  
   P0 · M · FREE WITH LIMITS · depends on: T1.2, T1.8 (Sentry project)
-- [ ] **T1.9** — Keep-alive decision (verification only)  
+- [x] **T1.9** — Keep-alive decision (verification only) — *decided 2026-10-19: no extra job; the daily sweep and the daily backup both query Postgres (`docs/runbooks/backup-restore.md`)*  
   P1 · S · FREE · depends on: T1.2
-- [ ] **T1.10** — Database migration safety, compatibility and recovery policy  
+- [x] **T1.10** — Database migration safety, compatibility and recovery policy — *`docs/runbooks/migration-safety.md` + PR-template section, 2026-10-19*  
   P0 · S · FREE · depends on: T1.2 for the "recent backup" gate
 
 **Phase 1 checkpoint**

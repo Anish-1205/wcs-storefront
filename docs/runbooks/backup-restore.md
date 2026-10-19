@@ -340,6 +340,41 @@ A drill that fails part-way still leaves plaintext behind. The script
 shreds in a `finally` block for exactly that reason; if you are doing it by
 hand, clean up before you debug.
 
+## Alerts and freshness (T1.11)
+
+The backup has three watchdogs, all in the ops repo `wcs-backup-ops`. Its
+README has the table and the owner setup.
+
+- **Sentry Cron heartbeat** (`scripts/heartbeat.py`): a run checks in
+  `in_progress` and then `ok` or `error`. No `ok` by 15:00 UTC alerts from
+  Sentry, independent of GitHub's scheduler. Needs the `SENTRY_CRON_DSN` repo
+  secret. Without it this layer is skipped.
+- **`freshness.yml`**, daily at 09:00 UTC: fails when the newest backup is
+  older than 30 h, and warns at 80 % / fails at 95 % of the 500 MB artifact
+  quota (this repo's artifacts only; the account-wide figure is checked by
+  hand).
+- **`cleanup` job**: deletes backups beyond 14 daily + 8 Sunday copies. It is
+  the only job with `actions: write`.
+
+A failed scheduled run is e-mailed to whoever last edited that workflow's cron
+line. Keep that the owner's account.
+
+## Keep-alive (T1.9) — decided 2026-10-19: no extra job
+
+Supabase pauses a Free project after about a week **without database
+activity**. An HTTP request to the site is not database activity: the
+storefront is file-driven and can be served while the database is idle. Two
+things already query Postgres every day:
+
+- the Vercel cron `/api/whatsapp/sweep` (`vercel.json`, `30 2 * * *`) calls
+  `whatsapp_sweep()`;
+- the backup (`backup.yml`, 02:00 UTC) runs `pg_dump` and the manifest queries
+  as `backup_reader`.
+
+So no keep-alive job is added. Revisit only if the Supabase dashboard ever
+reports the project as inactive. If it does, the fix is a `select 1` step in
+the backup job, not a new scheduler and not an HTTP ping.
+
 ## Drill log
 
 | Date | Artifact | Checks | Duration | Outcome |
