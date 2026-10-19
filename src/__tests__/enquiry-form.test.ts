@@ -5,7 +5,7 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/lib/cart/CartContext", () => ({ useCart: () => ({ items: [{ slug: "silk", title: "Silk", reference: "WCS-01", qty: 1, price: 1000, image: "/silk.jpg" }], hydrated: true, knownSubtotal: 1000 }) }));
 vi.mock("@/lib/profile/useProfile", () => ({ EMPTY_PROFILE: {}, hasAnyValue: () => false, useProfile: () => ({ signedIn: false }) }));
-vi.mock("@/lib/source-tracking", () => ({ getSource: () => "direct" }));
+vi.mock("@/lib/source-tracking", () => ({ getSource: () => "direct", getUtm: () => ({}) }));
 vi.mock("@/lib/analytics", () => ({ analytics: { inquirySubmit: mocks.analytics } }));
 vi.mock("@/lib/whatsapp", () => ({ buildEnquiryWhatsAppURL: () => "https://wa.me/123", WHATSAPP_CONFIGURED: false }));
 import { EnquiryForm } from "@/components/enquiry/EnquiryForm";
