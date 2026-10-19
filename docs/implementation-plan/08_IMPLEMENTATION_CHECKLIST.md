@@ -178,13 +178,13 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 ## Phase 6 — CI/CD and database quality
 
-- [ ] **T6.1** — Regenerate Supabase types and add drift check  
+- [x] **T6.1** — Regenerate Supabase types and add drift check — *2026-10-20: `src/lib/supabase/database.types.ts` generated from all 39 migrations (postgres-meta v0.98.0); drift check in `.github/workflows/db.yml`. Hand-written `types.ts` kept; typing the clients from the generated file is follow-up work*  
   P1 · M · FREE · depends on: T1.10
-- [ ] **T6.3** — Migration verification in CI (scratch databases only)  
+- [x] **T6.3** — Migration verification in CI (scratch databases only) — *2026-10-20: `scripts/check-migrations.mjs` (applies 001–039 through the app's runner, second run no-op, RLS on every table, additive-only lint for new files with a `-- destructive-approved` escape); verified locally, tests for the lint*  
   P1 · M · FREE · depends on: T1.10
-- [ ] **T6.2** — Live-PostgreSQL RLS and authorization contract tests  
+- [x] **T6.2** — Live-PostgreSQL RLS and authorization contract tests — *2026-10-20: `ingest-eval/rls-live.test.ts` (runs in the `Database` workflow): exposure computed from privileges + applicable policies, real rows invisible to anon/authenticated, carts/profiles own-row only, anon writes nothing, hidden-slugs view slug-only; a planted leaking policy is caught*  
   P1 · L · FREE · depends on: T6.3
-- [ ] **T6.4** — Run the WhatsApp ingest replay in CI  
+- [x] **T6.4** — Run the WhatsApp ingest replay in CI — *2026-10-20: `npm run test:ingest` in the `Database` workflow against a Postgres service container. Retry cases: out-of-order arrival, redelivery without duplicates and double reply were already covered (`ingest.test.ts`, `replies.test.ts`); crash mid-claim with lease expiry and token fencing, plus dead-lettering after five lost leases, added in `lease-expiry.test.ts`*  
   P2 · M · FREE WITH LIMITS · depends on: T6.3
 - [ ] **T6.5** — CI pipeline structure and caching  
   P2 · M · FREE · depends on: T1.12, T3.10
