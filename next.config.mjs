@@ -44,6 +44,12 @@ const nextConfig = {
         destination: "/sarees/the-most-demanded-collection-in-georgette-parsi-work-sarees",
         permanent: false,
       },
+      {
+        // A late WhatsApp redelivery on 2026-10-06 published the same saree twice.
+        source: "/sarees/red-tissue-saree-with-floral-embroidered-border",
+        destination: "/sarees/red-tissue-saree-with-floral-embroidered-pallu",
+        permanent: false,
+      },
     ];
   },
   // /admin/database reads supabase/migrations/*.sql off disk at request time
