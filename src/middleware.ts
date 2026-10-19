@@ -68,9 +68,19 @@ export async function middleware(req: NextRequest) {
   const csp = buildCsp(process.env.NODE_ENV === "production");
   const { pathname } = req.nextUrl;
 
+  // Correlation id (T2.6): forwarded to routes on the request (every
+  // NextResponse.next below passes `req` through) and echoed on the response,
+  // so a log line, a Sentry event and a customer's report can be matched up.
+  // An incoming value is kept only if it looks like an id, never trusted as
+  // arbitrary text in logs.
+  const incoming = req.headers.get("x-request-id");
+  const requestId = incoming && /^[A-Za-z0-9:_-]{8,80}$/.test(incoming) ? incoming : crypto.randomUUID();
+  req.headers.set("x-request-id", requestId);
+
   if (!pathname.startsWith("/admin")) {
     const res = NextResponse.next({ request: req });
     res.headers.set("Content-Security-Policy", csp);
+    res.headers.set("x-request-id", requestId);
     return res;
   }
 
@@ -125,6 +135,7 @@ export async function middleware(req: NextRequest) {
   }
 
   res.headers.set("Content-Security-Policy", csp);
+  res.headers.set("x-request-id", requestId);
   return res;
 }
 

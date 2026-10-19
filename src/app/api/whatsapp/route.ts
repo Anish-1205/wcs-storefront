@@ -20,6 +20,7 @@ import {
   type InboxMessage,
   type MediaKind,
 } from "@/lib/whatsapp-pipeline";
+import { logger, requestIdFrom } from "@/lib/logger";
 
 export const runtime = "nodejs";
 // Explicit so the limit is a decision, not a plan default. Meta is answered
@@ -180,7 +181,7 @@ export async function POST(req: Request) {
   }
 
   if (!verifyWhatsAppSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
-    console.warn("whatsapp webhook: rejected invalid signature");
+    logger.warn("whatsapp", "whatsapp webhook: rejected invalid signature", { requestId: requestIdFrom(req) });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 

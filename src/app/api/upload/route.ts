@@ -4,6 +4,7 @@ import { isEmailAllowed } from "@/lib/admin-auth";
 import { signUpload } from "@/lib/cloudinary";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
+import { logger, requestIdFrom } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -26,12 +27,12 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    console.warn("upload signing denied: unauthenticated");
+    logger.warn("upload", "upload signing denied: unauthenticated", { requestId: requestIdFrom(req) });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (!isEmailAllowed(user.email)) {
-    console.warn("upload signing denied: forbidden");
+    logger.warn("upload", "upload signing denied: forbidden", { requestId: requestIdFrom(req) });
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

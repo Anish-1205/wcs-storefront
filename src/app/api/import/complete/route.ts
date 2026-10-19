@@ -4,6 +4,7 @@ import { isEmailAllowed } from "@/lib/admin-auth";
 import { checkImportRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { importAssetCompleteSchema } from "@/lib/validation";
 import { reportError } from "@/lib/report-error";
+import { logger, requestIdFrom } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   const expectedPublicId = `imports/${input.batch_id}/${input.client_upload_id}`;
   if (input.cloudinary_public_id !== expectedPublicId) {
-    console.warn("import complete: public_id mismatch, rejecting", input.cloudinary_public_id);
+    logger.warn("import", "import complete: public_id mismatch, rejecting", { requestId: requestIdFrom(req), batchId: input.batch_id });
     return NextResponse.json({ error: "This upload does not belong to the given batch/file" }, { status: 400 });
   }
 

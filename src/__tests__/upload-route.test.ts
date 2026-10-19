@@ -53,7 +53,7 @@ describe("upload route auth", () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: "Unauthorized" });
     expect(mockSignUpload).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith("upload signing denied: unauthenticated");
+    expect(JSON.parse(warnSpy.mock.calls.at(-1)![0] as string)).toMatchObject({ scope: "upload", message: "upload signing denied: unauthenticated" });
   });
 
   it("returns 403 for authenticated non-admin users", async () => {
@@ -65,7 +65,7 @@ describe("upload route auth", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: "Forbidden" });
     expect(mockSignUpload).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith("upload signing denied: forbidden");
+    expect(JSON.parse(warnSpy.mock.calls.at(-1)![0] as string)).toMatchObject({ scope: "upload", message: "upload signing denied: forbidden" });
   });
 
   it("refuses with 503 when the limiter itself is unavailable", async () => {

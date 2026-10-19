@@ -76,7 +76,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · S · FREE WITH LIMITS · depends on: none
 - [x] **T2.5** — Cache and fallback instrumentation — *2026-10-19: deep health adds `lastSuccessfulCatalogReadAgeSec` (+ per read) and `visibilityMirror` (failures per op, back-off, last good write) beside the existing fallback counters; per instance*  
   P1 · M · FREE · depends on: T1.6, T1.8
-- [ ] **T2.6** — Correlation IDs and safe structured logging  
+- [x] **T2.6** — Correlation IDs and safe structured logging — *2026-10-19: middleware sets/forwards `x-request-id`; `src/lib/logger.ts` (JSON lines, key- and pattern-based redaction); `reportError` tags `request_id`; route-level warnings moved onto it*  
   P2 · M · FREE · depends on: T2.4
 - [ ] **T2.7** — Weekly quota check workflow (verified APIs only)  
   P1 · M · FREE WITH LIMITS · depends on: T1.1 (credential pattern), T1.2
