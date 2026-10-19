@@ -1,3 +1,4 @@
+import { messageRef } from "@/lib/whatsapp-health";
 import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isRenderableCloudinaryUrl, signUpload } from "@/lib/cloudinary";
@@ -506,7 +507,7 @@ async function runClaimed(supabase: ReturnType<typeof createAdminClient>, claime
     // and becomes reclaimable after its lease expires.
     await rpc(supabase, "fail_whatsapp_message", { p_message_id: messageId, p_token: claimed.token,
       p_error: error instanceof Error ? error.message : String(error) }).catch((recordError) =>
-        reportError(recordError, { scope: "whatsapp-failure-record", messageId }));
+        reportError(recordError, { scope: "whatsapp-failure-record", messageRef: messageRef(messageId) }));
     throw error;
   }
 }
@@ -524,14 +525,14 @@ export async function deliverReplies(supabase: ReturnType<typeof createAdminClie
     for (const item of due ?? []) {
       if (item.state === "dead") {
         reportError(new Error(`WhatsApp message dead-lettered: ${item.last_error ?? "unknown error"}`),
-          { scope: "whatsapp-dead-letter", messageId: item.message_id });
+          { scope: "whatsapp-dead-letter", messageRef: messageRef(item.message_id) });
       }
       let sent = false;
       try {
         await sendWhatsAppReply(item.sender_phone, item.reply);
         sent = true;
       } catch (error) {
-        reportError(error, { scope: "whatsapp-reply", messageId: item.message_id });
+        reportError(error, { scope: "whatsapp-reply", messageRef: messageRef(item.message_id) });
       }
       await rpc(supabase, "finish_whatsapp_reply", { p_message_id: item.message_id, p_sent: sent });
     }
@@ -554,7 +555,7 @@ export async function drainSender(supabase: ReturnType<typeof createAdminClient>
     try {
       await runClaimed(supabase, claimed);
     } catch (error) {
-      reportError(error, { scope: "whatsapp-processing", messageId: claimed.payload.message_id });
+      reportError(error, { scope: "whatsapp-processing", messageRef: messageRef(claimed.payload.message_id) });
     }
     await deliverReplies(supabase, sender);
   }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/report-error";
 import { sweepSenders } from "@/lib/whatsapp-pipeline";
+import { alertOnQueue, getWhatsAppQueueHealth } from "@/lib/whatsapp-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const senders = await sweepSenders(createAdminClient(), Date.now() + SWEEP_MS);
+    const admin = createAdminClient();
+    const senders = await sweepSenders(admin, Date.now() + SWEEP_MS);
+    // T6.8: after each sweep, alert (throttled) on dead letters or a stuck message.
+    const health = await getWhatsAppQueueHealth(admin).catch((error) => {
+      reportError(error, { scope: "whatsapp-queue-health" });
+      return null;
+    });
+    if (health) alertOnQueue(health);
     return NextResponse.json({ ok: true, senders });
   } catch (error) {
     reportError(error, { scope: "whatsapp-sweep" });

@@ -1,3 +1,4 @@
+import { messageRef } from "@/lib/whatsapp-health";
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ client: vi.fn(), sign: vi.fn(), ai: vi.fn(), report: vi.fn() }));
@@ -1008,7 +1009,9 @@ describe("the pipeline never goes silent", () => {
     }
     expect(db.jobs.get("bad")).toMatchObject({ state: "dead", attempts: 5, reply_sent: true, last_error: expect.stringContaining("Meta media lookup failed") });
     expect(replies).toEqual([expect.stringContaining("could not be saved after several tries")]);
-    expect(mocks.report).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ scope: "whatsapp-dead-letter", messageId: "bad" }));
+    // A hash of the message id, never the id itself: a wamid encodes the sender's phone number (T6.8).
+    expect(mocks.report).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ scope: "whatsapp-dead-letter", messageRef: messageRef("bad") }));
+    expect(JSON.stringify(mocks.report.mock.calls)).not.toContain('"messageId"');
     expect((await POST(request(bad))).status).toBe(200); // terminal: redelivery is a no-op
     expect(replies).toHaveLength(1);
     expect(await send(message("text", "Silk | 1200", "text"))).toBe(200);

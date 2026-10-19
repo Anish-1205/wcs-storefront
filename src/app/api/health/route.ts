@@ -5,6 +5,7 @@ import { reportError } from "@/lib/report-error";
 import { getRateLimitStatus } from "@/lib/rate-limit";
 import { getCatalogResilienceStatus } from "@/lib/storefront-catalog-resilience";
 import { getVisibilityMirrorStatus } from "@/lib/catalog-visibility-mirror";
+import { getWhatsAppQueueHealth } from "@/lib/whatsapp-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,9 +41,13 @@ export async function GET(req: Request) {
   }
 
   let db: "ok" | "fail" = "ok";
+  let whatsapp: Awaited<ReturnType<typeof getWhatsAppQueueHealth>> | null = null;
   try {
-    const { error } = await createAdminClient().from("categories").select("id").limit(1);
+    const admin = createAdminClient();
+    const { error } = await admin.from("categories").select("id").limit(1);
     if (error) db = "fail";
+    // T6.8: counts only (no message ids); null when it cannot be read.
+    else whatsapp = await getWhatsAppQueueHealth(admin).catch(() => null);
   } catch (error) {
     db = "fail";
     reportError(error, { scope: "health-deep" });
@@ -55,6 +60,7 @@ export async function GET(req: Request) {
       rateLimit: getRateLimitStatus(),
       catalog: getCatalogResilienceStatus(),
       visibilityMirror: getVisibilityMirrorStatus(),
+      whatsapp,
     },
     db === "ok" ? 200 : 503,
   );

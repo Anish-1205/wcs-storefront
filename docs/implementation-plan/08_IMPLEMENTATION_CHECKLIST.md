@@ -192,7 +192,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P3 · S · FREE · depends on: none
 - [x] **T6.7** — WhatsApp sweep scheduler cadence — *2026-10-20: measured: webhook requests close only the 45 s quiet period; 10/30-min deadlines wait for the next message or the daily cron, and prod has no `pg_cron`. Added `.github/workflows/whatsapp-sweep.yml` (every 5 min, environment-scoped secret, no-op until set). **Owner**: create the `whatsapp-sweep` environment (main only) with `CRON_SECRET`*  
   P2 · M · FREE WITH LIMITS · depends on: T6.4, T1.12
-- [ ] **T6.8** — WhatsApp tracing and alerting  
+- [x] **T6.8** — WhatsApp tracing and alerting — *2026-10-20: `src/lib/whatsapp-health.ts`: dead letters (24 h) and oldest unsettled message on the deep health check; one grouped Sentry issue per condition (≤ 1 per 30 min) after every sweep. Sentry events now carry `messageRef` (12-char hash) instead of the raw `wamid`, which was found to encode the sender's phone number*  
   P2 · M · FREE WITH LIMITS · depends on: T1.8, T2.6
 - [ ] **T6.9** — Dependency upgrade process and ESLint evaluation  
   P3 · S · FREE · depends on: none
