@@ -1,0 +1,63 @@
+name: Visual
+
+# T6.10 (optional): screenshot comparison for 4 pages × 2 viewports.
+#   - On a PR labelled `visual`: compare against the committed baselines.
+#   - Run workflow with update=true: (re)make the baselines on this runner image
+#     and upload them as an artifact. Look at them, then commit them under
+#     e2e/visual.spec.ts-snapshots/ to accept.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      update:
+        description: "Regenerate the baselines (uploaded as an artifact, not committed)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  visual:
+    name: Visual regression
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'visual')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      SENTRY_AUTH_TOKEN: ""
+      VISUAL: "1"
+      # The storefront renders from the file catalogue; no database in this job.
+      VISIBILITY_FAIL_OPEN: "1"
+      CATALOG_SNAPSHOT_OPTIONAL: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chrome
+
+      - name: Compare or update screenshots
+        run: npx playwright test e2e/visual.spec.ts ${{ inputs.update && '--update-snapshots' || '' }}
+
+      - name: Upload screenshots and diffs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: visual
+          path: |
+            e2e/visual.spec.ts-snapshots/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore

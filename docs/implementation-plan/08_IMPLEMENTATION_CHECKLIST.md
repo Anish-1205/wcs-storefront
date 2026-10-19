@@ -196,7 +196,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE WITH LIMITS · depends on: T1.8, T2.6
 - [x] **T6.9** — Dependency upgrade process and ESLint evaluation — *2026-10-20: `docs/runbooks/dependencies.md` (Dependabot flow, majors process, audit recorded: prod 0, dev-tooling 9 all build-time; decision: ESLint flat config with the Next 16 upgrade, not Biome). `withSentryConfig` import moved to `@sentry/nextjs/config`*  
   P3 · S · FREE · depends on: none
-- [ ] **T6.10** — Visual regression for key pages (optional)  
+- [x] **T6.10** — Visual regression for key pages (optional) — *2026-10-20: `e2e/visual.spec.ts` (4 pages × 2 viewports, masked video/WhatsApp control, skipped unless `VISUAL=1`) + `.github/workflows/visual.yml` (PR label `visual`; `workflow_dispatch update=true` makes baselines as an artifact). **No baselines yet**: the owner runs the update once, reviews, commits*  
   P3 · M · OPTIONAL · depends on: T6.5. **Deploy:** D1
 - [ ] **T6.11** — Admin query hardening (columns, counts)  
   P3 · M · FREE · depends on: T4.7
