@@ -1,0 +1,76 @@
+name: Database
+
+# Scratch databases only: this workflow holds no production credentials and
+# never connects anywhere but its own Postgres service container.
+#
+#  - T6.3 every migration applies in order through the app's runner, a second
+#         run is a no-op, every public table has RLS, and migrations added in
+#         the PR contain no non-additive statement (scripts/check-migrations.mjs)
+#  - T6.1 src/lib/supabase/database.types.ts matches the migrated schema
+#  - T6.4 the WhatsApp ingestion replay and the other real-SQL tests
+#         (npm run test:ingest) pass
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    name: Database checks (migrations, types, ingest replay)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: audit
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U audit" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrations apply, re-run as a no-op, RLS everywhere, additive only
+        id: migrations
+        env:
+          SCRATCH_DATABASE_URL: postgresql://audit@127.0.0.1:55432/postgres
+        run: node scripts/check-migrations.mjs --base=origin/${{ github.base_ref || 'main' }}
+
+      - name: Generated database types are up to date
+        run: |
+          set -euo pipefail
+          docker run --rm --network "${{ job.services.postgres.network }}" \
+            -e PG_META_DB_URL="postgresql://audit@postgres:5432/${{ steps.migrations.outputs.database }}" \
+            -e PG_META_GENERATE_TYPES=typescript \
+            -e PG_META_GENERATE_TYPES_INCLUDED_SCHEMAS=public \
+            -e PG_META_GENERATE_TYPES_DETECT_ONE_TO_ONE_RELATIONSHIPS=true \
+            public.ecr.aws/supabase/postgres-meta:v0.98.0 node dist/server/server.js \
+            > src/lib/supabase/database.types.ts
+          if ! git diff --exit-code -- src/lib/supabase/database.types.ts; then
+            echo "::error::src/lib/supabase/database.types.ts is out of date. Regenerate it (docs/runbooks/migration-safety.md) and commit."
+            exit 1
+          fi
+
+      - name: Real-SQL tests and the WhatsApp ingest replay
+        run: npm run test:ingest

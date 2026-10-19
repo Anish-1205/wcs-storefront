@@ -52,8 +52,15 @@ process every migration follows.
    after it: the new column or function is there, the backfill counts are as
    expected, and `anon` / `authenticated` still cannot reach what they should
    not.
-7. **Keep the mirrors in step.** Regenerate `src/lib/supabase/types.ts`
-   (T6.1). When RLS or grants change, update
+7. **Keep the mirrors in step.** Regenerate
+   `src/lib/supabase/database.types.ts` (T6.1; CI's `Database` workflow fails
+   when it is stale). With Docker running and the local throwaway Postgres
+   up: `node scripts/check-migrations.mjs` builds a migrated scratch
+   database. Copy its schema into a Postgres container, then run
+   `public.ecr.aws/supabase/postgres-meta:v0.98.0` with
+   `PG_META_GENERATE_TYPES=typescript` against it (exact command in
+   `.github/workflows/db.yml`). The hand-written interfaces in `types.ts`
+   stay until the clients are typed from the generated file. When RLS or grants change, update
    `src/__tests__/security-policies.test.ts` in the same change.
 
 ## Applying to production
