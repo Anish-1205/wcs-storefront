@@ -198,7 +198,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P3 · S · FREE · depends on: none
 - [x] **T6.10** — Visual regression for key pages (optional) — *2026-10-20: `e2e/visual.spec.ts` (4 pages × 2 viewports, masked video/WhatsApp control, skipped unless `VISUAL=1`) + `.github/workflows/visual.yml` (PR label `visual`; `workflow_dispatch update=true` makes baselines as an artifact). **No baselines yet**: the owner runs the update once, reviews, commits*  
   P3 · M · OPTIONAL · depends on: T6.5. **Deploy:** D1
-- [ ] **T6.11** — Admin query hardening (columns, counts)  
+- [x] **T6.11** — Admin query hardening (columns, counts) — *2026-10-20: category/collection lists count with `products(count)` / `collection_products(count)` instead of fetching every related id; `lib/queries.ts` category reads list their columns; inquiries/subscribers/contacts done in T4.7. Single-row edit pages keep `select("*")` (the form needs every column). EXPLAIN not run: tables are tens of rows, no index added*  
   P3 · M · FREE · depends on: T4.7
 
 **Phase 6 checkpoint**

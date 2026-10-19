@@ -10,10 +10,10 @@ export default async function AdminCategoriesPage() {
 
   const { data } = await admin
     .from("categories")
-    .select("id, name, slug, description, image_url, display_order, products(id)")
+    .select("id, name, slug, description, image_url, display_order, products(count)")
     .order("display_order", { ascending: true });
 
-  const rows = (data ?? []) as Array<Category & { products?: { id: string }[] }>;
+  const rows = (data ?? []) as Array<Category & { products?: { count: number }[] }>;
 
   return (
     <div>
@@ -43,7 +43,7 @@ export default async function AdminCategoriesPage() {
               <tr key={category.id} className="border-b border-border/60 last:border-0">
                 <td className="px-4 py-3 font-medium">{category.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{category.slug}</td>
-                <td className="px-4 py-3 text-muted-foreground">{category.products?.length ?? 0}</td>
+                <td className="px-4 py-3 text-muted-foreground">{category.products?.[0]?.count ?? 0}</td>
                 <td className="px-4 py-3 text-muted-foreground">{category.display_order}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-start justify-end gap-3">

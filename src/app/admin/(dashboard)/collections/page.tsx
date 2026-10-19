@@ -9,10 +9,10 @@ export default async function AdminCollectionsPage() {
 
   const { data } = await admin
     .from("collections")
-    .select("id, name, slug, description, image_url, is_active, display_order, collection_products(product_id)")
+    .select("id, name, slug, description, image_url, is_active, display_order, collection_products(count)")
     .order("display_order", { ascending: true });
 
-  const rows = (data ?? []) as Array<Collection & { collection_products?: { product_id: string }[] }>;
+  const rows = (data ?? []) as Array<Collection & { collection_products?: { count: number }[] }>;
 
   return (
     <div>
@@ -43,7 +43,7 @@ export default async function AdminCollectionsPage() {
               <tr key={collection.id} className="border-b border-border/60 last:border-0">
                 <td className="px-4 py-3 font-medium">{collection.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{collection.slug}</td>
-                <td className="px-4 py-3 text-muted-foreground">{collection.collection_products?.length ?? 0}</td>
+                <td className="px-4 py-3 text-muted-foreground">{collection.collection_products?.[0]?.count ?? 0}</td>
                 <td className="px-4 py-3 text-muted-foreground">{collection.is_active ? "Active" : "Hidden"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{collection.display_order}</td>
                 <td className="px-4 py-3 text-right">

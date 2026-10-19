@@ -102,7 +102,7 @@ export async function getCategories(): Promise<Category[]> {
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, name, slug, description, image_url, display_order")
     .order("display_order");
   return (data ?? []) as Category[];
 }
@@ -111,7 +111,7 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, name, slug, description, image_url, display_order")
     .eq("slug", slug)
     .maybeSingle();
   return (data as Category) ?? null;
