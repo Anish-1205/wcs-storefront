@@ -194,7 +194,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE WITH LIMITS · depends on: T6.4, T1.12
 - [x] **T6.8** — WhatsApp tracing and alerting — *2026-10-20: `src/lib/whatsapp-health.ts`: dead letters (24 h) and oldest unsettled message on the deep health check; one grouped Sentry issue per condition (≤ 1 per 30 min) after every sweep. Sentry events now carry `messageRef` (12-char hash) instead of the raw `wamid`, which was found to encode the sender's phone number*  
   P2 · M · FREE WITH LIMITS · depends on: T1.8, T2.6
-- [ ] **T6.9** — Dependency upgrade process and ESLint evaluation  
+- [x] **T6.9** — Dependency upgrade process and ESLint evaluation — *2026-10-20: `docs/runbooks/dependencies.md` (Dependabot flow, majors process, audit recorded: prod 0, dev-tooling 9 all build-time; decision: ESLint flat config with the Next 16 upgrade, not Biome). `withSentryConfig` import moved to `@sentry/nextjs/config`*  
   P3 · S · FREE · depends on: none
 - [ ] **T6.10** — Visual regression for key pages (optional)  
   P3 · M · OPTIONAL · depends on: T6.5. **Deploy:** D1
@@ -262,7 +262,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 - [ ] **Regain Sentry access and set `NEXT_PUBLIC_SENTRY_DSN`** — the window ran blind on Sentry, so error
   tracking and the T1.8 uptime monitor are both unavailable. Until the DSN is set, deploy verification
   depends on reading Vercel runtime logs by hand.
-- [ ] **Fix `npm audit` findings before enabling branch protection** — protection that requires a passing
+- [x] **Fix `npm audit` findings before enabling branch protection** — *2026-10-20: production audit is 0 (`tailwindcss-animate` moved to devDependencies); remaining dev-tooling findings documented in `docs/runbooks/dependencies.md`* — protection that requires a passing
   audit check would block every merge while the findings stand, so clear them first (T6.x).
   *2026-10-14: 14 → 9. `npm audit fix` plus `next`/`eslint-config-next` 15.5.25 → 15.5.27 (Next cache-poisoning
   advisories), `sharp` 0.35.5. The rest (`braces`, `postcss-selector-parser`) come only through

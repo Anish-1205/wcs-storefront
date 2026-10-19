@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import { readSnapshotFile } from "./src/lib/catalog-visibility-snapshot.mjs";
 
 // The hidden-slug snapshot prebuild just took (scripts/snapshot-catalog-
