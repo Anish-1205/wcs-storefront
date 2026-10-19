@@ -157,7 +157,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · S · FREE · depends on: none
 - [x] **T5.2** — Structured-data correctness (no invented facts) — *2026-10-19: no `priceCurrency` without a price; `on-request` no longer claims `LimitedAvailability`; no Offer when neither price nor availability is stated; the hard-coded 0–3/2–10-day shipping estimate is off until the owner sets it; address/phone/hours from env when supplied. `og:type` stays `website` (Next's metadata has no `product` type). **Owner**: supply the business facts (deployment.md §5a-7); run Rich Results Test after deploy*  
   P2 · M · FREE · depends on: none
-- [ ] **T5.3** — Redirect validation and permanence  
+- [x] **T5.3** — Redirect validation and permanence — *2026-10-19: `src/__tests__/redirects.test.ts` (every retired slug redirected, targets exist, no chains; DB-only targets listed explicitly). Redirects stay temporary: **owner approval** needed for permanent*  
   P2 · S · FREE · depends on: none
 - [ ] **T5.4** — Lighthouse CI (non-blocking first)  
   P2 · M · FREE · depends on: none
