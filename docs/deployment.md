@@ -417,6 +417,17 @@ most every 30 minutes per instance, with a count. Review after one to two
 weeks: that list decides T3.7 (whether nonces are practical, given that they
 make every page dynamic). Set `CSP_REPORT_SAMPLE_RATE=0` to stop it.
 
+## 5a-6. Analytics consent
+
+Off unless `NEXT_PUBLIC_CONSENT_REQUIRED=1` (a build-time variable, so
+redeploy after setting it). When on, GA4, Clarity and Pinterest do not load,
+and make no requests, until the visitor clicks **Accept** in the banner.
+"Cookie settings" in the footer reopens it. The choice is kept in the
+browser (`wcs.consent.v1`). Whether to require consent, where, and the
+banner's wording are the owner's decision (legal review). The text is in
+`src/components/consent/ConsentBanner.tsx`. Expect lower measured traffic
+once it is on.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

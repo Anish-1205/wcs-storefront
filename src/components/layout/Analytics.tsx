@@ -1,4 +1,7 @@
 import Script from "next/script";
+import { consentRequired } from "@/lib/consent";
+import { ConsentGate } from "@/components/consent/ConsentGate";
+import { ConsentBanner } from "@/components/consent/ConsentBanner";
 
 /**
  * Loads GA4, Microsoft Clarity, and the Pinterest Tag.
@@ -17,7 +20,7 @@ export function Analytics() {
   const clarity = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
   const pinterest = process.env.NEXT_PUBLIC_PINTEREST_TAG_ID;
 
-  return (
+  const scripts = (
     <>
       {ga && (
         <>
@@ -62,6 +65,16 @@ export function Analytics() {
           `}
         </Script>
       )}
+    </>
+  );
+
+  // T4.2: with NEXT_PUBLIC_CONSENT_REQUIRED=1 nothing above loads until the
+  // visitor accepts; without it, analytics loads as before.
+  if (!consentRequired()) return scripts;
+  return (
+    <>
+      <ConsentGate>{scripts}</ConsentGate>
+      <ConsentBanner />
     </>
   );
 }

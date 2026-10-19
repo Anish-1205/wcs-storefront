@@ -1,4 +1,5 @@
 
+import { CookieSettingsLink } from "@/components/consent/ConsentBanner";
 import { ContentRegion } from "@/components/content/ContentRegion";
 import Link from "next/link";
 import { SITE, SOCIAL_LINKS } from "@/lib/site";
@@ -113,6 +114,7 @@ export async function Footer() {
           <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/privacy" className="hover:text-oxblood">Privacy</Link>
             <Link href="/terms" className="hover:text-oxblood">Terms</Link>
+            <CookieSettingsLink className="hover:text-oxblood" />
             <Link href="/shipping-returns" className="hover:text-oxblood">
               Shipping &amp; Returns
             </Link>

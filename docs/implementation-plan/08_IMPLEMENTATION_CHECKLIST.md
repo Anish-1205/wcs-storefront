@@ -128,7 +128,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 - [x] **T4.3** — Inquiry workflow schema (statuses, notes, history, indexes) — *2026-10-19: migration `037_inquiry_workflow.sql` (status/notes/follow-up/idempotency/UTM columns, history table, `inquiry_set_status` RPC, indexes; tested on local PG, **not applied**). Also restores 004's `ON DELETE SET NULL` on `inquiries.product_id/variant_id`: production was found on NO ACTION, so deleting a product with an enquiry failed*  
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T1.2
-- [ ] **T4.2** — Consent controls  
+- [x] **T4.2** — Consent controls — *code done 2026-10-19, **off until `NEXT_PUBLIC_CONSENT_REQUIRED=1`**; with it on no analytics script loads before Accept (stricter than consent mode, which still pings). **Owner**: wording, regions, whether to turn it on*  
   P1 · M · FREE · depends on: T3.12
 - [ ] **T4.1** — GA4 funnel events on the existing tag  
   P1 · M · FREE WITH LIMITS · depends on: T4.2 for consent gating (events are queued/dropped when denied)
