@@ -3,12 +3,11 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { baseSentryOptions } from "./src/lib/sentry-options";
 
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: process.env.NODE_ENV === "production" ? Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1") : 1,
+  // DSN, environment, sampling, ignore list and the preview filter (T2.4).
+  ...baseSentryOptions(),
 
   // Enable logs to be sent to Sentry
   enableLogs: process.env.NODE_ENV !== "production" && process.env.SENTRY_ENABLE_LOGS === "true",

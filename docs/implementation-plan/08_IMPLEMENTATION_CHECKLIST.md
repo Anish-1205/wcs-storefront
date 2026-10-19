@@ -72,7 +72,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P0 · M · FREE · depends on: T2.1
 - [x] **T2.9** — AI usage visibility panel (existing Anthropic usage) — *2026-10-19: `/admin/ai-usage` (30-day ledger, kill switch, clear pause)*  
   P1 · S · FREE · depends on: T2.1, T2.2
-- [ ] **T2.4** — Sentry tuning (environment, sampling, noise)  
+- [x] **T2.4** — Sentry tuning (environment, sampling, noise) — *2026-10-19: `src/lib/sentry-options.ts` shared by all three runtimes (environment, preview filter, ignore list, replay-on-error 0.2); `scope` is now a tag*  
   P1 · S · FREE WITH LIMITS · depends on: none
 - [ ] **T2.5** — Cache and fallback instrumentation  
   P1 · M · FREE · depends on: T1.6, T1.8

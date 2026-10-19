@@ -349,6 +349,26 @@ publish, until that gap is closed.
   includes one uptime monitor; its one cron monitor is reserved for the
   backup heartbeat, so don't also wire a cron monitor here.
 
+## 5b. Sentry
+
+All three runtimes share `src/lib/sentry-options.ts`. Every event carries the
+Vercel environment, and preview deployments send nothing (set
+`SENTRY_PREVIEW_EVENTS=1`, plus `NEXT_PUBLIC_SENTRY_PREVIEW_EVENTS=1` for the
+browser, to debug one). Known browser noise is ignored (ResizeObserver,
+aborted fetches, extension frames). `reportError` sets `scope` as a tag, so
+issues can be filtered by `scope:storefront-catalog`, `scope:ai-budget` and
+so on.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SENTRY_DSN` | unset | Sentry is off without it |
+| `SENTRY_TRACES_SAMPLE_RATE` | 0.1 | server/edge trace sampling in production |
+| `NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_RATE` | 0.2 | share of errored browser sessions that get a replay (the plan includes 50 a month) |
+| `SENTRY_SEND_DEFAULT_PII` | unset | keep unset |
+
+Leave on-demand / pay-as-you-go budgets **off** in Sentry: past the quota,
+events are dropped, not billed.
+
 ## 6. Post-deploy checklist
 
 - [ ] `/admin/login` works and you can sign in.

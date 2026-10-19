@@ -33,5 +33,9 @@ export function reportError(error: unknown, context?: Record<string, unknown>): 
   if (error instanceof ExpectedError) return;
 
   console.error(context?.scope ? `[${String(context.scope)}]` : "[error]", error);
-  Sentry.captureException(error, context ? { extra: context } : undefined);
+  // `scope` is a tag, so Sentry can filter and group by it; the rest stays extra.
+  Sentry.captureException(
+    error,
+    context ? { extra: context, tags: context.scope ? { scope: String(context.scope) } : undefined } : undefined,
+  );
 }
