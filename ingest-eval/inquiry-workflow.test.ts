@@ -71,3 +71,21 @@ describe("migration 037: inquiry workflow", () => {
     }
   });
 });
+
+describe("migration 039: lead-source report", () => {
+  it("counts by week, source and status, and is service-role only", async () => {
+    const { pg } = db;
+    await pg.query(`insert into inquiries(name,phone,source,status,created_at) values
+      ('C','911','pinterest','new',now()), ('D','912','pinterest','won',now()), ('E','913','pinterest','won',now()),
+      ('F','914','google','new',now() - interval '30 weeks')`);
+    const rows = (await pg.query("select source, status, enquiries::int as n from inquiry_source_report(12) where source='pinterest' order by status")).rows;
+    expect(rows).toEqual([{ source: "pinterest", status: "new", n: 1 }, { source: "pinterest", status: "won", n: 2 }]);
+    expect((await pg.query("select count(*)::int as n from inquiry_source_report(12) where source='google'")).rows[0].n).toBe(0);
+    await pg.query("set role anon");
+    try {
+      await expect(pg.query("select * from inquiry_source_report(12)")).rejects.toThrow(/permission denied/);
+    } finally {
+      await pg.query("reset role");
+    }
+  });
+});

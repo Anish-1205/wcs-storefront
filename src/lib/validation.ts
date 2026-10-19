@@ -44,6 +44,9 @@ export const inquirySchema = z.object({
   website: z.string().max(500).optional().or(z.literal("")),
   // Idempotency key (T4.9): the same value on a retry stores nothing new.
   client_request_id: z.string().uuid().optional(),
+  // Campaign detail (T4.6): lowercase slugs only, as source-tracking stores them.
+  utm_medium: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/).optional(),
+  utm_campaign: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/).optional(),
 });
 
 export type InquiryInput = z.infer<typeof inquirySchema>;

@@ -14,7 +14,7 @@ import {
   useProfile,
   type Profile,
 } from "@/lib/profile/useProfile";
-import { getSource } from "@/lib/source-tracking";
+import { getSource, getUtm } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
 import { describeSubmitFailure } from "@/lib/submit-errors";
 import {
@@ -188,6 +188,7 @@ export function EnquiryForm() {
           product_name: items.map((i) => i.title).join(", ").slice(0, 200),
           website: "",
           source,
+          ...getUtm(),
           client_request_id: (clientRequestId.current ??= newClientRequestId()),
         }),
       });

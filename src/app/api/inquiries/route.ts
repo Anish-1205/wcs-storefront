@@ -66,15 +66,16 @@ export async function POST(req: Request) {
 type InquiryData = ReturnType<typeof inquirySchema.parse>;
 
 /**
- * Insert once per client_request_id (T4.9). A database from before migration
- * 037 has no such column: then the enquiry is saved without it rather than
- * lost, whatever order the code and the migration are deployed in.
+ * Insert once per client_request_id (T4.9), with the campaign detail (T4.6).
+ * A database from before migration 037 has none of those columns: then the
+ * enquiry is saved without them rather than lost, whatever order the code and
+ * the migration are deployed in.
  */
 async function saveInquiry(
   supabase: ReturnType<typeof createAdminClient>,
   data: InquiryData,
 ): Promise<{ error: { message: string; code?: string } | null; duplicate: boolean }> {
-  const row = {
+  const base = {
     name: data.name,
     phone: data.phone,
     email: data.email || null,
@@ -85,18 +86,20 @@ async function saveInquiry(
     product_name: data.product_name ?? null,
     source: data.source,
   };
+  const row = { ...base, utm_medium: data.utm_medium ?? null, utm_campaign: data.utm_campaign ?? null };
+  const unknownColumn = (error: { code?: string; message: string } | null) =>
+    !!error && (error.code === "PGRST204" || error.code === "42703" || error.code === "42P10" || /client_request_id|utm_/.test(error.message));
+
   if (!data.client_request_id) {
     const { error } = await supabase.from("inquiries").insert(row);
+    if (unknownColumn(error)) return { error: (await supabase.from("inquiries").insert(base)).error, duplicate: false };
     return { error, duplicate: false };
   }
   const { data: inserted, error } = await supabase
     .from("inquiries")
     .upsert({ ...row, client_request_id: data.client_request_id }, { onConflict: "client_request_id", ignoreDuplicates: true })
     .select("id");
-  if (error && (error.code === "PGRST204" || error.code === "42P10" || /client_request_id/.test(error.message))) {
-    const { error: plainError } = await supabase.from("inquiries").insert(row);
-    return { error: plainError, duplicate: false };
-  }
+  if (unknownColumn(error)) return { error: (await supabase.from("inquiries").insert(base)).error, duplicate: false };
   return { error, duplicate: !error && (inserted ?? []).length === 0 };
 }
 

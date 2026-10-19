@@ -4,7 +4,7 @@ import { ContentRegion } from "@/components/content/ContentRegion";
 
 import { useState, useRef } from "react";
 import { newClientRequestId } from "@/lib/client-request-id";
-import { getSource } from "@/lib/source-tracking";
+import { getSource, getUtm } from "@/lib/source-tracking";
 import { analytics } from "@/lib/analytics";
 import { describeSubmitFailure } from "@/lib/submit-errors";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,7 @@ export function InquiryForm({
       variant_id: variantId,
       product_name: productName,
       source,
+      ...getUtm(),
       client_request_id: (clientRequestId.current ??= newClientRequestId()),
     };
 

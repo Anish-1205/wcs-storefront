@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { InquiryTable } from "@/components/admin/InquiryTable";
 import { adminInquiriesQuerySchema } from "@/lib/validation";
@@ -42,7 +43,10 @@ export default async function AdminInquiriesPage(props: {
 
   return (
     <div>
-      <h1 className="mb-6 font-serif text-3xl text-primary">Inquiries</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-serif text-3xl text-primary">Inquiries</h1>
+        <Link href="/admin/inquiries/report" className="text-sm text-primary hover:underline">Lead sources report →</Link>
+      </div>
       {!workflow && (
         <p className="mb-4 rounded-sm border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
           Statuses, notes and follow-ups appear once database migration 037 is applied.

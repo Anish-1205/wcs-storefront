@@ -138,7 +138,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · L · FREE · depends on: T4.3, T3.1 (audit), T4.7 (pagination)
 - [x] **T4.5** — Follow-up reminders (minimal) — *2026-10-19: "Follow-ups due" card on the dashboard and a `due` filter on /admin/inquiries (India date). The optional daily e-mail digest is not built: Hobby allows it, but the dashboard covers the need without spending Resend quota*  
   P2 · M · FREE WITH LIMITS · depends on: T4.3, T4.4
-- [ ] **T4.6** — Lead-source reporting  
+- [x] **T4.6** — Lead-source reporting — *2026-10-19: allowlisted `utm_medium`/`utm_campaign` captured first-touch (cookie now `Secure` on https) and stored on the enquiry; `/admin/inquiries/report` from `inquiry_source_report` (migration `039`, **not applied**)*  
   P2 · M · FREE · depends on: T4.3
 - [x] **T4.9** — Inquiry idempotency key — *2026-10-19: forms send a per-fill `client_request_id`; the route upserts with `ignoreDuplicates` and skips the e-mail on a repeat; before migration 037 it saves without the key instead of failing*  
   P2 · S · FREE · depends on: T4.3

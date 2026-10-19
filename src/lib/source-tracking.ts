@@ -40,7 +40,39 @@ export function captureSource(): void {
 
   const expires = new Date();
   expires.setDate(expires.getDate() + EXPIRY_DAYS);
-  document.cookie = `${COOKIE_NAME}=${raw}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${COOKIE_NAME}=${raw}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${secure}`;
+
+  // Campaign detail (T4.6), first-touch with the source and allowlisted to a
+  // short slug: never free text from the URL.
+  const medium = normaliseUtm(params.get("utm_medium"));
+  const campaign = normaliseUtm(params.get("utm_campaign"));
+  if (medium || campaign) {
+    document.cookie = `${UTM_COOKIE}=${medium ?? ""}|${campaign ?? ""}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${secure}`;
+  }
+}
+
+const UTM_COOKIE = "lead_utm";
+export const UTM_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+/** A UTM value as a lowercase slug, or null when it is not one. */
+export function normaliseUtm(value: string | null | undefined): string | null {
+  const slug = (value ?? "").trim().toLowerCase();
+  return UTM_PATTERN.test(slug) ? slug : null;
+}
+
+/** The stored campaign detail, if any. */
+export function getUtm(): { utm_medium?: string; utm_campaign?: string } {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie.match(new RegExp(`${UTM_COOKIE}=([^;]*)`));
+  if (!match) return {};
+  const [medium, campaign] = match[1].split("|");
+  const out: { utm_medium?: string; utm_campaign?: string } = {};
+  const m = normaliseUtm(medium);
+  const c = normaliseUtm(campaign);
+  if (m) out.utm_medium = m;
+  if (c) out.utm_campaign = c;
+  return out;
 }
 
 /** Read the stored lead source, defaulting to 'direct'. */
