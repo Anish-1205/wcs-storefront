@@ -1,0 +1,53 @@
+name: WhatsApp sweep
+
+# T6.7: Vercel Hobby runs /api/whatsapp/sweep once a day, so the 10- and
+# 30-minute WhatsApp deadlines (unanswered questions, photos with no
+# description) otherwise wait for the sender's next message. This calls the
+# sweep every 5 minutes. The endpoint is idempotent (claims and leases), so a
+# late, skipped or doubled run is harmless.
+#
+# Secrets live on the `whatsapp-sweep` environment, which should be limited to
+# the `main` branch (Settings → Environments). Only `schedule` and
+# `workflow_dispatch` can run this: never a pull request. Without the secrets
+# it does nothing and says so, rather than failing every 5 minutes.
+#
+# GitHub may delay or drop scheduled runs under load, and disables schedules
+# after 60 days without repository activity on public repos. The Vercel daily
+# cron stays as the backstop. The alternative is Supabase pg_cron
+# (docs/deployment.md, "What fires the deadlines").
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: whatsapp-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment: whatsapp-sweep
+    steps:
+      - name: Call /api/whatsapp/sweep
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://weaversclubsarees.com' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::notice::CRON_SECRET is not set on the whatsapp-sweep environment; nothing to do."
+            exit 0
+          fi
+          status="$(curl -sS -o "$RUNNER_TEMP/out.json" -w "%{http_code}" --max-time 150 \
+            -H "Authorization: Bearer ${CRON_SECRET}" "${SITE_URL%/}/api/whatsapp/sweep")"
+          echo "sweep answered HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::sweep answered HTTP $status"
+            exit 1
+          fi

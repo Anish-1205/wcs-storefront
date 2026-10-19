@@ -190,7 +190,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE · depends on: T1.12, T3.10
 - [x] **T6.6** — Coverage thresholds for `src/lib` — *2026-10-20: baseline 80.5 / 75.2 / 80.0 / 81.5 (statements/branches/functions/lines); thresholds 78 / 72 / 77 / 79 in `vitest.config.ts`, enforced by CI's `npm test -- --coverage`. Also `testTimeout` 20 s: two import-pipeline tests flaked at 5 s under load*  
   P3 · S · FREE · depends on: none
-- [ ] **T6.7** — WhatsApp sweep scheduler cadence  
+- [x] **T6.7** — WhatsApp sweep scheduler cadence — *2026-10-20: measured: webhook requests close only the 45 s quiet period; 10/30-min deadlines wait for the next message or the daily cron, and prod has no `pg_cron`. Added `.github/workflows/whatsapp-sweep.yml` (every 5 min, environment-scoped secret, no-op until set). **Owner**: create the `whatsapp-sweep` environment (main only) with `CRON_SECRET`*  
   P2 · M · FREE WITH LIMITS · depends on: T6.4, T1.12
 - [ ] **T6.8** — WhatsApp tracing and alerting  
   P2 · M · FREE WITH LIMITS · depends on: T1.8, T2.6

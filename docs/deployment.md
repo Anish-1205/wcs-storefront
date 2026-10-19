@@ -292,6 +292,15 @@ in admin ("Why these photos are in this listing") or:
 `select * from whatsapp_listing_audit where slug = '<slug>' order by message_ts;`
 
 
+**Every-5-minute sweep (GitHub Actions).** `.github/workflows/whatsapp-sweep.yml`
+calls the sweep every 5 minutes once you create the `whatsapp-sweep`
+environment (Settings → Environments, deployment branches: `main` only),
+with the secret `CRON_SECRET` (the same value as in Vercel) and optionally
+the variable `SITE_URL`. Until then it runs, finds no secret, and does
+nothing. Checked 2026-10-19: production has no `pg_cron`, so without this or
+the pg_cron option below, deadlines wait for the next message or the daily
+cron.
+
 **What fires the deadlines.** The webhook function stays alive after
 answering Meta and closes the 45 s quiet period itself. The 10- and 30-minute
 deadlines are applied by whatever comes first: the sender's next message, or a
