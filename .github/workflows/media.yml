@@ -1,0 +1,39 @@
+name: Media budget
+
+# T5.6: on PRs that touch public/, report the media inventory (job summary) and
+# fail if public/ grows by more than 10 MB or a media file exceeds the
+# per-file limit (image 2 MB, video 8 MB). Read-only: nothing is deleted.
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["public/**", "scripts/media-report.mjs"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  media:
+    name: Media budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Report and check growth against the base branch
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          MEDIA_FAIL_ON_OVERSIZED: "1"
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          baseline="$(git ls-tree -r -l "origin/$BASE_REF" -- public | awk '{ sum += $4 } END { print sum + 0 }')"
+          node scripts/media-report.mjs --check-growth="$baseline"

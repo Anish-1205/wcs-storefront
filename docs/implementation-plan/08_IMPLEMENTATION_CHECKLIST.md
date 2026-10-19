@@ -161,9 +161,9 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · S · FREE · depends on: none
 - [x] **T5.4** — Lighthouse CI (non-blocking first) — *2026-10-19: `.github/workflows/lighthouse.yml` on PRs + `scripts/lighthouse-ci.mjs` (mobile; LCP ≤ 3 s, CLS ≤ 0.1, a11y ≥ 90, SEO ≥ 95; warn-only until `LIGHTHOUSE_ENFORCE=1`; scores in the job summary). Not yet run: first PR stores the baseline*  
   P2 · M · FREE · depends on: none
-- [ ] **T5.5** — Accessibility regression tests (axe + keyboard)  
+- [x] **T5.5** — Accessibility regression tests (axe + keyboard) — *2026-10-19: `e2e/a11y.spec.ts` (axe, serious/critical only, 7 pages + cart drawer; skip link; enquiry labels), 10/10 passing locally against `next dev`. Fixed what it found: no skip link (added), cart drawer did not return focus on close (fixed), admin login/2FA subtitle failed colour contrast (fixed). Adds dev dependency `@axe-core/playwright@4.10.2` (MPL-2.0, dev-only)*  
   P2 · L · FREE WITH LIMITS · depends on: none
-- [ ] **T5.6** — Media inventory and size budget (no deletion)  
+- [x] **T5.6** — Media inventory and size budget (no deletion) — *2026-10-19: `scripts/media-report.mjs` + `.github/workflows/media.yml` (PRs touching `public/`: +10 MB / per-file limits). First report: public/ 141.8 MB (media 112.4, m 28.8), nothing over the per-file limits, no missing variants, **18 identical photos shared between `a-regal-kanjiwaram-…` and `kanjivaram-peacock-pallu`** (likely a duplicate product, owner to check)*  
   P2 · S · FREE · depends on: none
 - [ ] **T5.7** — AVIF feasibility spike  
   P3 · S · OPTIONAL · depends on: T5.6. **Deploy:** none
