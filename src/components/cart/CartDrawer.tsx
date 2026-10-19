@@ -25,12 +25,18 @@ export function CartDrawer() {
 
   useEffect(() => {
     if (!isOpen) return;
+    // Whatever opened the drawer gets focus back when it closes (T5.5), so a
+    // keyboard user is not dropped at the top of the page.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") closeCart();
     }
     window.addEventListener("keydown", onKey);
     panelRef.current?.focus();
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (opener?.isConnected) opener.focus();
+    };
   }, [isOpen, closeCart]);
 
   if (!isOpen) return null;

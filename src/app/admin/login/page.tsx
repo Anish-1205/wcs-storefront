@@ -42,7 +42,7 @@ function LoginForm() {
           <p className="font-serif text-xl font-semibold text-primary">
             {SITE.name}
           </p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-antique-gold">
+          <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
             Admin
           </p>
         </div>

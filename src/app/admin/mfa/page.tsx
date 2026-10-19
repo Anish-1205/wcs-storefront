@@ -19,7 +19,7 @@ export default async function AdminMfaPage({ searchParams }: { searchParams: Pro
       <div className="w-full max-w-sm rounded-sm border border-border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
           <p className="font-serif text-xl font-semibold text-primary">{SITE.name}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-antique-gold">Two-factor sign-in</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">Two-factor sign-in</p>
         </div>
         <MfaChallenge next={next} />
       </div>

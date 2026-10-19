@@ -17,9 +17,13 @@ export default async function PublicLayout({
     <PageContentProvider initial={await getPageContent()}><AuthProvider>
       <CartProvider>
         <div className="storefront">
+        {/* Keyboard users skip the navigation (T5.5); visible only when focused. */}
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-sm focus:bg-card focus:px-4 focus:py-2 focus:text-foreground focus:shadow">
+          Skip to content
+        </a>
         <SourceTracker />
         <Navbar />
-        <main className="min-h-[60vh]">{children}</main>
+        <main id="main" tabIndex={-1} className="min-h-[60vh] focus:outline-none">{children}</main>
         <Footer />
         <WhatsAppFloat />
         <CartDrawer />
