@@ -20,9 +20,8 @@ import {
   NAMING_STYLE_GUIDE,
   normalizeHighlights,
 } from "./style-guide";
+import { sendAnthropicRequest, type AiFeature } from "./budget";
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_IMAGES_PER_CALL = 4;
 // Colour-variant clustering needs to see most/all of a group's photos to
 // tell colourways apart — a higher cap than the 4-image metadata call above.
@@ -170,51 +169,34 @@ function imageBlocks(urls: string[]): ImageBlock[] {
   }));
 }
 
+/** One gated call (budget.ts: caps, kill switch, no retries), parsed as JSON. */
 async function callAnthropic(
+  feature: AiFeature,
   system: string,
   content: Array<ImageBlock | TextBlock>,
   options: { timeoutMs?: number; maxTokens?: number; model?: string } = {},
 ): Promise<unknown | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  const { body } = await sendAnthropicRequest(
+    feature,
+    {
+      model: options.model ?? getModel(),
+      max_tokens: options.maxTokens ?? 1024,
+      system,
+      messages: [{ role: "user", content }],
+    },
+    { timeoutMs: options.timeoutMs ?? REQUEST_TIMEOUT_MS },
+  );
+  const text = (body as { content?: Array<{ type: string; text?: string }> } | null)?.content
+    ?.find((block) => block.type === "text")?.text;
+  if (!text) return null;
 
   try {
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": ANTHROPIC_VERSION,
-      },
-      body: JSON.stringify({
-        model: options.model ?? getModel(),
-        max_tokens: options.maxTokens ?? 1024,
-        system,
-        messages: [{ role: "user", content }],
-      }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      console.warn(`anthropic provider: request failed (${response.status})`);
-      return null;
-    }
-
-    const data = (await response.json()) as { content?: Array<{ type: string; text?: string }> };
-    const text = data.content?.find((block) => block.type === "text")?.text;
-    if (!text) return null;
-
     // Models occasionally wrap JSON in fences despite instructions — strip them defensively.
     const cleaned = text.trim().replace(/^```(?:json)?/, "").replace(/```$/, "").trim();
     return JSON.parse(cleaned);
   } catch (error) {
-    console.warn("anthropic provider: request errored", error instanceof Error ? error.message : error);
+    console.warn("anthropic provider: response was not JSON", error instanceof Error ? error.message : error);
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -251,7 +233,7 @@ export const anthropicAiProvider: AiProvider = {
         : "",
     ].filter(Boolean);
 
-    const raw = await callAnthropic(METADATA_SYSTEM_PROMPT, [
+    const raw = await callAnthropic("metadata", METADATA_SYSTEM_PROMPT, [
       ...imageBlocks(input.imageUrls),
       { type: "text", text: textParts.join("\n\n") },
     ]);
@@ -318,7 +300,7 @@ export const anthropicAiProvider: AiProvider = {
       input.adminDescription ? `Admin description: ${input.adminDescription}` : "No admin description provided.",
     ];
 
-    const raw = await callAnthropic(CLASSIFICATION_SYSTEM_PROMPT, [
+    const raw = await callAnthropic("collection", CLASSIFICATION_SYSTEM_PROMPT, [
       ...imageBlocks(input.imageUrls),
       { type: "text", text: textParts.join("\n\n") },
     ]);
@@ -358,7 +340,7 @@ export const anthropicAiProvider: AiProvider = {
       input.adminDescription ? `Admin description: ${input.adminDescription}` : "No admin description provided.",
     ];
 
-    const raw = await callAnthropic(COLOR_VARIANT_SYSTEM_PROMPT, [
+    const raw = await callAnthropic("color_variants", COLOR_VARIANT_SYSTEM_PROMPT, [
       ...images.map((img) => ({ type: "image" as const, source: { type: "url" as const, url: img.url } })),
       { type: "text", text: textParts.join("\n\n") },
     ]);
@@ -399,7 +381,7 @@ export const anthropicAiProvider: AiProvider = {
     if (!this.isConfigured() || input.images.length === 0) return null;
     // The seller's text never becomes prompt text: the system prompt is a
     // constant and the text travels as a JSON string value (listing-analysis.ts).
-    const raw = await callAnthropic(LISTING_SYSTEM_PROMPT, listingUserContent(input, isTitleOnly(input.adminText)), {
+    const raw = await callAnthropic("listing", LISTING_SYSTEM_PROMPT, listingUserContent(input, isTitleOnly(input.adminText)), {
       timeoutMs: input.timeoutMs, maxTokens: LISTING_MAX_TOKENS, model: getListingModel(),
     });
     if (raw == null) return null;

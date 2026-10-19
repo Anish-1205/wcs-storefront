@@ -106,6 +106,9 @@ describe("effective RLS state across all migrations", () => {
       "whatsapp_inbox",
       "whatsapp_batches",
       "whatsapp_notices",
+      // AI usage ledger and kill switch (035).
+      "ai_usage_daily",
+      "ai_settings",
     ];
 
     const reachable = serverOnly.filter((table) =>

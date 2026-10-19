@@ -59,15 +59,15 @@ process every migration follows.
 ## Applying to production
 
 Migrations are applied only when the owner asks, never as a side effect of a
-push. In order of preference:
+push. `/admin/database` shows which files are missing from the ledger, but its
+one-click apply is **disabled** (`e7cdb19`): it is a preview only. The routes,
+in order of preference:
 
-1. **`/admin/database`**: lists every file missing from the ledger and applies
-   them in order, one transaction each, under an advisory lock. Needs
-   `DATABASE_URL` (session pooler, port 5432) in Vercel.
-2. **`node scripts/run-migrations.mjs`**: the same code
-   (`src/lib/db-migrations.mjs`) from a terminal. Needs `DATABASE_URL`, and
-   `DATABASE_CA_CERT` for the session pooler's private CA.
-3. **`supabase db query --linked -f <file>`**, through the Management API.
+1. **`node scripts/run-migrations.mjs`**: `src/lib/db-migrations.mjs` from a
+   terminal. Each pending file runs in its own transaction, under an
+   advisory lock. Needs `DATABASE_URL` (session pooler, port 5432), plus
+   `DATABASE_CA_CERT` for the pooler's private CA.
+2. **`supabase db query --linked -f <file>`**, through the Management API.
    This is how 034 was applied on 2026-10-19. Wrap the file so the
    migration and its ledger row commit together, under the same lock the
    app's runner takes:
@@ -83,7 +83,7 @@ push. In order of preference:
 
    The ledger row has a primary key, so applying a file twice fails and rolls
    back instead of running it again.
-4. **SQL Editor + `supabase migration repair --status applied <NNN>`**: the
+3. **SQL Editor + `supabase migration repair --status applied <NNN>`**: the
    historical route. The repair step is what keeps the ledger true.
 
 Order with code: a migration the new code depends on goes **before** that

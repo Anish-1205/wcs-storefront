@@ -3,6 +3,13 @@ import { nullAiProvider } from "@/lib/ai/null-provider";
 import { anthropicAiProvider, metadataResponseSchema } from "@/lib/ai/anthropic-provider";
 import { getAiProvider } from "@/lib/ai";
 
+// The budget gate (src/lib/ai/budget.ts) always has room here; it has its own tests.
+vi.mock("@/lib/supabase/server", () => ({
+  createAdminClient: () => ({
+    rpc: async (name: string) => ({ data: name === "ai_try_reserve" ? "ok" : null, error: null }),
+  }),
+}));
+
 function textResponse(payload: unknown) {
   return {
     ok: true,

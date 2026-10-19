@@ -66,11 +66,11 @@ Planning only; nothing below has been started. Items are in dependency order wit
 
 - [ ] **T2.3** — Provider-side Anthropic spending restriction and usage review  
   P0 · S · EXISTING COST · depends on: none
-- [ ] **T2.1** — AI usage ledger, caps, concurrency limit and kill switch (data + gate)  
+- [x] **T2.1** — AI usage ledger, caps, concurrency limit and kill switch (data + gate) — *2026-10-19: migration `035_ai_usage.sql` (written + tested on local PG, **not applied**), `src/lib/ai/budget.ts`; races never exceed the cap (`ingest-eval/ai-usage.test.ts`)*  
   P0 · M · FREE · depends on: T1.10, T1.2 (backup before D2)
-- [ ] **T2.2** — Wire the budget gate into every AI call path  
+- [x] **T2.2** — Wire the budget gate into every AI call path — *2026-10-19: all four features go through `callAnthropic` → `sendAnthropicRequest`; a test asserts only `budget.ts` holds the API URL. The WhatsApp listing's single validation retry is kept and counted*  
   P0 · M · FREE · depends on: T2.1
-- [ ] **T2.9** — AI usage visibility panel (existing Anthropic usage)  
+- [x] **T2.9** — AI usage visibility panel (existing Anthropic usage) — *2026-10-19: `/admin/ai-usage` (30-day ledger, kill switch, clear pause)*  
   P1 · S · FREE · depends on: T2.1, T2.2
 - [ ] **T2.4** — Sentry tuning (environment, sampling, noise)  
   P1 · S · FREE WITH LIMITS · depends on: none

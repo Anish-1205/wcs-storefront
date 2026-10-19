@@ -254,6 +254,28 @@ colours"; colour variants need two or more colours.
 | `INGEST_NEAR_DUPLICATE_BITS` | 6 | how different two hashes may be and still be the same photo |
 | `ANTHROPIC_INGEST_MODEL` | `ANTHROPIC_IMPORT_MODEL` | model for the listing call |
 
+**AI budget (every Anthropic call, not just WhatsApp).** Every call goes
+through `src/lib/ai/budget.ts` and the `ai_usage_daily` ledger (migration 035;
+**apply it before deploying code that includes `budget.ts`**, or every AI call
+is refused until it is). A refused call is handled like "AI unavailable": the
+listing or import falls back to its deterministic path. A paid call is never
+retried after an error. The only second call is the listing's one
+validation retry above, and it counts against the cap like any other.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AI_KILL_SWITCH` | unset | `1` refuses every AI call (no redeploy needed for the DB switch in `/admin/ai-usage`) |
+| `AI_DAILY_CAP_LISTING` | 200 | WhatsApp listing analyses per UTC day |
+| `AI_DAILY_CAP_METADATA` | 200 | import / enrichment name-and-tag suggestions per day |
+| `AI_DAILY_CAP_COLLECTION` | 200 | collection classifications per day |
+| `AI_DAILY_CAP_COLOR_VARIANTS` | 200 | colour-variant clusterings per day |
+| `AI_MAX_CONCURRENCY` | 2 | simultaneous AI calls per server instance (extra calls wait) |
+
+When Anthropic answers with a spend limit, AI pauses until the 1st of next
+month (UTC) and Sentry gets one `ai-budget` event. Clear the pause in
+`/admin/ai-usage` once the limit has been raised. Owner steps for the
+provider-side limit: `docs/runbooks/ai-cost-controls.md`.
+
 Every reply says what was created and what to check, e.g. *"Draft created:
 Tissue Saree. 7 photos used, 2 duplicates skipped, 3 extras hidden. Price
 missing, please send it."* A price sent on its own after that fills the price
