@@ -110,7 +110,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · UNVERIFIED · depends on: T1.7, T3.6
 - [x] **T3.9** — Secret scanning in CI — *2026-10-19: `.github/workflows/secrets.yml` (gitleaks 8.21.2, SHA-256 checked, full history), `.gitleaks.toml` (two exact allowlist entries for public demo keys + an Anthropic-key rule). Verified locally: history clean, planted GitHub/AWS/Anthropic keys caught. **Owner**: enable native secret scanning + push protection in repo settings*  
   P1 · S · FREE · depends on: none
-- [ ] **T3.10** — Pin actions, least privilege, SECURITY.md  
+- [x] **T3.10** — Pin actions, least privilege, SECURITY.md — *2026-10-19: every action SHA-pinned with a version comment (resolved with `git ls-remote`), Supabase CLI pinned to 2.116.0, `SECURITY.md` (private vulnerability reporting, no e-mail published), `CODEOWNERS`; Dependabot already updates `github-actions`. **Owner**: turn on private vulnerability reporting*  
   P2 · S · FREE · depends on: none
 - [ ] **T3.11** — Defence-in-depth fixes (allowlist at the edge, constant-time verify token)  
   P2 · S · FREE · depends on: none

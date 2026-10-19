@@ -1,0 +1,10 @@
+# Changes here need the owner's review once branch protection requires code
+# owner reviews (T1.12, T3.10): CI and deploy config, database migrations, and
+# the admin auth path.
+/.github/                     @Anish-1205
+/supabase/migrations/         @Anish-1205
+/src/lib/admin-auth.ts        @Anish-1205
+/src/lib/admin-mfa.ts         @Anish-1205
+/src/lib/admin-session.ts     @Anish-1205
+/src/middleware.ts            @Anish-1205
+/.gitleaks.toml               @Anish-1205
