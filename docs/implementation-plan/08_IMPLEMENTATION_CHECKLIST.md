@@ -165,7 +165,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · L · FREE WITH LIMITS · depends on: none
 - [x] **T5.6** — Media inventory and size budget (no deletion) — *2026-10-19: `scripts/media-report.mjs` + `.github/workflows/media.yml` (PRs touching `public/`: +10 MB / per-file limits). First report: public/ 141.8 MB (media 112.4, m 28.8), nothing over the per-file limits, no missing variants, **18 identical photos shared between `a-regal-kanjiwaram-…` and `kanjivaram-peacock-pallu`** (likely a duplicate product, owner to check)*  
   P2 · S · FREE · depends on: none
-- [ ] **T5.7** — AVIF feasibility spike  
+- [x] **T5.7** — AVIF feasibility spike — *2026-10-19: measured 36 % smaller, visually equal, 4.5× encode time; **rejected for now** (+18 MB repo, needs `<picture>`; Cloudinary `f_auto` already serves AVIF for uploads). Numbers and reasoning in doc 07*  
   P3 · S · OPTIONAL · depends on: T5.6. **Deploy:** none
 - [ ] **T5.8** — IndexNow automation (optional)  
   P3 · S · OPTIONAL · depends on: none
@@ -241,7 +241,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P3 · S · OPTIONAL · depends on: none
 - [ ] **T8.3** — Wishlist  
   P3 · L · OPTIONAL · depends on: T4.3-style migration discipline (T1.10), T6.1
-- [ ] **T8.4** — Additional image formats (implementation after T5.7)  
+- [ ] **T8.4** — Additional image formats (implementation after T5.7) — *closed by T5.7's decision until `public/media` moves to Cloudinary*  
   P3 · L · OPTIONAL · depends on: T5.6, T5.7 (approved)
 
 **Phase 8 checkpoint**

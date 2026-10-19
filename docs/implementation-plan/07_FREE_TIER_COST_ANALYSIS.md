@@ -110,3 +110,38 @@ OFFICIAL text: Hobby is for non-commercial personal use; commercial usage includ
 
 ## 10. What was not verified
 Supabase pause/restore window details beyond "1 week"; Vercel enforcement behaviour at Hobby limits; Cloudinary behaviour at limit and usage API; Upstash usage API; GA4 quotas; Turnstile terms; Backblaze B2; R2 payment-method requirement (secondary only); GitHub default spending-limit setting, per-job minute rounding, Releases asset quota, whether public-repo artifacts count toward the 500 MB allowance; Supabase TOTP MFA availability on this plan. Update thresholds in the quota check once confirmed.
+
+## AVIF feasibility (T5.7), measured 2026-10-19: rejected for now
+
+Five product photos (the first JPEG of the first five `public/media` folders),
+encoded with the installed `sharp` at the three committed widths (128 / 384 /
+640). WebP at quality 70 is what `build-media-variants.mjs` writes today;
+AVIF at quality 50, effort 4.
+
+| Photo (640 w) | WebP | AVIF | Saving |
+| --- | --- | --- | --- |
+| kanjiwaram …/01-detail | 99,762 B | 59,674 B | 40 % |
+| antique-gold-patola-tissue/01-full | 128,052 B | 77,332 B | 40 % |
+| bandhani-on-gaji-silk…/01-full | 119,366 B | 78,093 B | 35 % |
+| bandhani-patola-emerald/01-full | 97,674 B | 65,547 B | 33 % |
+| bandhani-patola-indigo/01-full | 129,748 B | 85,302 B | 34 % |
+| **All 15 files** | 848,506 B | 546,186 B | **36 %** |
+
+Encode time: WebP 1.0 s, AVIF 4.5 s for the 15 files (about 4.5×). A 2×
+zoomed side-by-side of one photo showed no visible difference.
+
+**Decision: reject for now, although the saving clears the 25 % bar.**
+
+- Committing a fourth set of variants adds about 18 MB to the repo (`public/m`
+  is 28.8 MB as WebP; AVIF ≈ 64 % of that), on top of a `public/` that is
+  already 141.8 MB against the 100 MB Hobby static-upload figure we are
+  watching (T5.6).
+- `next/image`'s custom loader returns one URL per image, so serving AVIF
+  needs a `<picture>` component in place of `SafeImage` across the
+  storefront. Static hosting cannot negotiate on `Accept`.
+- The saving per image is roughly 30–50 KB at 640 w.
+- Cloudinary already sends AVIF to browsers that take it (`f_auto` in
+  `src/lib/image-loader.ts`) for every admin-uploaded image, at no repo cost.
+
+**Revisit** if `public/media` moves to Cloudinary (the "trim the repo later"
+decision above). Then AVIF comes for free. T8.4 stays closed until then.
