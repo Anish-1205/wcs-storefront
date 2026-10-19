@@ -38,6 +38,7 @@ import { reportError, ExpectedError } from "@/lib/report-error";
 import { refreshVisibilityMirror } from "@/lib/catalog-hidden-slugs";
 import { auditAdminAction } from "@/lib/audit";
 import { csvCell } from "@/lib/csv";
+import { pingIndexNow } from "@/lib/indexnow";
 
 /**
  * Next.js redacts thrown Server Action error messages in production builds
@@ -849,6 +850,7 @@ export async function updateProductStatus(id: string, status: ProductStatus): Pr
       .single();
     if (error) throw new Error(error.message);
     await auditAdminAction(user, "product.status", { entity: "product", entityId: id, meta: { status, slug: data.slug as string } });
+    pingIndexNow([`/sarees/${data.slug as string}`]);
     revalidatePublic(data.slug as string);
     // Record the new hidden set outside Postgres while the database is still
     // reachable — see refreshVisibilityMirror.
@@ -886,6 +888,7 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
     if (error) throw new Error(error.message);
     await auditAdminAction(user, "product.delete", { entity: "product", entityId: id, meta: { slug: (data?.slug as string | undefined) ?? null } });
     if (data?.slug) revalidatePublic(data.slug as string);
+    if (data?.slug) pingIndexNow([`/sarees/${data.slug as string}`]);
     await refreshVisibilityMirror();
     revalidateCatalogShell();
     return {};

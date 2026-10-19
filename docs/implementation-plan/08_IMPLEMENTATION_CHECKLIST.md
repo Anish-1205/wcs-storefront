@@ -167,7 +167,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · S · FREE · depends on: none
 - [x] **T5.7** — AVIF feasibility spike — *2026-10-19: measured 36 % smaller, visually equal, 4.5× encode time; **rejected for now** (+18 MB repo, needs `<picture>`; Cloudinary `f_auto` already serves AVIF for uploads). Numbers and reasoning in doc 07*  
   P3 · S · OPTIONAL · depends on: T5.6. **Deploy:** none
-- [ ] **T5.8** — IndexNow automation (optional)  
+- [x] **T5.8** — IndexNow automation (optional) — *2026-10-19: publish/unpublish/delete submit only that product URL (throttled, fire-and-forget, never blocks the action); `/<key>.txt` now served (it was not, so IndexNow could never verify). Off until `INDEXNOW_KEY` is set in Vercel*  
   P3 · S · OPTIONAL · depends on: none
 
 **Phase 5 checkpoint**

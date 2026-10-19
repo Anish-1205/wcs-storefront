@@ -447,6 +447,13 @@ The 0–3 / 2–10 day shipping estimate used to be hard-coded into every
 product. It is now off until confirmed: the shipping page says dispatch and
 delivery are confirmed per order on WhatsApp.
 
+## 5a-8. IndexNow (Bing / Yandex)
+
+Optional. Set `INDEXNOW_KEY` in Vercel to an 8–128 character key (letters,
+digits, `-`). The site then serves it at `/<key>.txt`, and publishing,
+unpublishing or deleting a product submits that one URL. Google ignores
+IndexNow and reads the sitemap. Unset, nothing is sent.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

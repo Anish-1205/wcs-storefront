@@ -35,6 +35,11 @@ const nextConfig = {
   // Retired product slugs (see RETIRED_SLUGS in src/data/products.ts) keep
   // their URL working — they are linked from WhatsApp threads and indexed by
   // search — by pointing at the product that absorbed them.
+  // IndexNow key file (T5.8): /<key>.txt is answered by the route only for the
+  // configured INDEXNOW_KEY (src/app/api/indexnow-key/route.ts).
+  async rewrites() {
+    return [{ source: "/:key([A-Za-z0-9-]{8,128}).txt", destination: "/api/indexnow-key?k=:key" }];
+  },
   async redirects() {
     return [
       { source: "/wholesale", destination: "/contact", permanent: false },
