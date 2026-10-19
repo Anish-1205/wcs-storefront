@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { decideMfa, MFA_PATHS } from "@/lib/admin-mfa";
 
 /**
  * Builds the CSP. script-src allows 'unsafe-inline' rather than nonces: the
@@ -122,6 +123,22 @@ export async function middleware(req: NextRequest) {
     const redirectRes = NextResponse.redirect(url);
     redirectRes.headers.set("Content-Security-Policy", csp);
     return redirectRes;
+  }
+
+  // Two-factor (T3.3): a session that owes its TOTP code (or, once required,
+  // has no factor yet) reaches only the page that resolves that.
+  if (user && !isLogin && pathname !== MFA_PATHS.challenge && pathname !== MFA_PATHS.enroll) {
+    const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const status = levels ? decideMfa(levels) : "ok";
+    if (status !== "ok") {
+      const url = req.nextUrl.clone();
+      url.pathname = MFA_PATHS[status];
+      url.search = "";
+      if (status === "challenge") url.searchParams.set("redirect", pathname);
+      const mfaRes = NextResponse.redirect(url);
+      mfaRes.headers.set("Content-Security-Policy", csp);
+      return mfaRes;
+    }
   }
 
   // Already signed in but visiting the login page → send to dashboard.

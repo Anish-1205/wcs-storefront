@@ -14,6 +14,7 @@ import {
   Mail,
   Database,
   Sparkles,
+  ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -34,6 +35,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/admin/inquiries": MessageSquare,
   "/admin/subscribers": Mail,
   "/admin/ai-usage": Sparkles,
+  "/admin/security": ShieldCheck,
   "/admin/database": Database,
 };
 

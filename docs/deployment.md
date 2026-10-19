@@ -361,6 +361,33 @@ in Vercel, redeploy, and remove it afterwards. Supabase's own sign-in limits
 still apply either way. Every attempt is written to `admin_audit_log`
 (`login.success` / `login.failure` / `login.throttled`, no e-mail stored).
 
+## 5a-3. Admin two-factor sign-in (TOTP)
+
+After the password, an admin with an enrolled authenticator is asked for a
+6-digit code (`/admin/mfa`). Until then nothing admin is reachable: pages
+redirect, server actions and `/api/upload|import/*` refuse. Set up and remove
+authenticators at **Admin → Security** (`/admin/security`).
+
+Rollout, in this order (a mistake here locks the admin out):
+
+1. Deploy with `ADMIN_REQUIRE_MFA` unset. Nothing changes for an admin who
+   has not enrolled.
+2. On `/admin/security`, add **two** authenticators (two phones, or a phone and
+   a password manager).
+3. Sign out, sign in, and check the code step works with each one.
+4. Set `ADMIN_REQUIRE_MFA=1` in Vercel and redeploy. From then on an admin
+   with no authenticator can only reach `/admin/security`.
+
+**Break-glass** (both devices lost): in the Supabase dashboard → Authentication
+→ Users → the admin user → remove the MFA factor. That dashboard is protected
+by the Supabase account's own 2FA. Then sign in with the password and enrol
+again. To switch enforcement off instead, unset `ADMIN_REQUIRE_MFA` and
+redeploy. A user who has a factor is still asked for the code; that is
+intended.
+
+Backups do not contain `auth.*` (backup-scope path B), so after an L1 restore
+the admin enrols again.
+
 ## 5b. Sentry
 
 All three runtimes share `src/lib/sentry-options.ts`. Every event carries the

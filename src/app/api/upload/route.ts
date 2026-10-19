@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
+import { getAdminMfaStatus } from "@/lib/admin-mfa";
 import { signUpload } from "@/lib/cloudinary";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { reportError } from "@/lib/report-error";
@@ -34,6 +35,11 @@ export async function POST(req: Request) {
   if (!isEmailAllowed(user.email)) {
     logger.warn("upload", "upload signing denied: forbidden", { requestId: requestIdFrom(req) });
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Two-factor (T3.3): a session that still owes its TOTP code gets nothing here either.
+  if ((await getAdminMfaStatus(supabase)) !== "ok") {
+    return NextResponse.json({ error: "Two-factor verification required" }, { status: 403 });
   }
 
   try {

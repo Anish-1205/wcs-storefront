@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isEmailAllowed } from "@/lib/admin-auth";
+import { getAdminMfaStatus } from "@/lib/admin-mfa";
 import { signUpload } from "@/lib/cloudinary";
 import { checkImportRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { importUploadSignRequestSchema, MAX_IMPORT_ASSETS_PER_BATCH } from "@/lib/validation";
@@ -31,6 +32,11 @@ export async function POST(req: Request) {
   }
   if (!isEmailAllowed(user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Two-factor (T3.3): a session that still owes its TOTP code gets nothing here either.
+  if ((await getAdminMfaStatus(supabase)) !== "ok") {
+    return NextResponse.json({ error: "Two-factor verification required" }, { status: 403 });
   }
   const admin = createAdminClient();
 

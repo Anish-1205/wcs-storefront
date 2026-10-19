@@ -98,7 +98,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · EXISTING COST · depends on: T1.7
 - [x] **T3.2** — Wire audit logging into destructive/privileged admin actions — *2026-10-19: 13 actions + sign-in, list in `06_SECURITY_PLAN.md` §4, runtime and static tests*  
   P1 · M · FREE · depends on: T3.1
-- [ ] **T3.3** — TOTP MFA for the admin account  
+- [x] **T3.3** — TOTP MFA for the admin account — *code done 2026-10-19 (`/admin/security`, `/admin/mfa`, guards in middleware, `requireAdmin`/`assertAdmin` and the admin API routes; audited). **Owner rollout pending**: enrol two devices, test, then `ADMIN_REQUIRE_MFA=1` (deployment.md §5a-3)*  
   P1 · L · UNVERIFIED · depends on: T3.1 (audit enroll/unenroll)
 - [ ] **T3.5** — Session lifetime policy  
   P2 · M · UNVERIFIED · depends on: T3.3

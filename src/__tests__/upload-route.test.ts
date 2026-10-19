@@ -3,11 +3,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 const mockGetUser = vi.hoisted(() => vi.fn());
 const mockSignUpload = vi.hoisted(() => vi.fn());
 const mockCheckRateLimit = vi.hoisted(() => vi.fn());
+const mockLevels = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: () => ({
     auth: {
       getUser: mockGetUser,
+      mfa: { getAuthenticatorAssuranceLevel: mockLevels },
     },
   }),
 }));
@@ -35,6 +37,7 @@ describe("upload route auth", () => {
       uploadUrl: "https://upload.example.com",
     });
     mockGetUser.mockReset();
+    mockLevels.mockResolvedValue({ data: { currentLevel: "aal1", nextLevel: "aal1" }, error: null });
     mockSignUpload.mockClear();
     mockCheckRateLimit.mockClear();
   });
@@ -66,6 +69,17 @@ describe("upload route auth", () => {
     expect(await response.json()).toEqual({ error: "Forbidden" });
     expect(mockSignUpload).not.toHaveBeenCalled();
     expect(JSON.parse(warnSpy.mock.calls.at(-1)![0] as string)).toMatchObject({ scope: "upload", message: "upload signing denied: forbidden" });
+  });
+
+  it("returns 403 for an admin session that still owes its two-factor code (T3.3)", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { email: "admin@example.com" } } });
+    mockLevels.mockResolvedValue({ data: { currentLevel: "aal1", nextLevel: "aal2" }, error: null });
+
+    const response = await POST(new Request("http://localhost/api/upload", { method: "POST" }));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Two-factor verification required" });
+    expect(mockSignUpload).not.toHaveBeenCalled();
   });
 
   it("refuses with 503 when the limiter itself is unavailable", async () => {
