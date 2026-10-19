@@ -55,6 +55,13 @@ const nextConfig = {
         destination: "/sarees/red-tissue-saree-with-floral-embroidered-pallu",
         permanent: false,
       },
+      {
+        // An import on 2026-09-07 published WCS-012 a second time under an
+        // auto-generated slug, with the same seven photos.
+        source: "/sarees/a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z",
+        destination: "/sarees/kanjivaram-peacock-pallu",
+        permanent: false,
+      },
     ];
   },
   // /admin/database reads supabase/migrations/*.sql off disk at request time
