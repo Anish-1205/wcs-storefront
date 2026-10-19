@@ -245,7 +245,7 @@ export function EnquiryForm() {
 
   return (
     <ContentRegion region="EnquiryForm"><div className="grid gap-12 lg:grid-cols-[1fr_22rem] lg:gap-16">
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <form onSubmit={handleSubmit} onFocusCapture={() => analytics.enquiryStart({ placement: "enquiry_page" })} noValidate className="space-y-5">
         <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
         {prefilled && (

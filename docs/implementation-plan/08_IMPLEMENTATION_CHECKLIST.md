@@ -130,7 +130,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P1 · M · FREE WITH LIMITS · depends on: T1.10, T1.2
 - [x] **T4.2** — Consent controls — *code done 2026-10-19, **off until `NEXT_PUBLIC_CONSENT_REQUIRED=1`**; with it on no analytics script loads before Accept (stricter than consent mode, which still pings). **Owner**: wording, regions, whether to turn it on*  
   P1 · M · FREE · depends on: T3.12
-- [ ] **T4.1** — GA4 funnel events on the existing tag  
+- [x] **T4.1** — GA4 funnel events on the existing tag — *2026-10-19: `view_item` (once per product page), `add_to_enquiry_cart`, `enquiry_start` (first focus), `generate_lead` (after server confirmation only), `whatsapp_click` with `placement`; allowlisted params. **Owner**: register the custom definitions in GA4 and check DebugView*  
   P1 · M · FREE WITH LIMITS · depends on: T4.2 for consent gating (events are queued/dropped when denied)
 - [ ] **T4.7** — Server-side pagination and indexes for expensive admin lists  
   P2 · L · FREE · depends on: T4.3 (inquiry indexes)

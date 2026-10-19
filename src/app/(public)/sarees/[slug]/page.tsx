@@ -20,6 +20,7 @@ import { CONCIERGE_NOTE } from "@/lib/copy";
 import { jsonLdScript } from "@/lib/json-ld";
 import { breadcrumbList } from "@/lib/breadcrumbs";
 import { ProductMedia } from "@/components/product/ProductMedia";
+import { ProductViewTracker } from "@/components/product/ProductViewTracker";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { WhatsAppLink } from "@/components/whatsapp/WhatsAppLink";
 import { SareeCard } from "@/components/catalog/SareeCard";
@@ -188,6 +189,7 @@ export default async function ProductPage(props: { params: Promise<{ slug: strin
         <span className="hidden text-deep-brown lg:inline">{product.title}</span>
       </nav>
 
+      <ProductViewTracker slug={product.slug} title={product.title} category={product.category} />
       <section className="mb-6 lg:hidden">
         <h1 className="font-serif text-3xl leading-tight text-oxblood">{product.title}</h1>
         <p className="mt-3 text-lg font-semibold">{priceLabel(product.price)}</p>

@@ -43,6 +43,25 @@ export function trackPinterest(
   window.pintrk("track", name, allowedParams(params));
 }
 
+/**
+ * Fire an event at most once per key per page (T4.1): a product view or an
+ * enquiry start counts once however often a component re-renders. The key
+ * includes the path, so moving to another page counts again.
+ */
+const fired = new Set<string>();
+export function trackOnce(key: string, fire: () => void): void {
+  const page = typeof window === "undefined" ? "" : window.location?.pathname ?? "";
+  const full = `${key}@${page}`;
+  if (fired.has(full)) return;
+  fired.add(full);
+  fire();
+}
+
+/** Test seam. */
+export function resetTrackOnce(): void {
+  fired.clear();
+}
+
 // ── Named events from the analytics plan ──────────────────────────
 
 export const analytics = {
@@ -56,9 +75,22 @@ export const analytics = {
     product_id?: string;
     source_page: string;
     variant_color?: string;
-  }) => trackEvent("whatsapp_click", p),
-  inquirySubmit: (p: { inquiry_type: string; source: string }) =>
-    trackEvent("inquiry_submit", p),
+  }) => trackEvent("whatsapp_click", { ...p, placement: p.source_page }),
+  /** Fired only after the server confirmed the enquiry; also GA4's `generate_lead` (T4.1). */
+  inquirySubmit: (p: { inquiry_type: string; source: string }) => {
+    trackEvent("inquiry_submit", p);
+    trackEvent("generate_lead", { inquiry_type: p.inquiry_type, lead_source: p.source });
+  },
+  // ── Funnel (T4.1): view → add to enquiry → start enquiry → lead ──
+  viewItem: (p: { item_id: string; item_name: string; item_category?: string }) =>
+    trackOnce(`view_item:${p.item_id}`, () => {
+      trackEvent("view_item", p);
+      trackPinterest("viewitem", { product_id: p.item_id });
+    }),
+  addToEnquiryCart: (p: { item_id: string; item_name: string; quantity: number }) =>
+    trackEvent("add_to_enquiry_cart", p),
+  enquiryStart: (p: { placement: string }) =>
+    trackOnce(`enquiry_start:${p.placement}`, () => trackEvent("enquiry_start", p)),
   subscriberOptIn: (p: { source: string }) =>
     trackEvent("subscriber_opt_in", p),
   collectionView: (p: { collection_name: string }) => {

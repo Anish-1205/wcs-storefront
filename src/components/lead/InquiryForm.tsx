@@ -101,7 +101,7 @@ export function InquiryForm({
   }
 
   return (
-    <ContentRegion region="InquiryForm"><form onSubmit={handleSubmit} className="space-y-4">
+    <ContentRegion region="InquiryForm"><form onSubmit={handleSubmit} onFocusCapture={() => analytics.enquiryStart({ placement: "product_form" })} className="space-y-4">
       {heading && (
         <h3 className="font-serif text-xl text-burgundy">{heading}</h3>
       )}

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { analytics } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { CartItem } from "./types";
@@ -256,6 +257,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const add = useCallback(
     (item: Omit<CartItem, "qty">, qty = 1) => {
       touch();
+      analytics.addToEnquiryCart({ item_id: item.slug, item_name: item.title, quantity: qty });
       setItems((prev) => {
         const existing = prev.find((i) => i.slug === item.slug);
         if (existing) {
