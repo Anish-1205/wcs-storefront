@@ -114,7 +114,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · S · FREE · depends on: none
 - [x] **T3.11** — Defence-in-depth fixes (allowlist at the edge, constant-time verify token) — *2026-10-19: middleware applies `ADMIN_EMAILS` to `/admin/*` and `/api/upload|import/*` (no login loop for a signed-in non-admin), sign-in refuses non-allowlisted e-mails with the generic answer, shared `sameSecret` for the WhatsApp verify token (unset → 403), subscribe builds its client per request*  
   P2 · S · FREE · depends on: none
-- [ ] **T3.12** — Data-privacy review of analytics, Sentry, audit logs and backups  
+- [x] **T3.12** — Data-privacy review of analytics, Sentry, audit logs and backups — *2026-10-19: `docs/runbooks/privacy.md` (inventory, flows, deletion procedure, open owner decisions); analytics params allowlisted; Sentry `beforeSend` redacts context and drops request bodies/cookies; tests in `privacy-guards.test.ts`. **Owner**: retention decisions, Clarity masking, policy wording*  
   P1 · S · FREE · depends on: T2.6
 
 **Phase 3 checkpoint**

@@ -12,10 +12,26 @@ declare global {
   }
 }
 
+/**
+ * The only parameter names an analytics event may carry (T3.12): product,
+ * catalogue and attribution fields. Nothing a customer types (name, phone,
+ * e-mail, message) can reach GA4 or Pinterest, whatever a caller passes;
+ * unknown keys are dropped.
+ */
+export const ALLOWED_EVENT_PARAMS = new Set([
+  "product_id", "name", "category", "color", "variant_color", "source_page", "source",
+  "inquiry_type", "collection_name", "filter_type", "value", "placement", "item_id",
+  "item_name", "item_category", "currency", "quantity", "lead_source", "method",
+]);
+
+export function allowedParams(params: GtagEventParams): GtagEventParams {
+  return Object.fromEntries(Object.entries(params).filter(([key]) => ALLOWED_EVENT_PARAMS.has(key)));
+}
+
 /** Fire a GA4 custom event. */
 export function trackEvent(name: string, params: GtagEventParams = {}): void {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return;
-  window.gtag("event", name, params);
+  window.gtag("event", name, allowedParams(params));
 }
 
 /** Fire a Pinterest Tag event. */
@@ -24,7 +40,7 @@ export function trackPinterest(
   params: GtagEventParams = {},
 ): void {
   if (typeof window === "undefined" || typeof window.pintrk !== "function") return;
-  window.pintrk("track", name, params);
+  window.pintrk("track", name, allowedParams(params));
 }
 
 // ── Named events from the analytics plan ──────────────────────────

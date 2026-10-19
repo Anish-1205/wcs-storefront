@@ -1,4 +1,5 @@
 import type { ErrorEvent, EventHint } from "@sentry/nextjs";
+import { redact } from "@/lib/logger";
 
 /**
  * Options shared by the server, edge and browser Sentry configs (T2.4).
@@ -33,6 +34,11 @@ export function previewEventsEnabled(): boolean {
 
 export function beforeSend(event: ErrorEvent, _hint?: EventHint): ErrorEvent | null {
   if (sentryEnvironment() === "preview" && !previewEventsEnabled()) return null;
+  // T3.12: whatever a caller put in reportError's context, personal data and
+  // credentials do not leave the server (same rules as the logger).
+  if (event.extra) event.extra = redact(event.extra) as ErrorEvent["extra"];
+  if (event.request?.data !== undefined) event.request = { ...event.request, data: "[omitted]" };
+  if (event.request?.cookies) event.request = { ...event.request, cookies: undefined };
   return event;
 }
 
