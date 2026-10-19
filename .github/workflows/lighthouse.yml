@@ -1,0 +1,80 @@
+name: Lighthouse
+
+# T5.4: mobile lab scores for /, /catalog, one product and /enquiry on every
+# PR, in the job summary. Warn-only (LIGHTHOUSE_ENFORCE unset): it is not a
+# required check, and a page over budget is a warning until the baseline is
+# settled. Builds against placeholders like CI; VISIBILITY_FAIL_OPEN renders the
+# file catalogue instead of the "catalogue unavailable" page, which only a real
+# database could avoid.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: placeholder-cloud
+  CLOUDINARY_API_KEY: placeholder-key
+  CLOUDINARY_API_SECRET: placeholder-secret
+  NEXT_PUBLIC_WHATSAPP_NUMBER: "919876543210"
+  NEXT_PUBLIC_BUSINESS_NAME: Weavers Club Sarees
+  NEXT_PUBLIC_SITE_URL: https://example.com
+  ADMIN_EMAILS: admin@example.com
+  UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+  UPSTASH_REDIS_REST_TOKEN: placeholder-token
+  SENTRY_AUTH_TOKEN: ""
+  NEXT_TELEMETRY_DISABLED: "1"
+  CATALOG_SNAPSHOT_OPTIONAL: "1"
+  VISIBILITY_FAIL_OPEN: "1"
+
+jobs:
+  lighthouse:
+    name: Lighthouse (mobile, warn-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start the production server
+        run: |
+          npx next start -p 3000 > "$RUNNER_TEMP/next.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000/ && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/next.log"
+          exit 1
+
+      - name: Lighthouse
+        run: node scripts/lighthouse-ci.mjs http://localhost:3000
+
+      - name: Upload the scores
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lighthouse
+          path: reports/lighthouse-ci.json
+          retention-days: 7
+          if-no-files-found: ignore

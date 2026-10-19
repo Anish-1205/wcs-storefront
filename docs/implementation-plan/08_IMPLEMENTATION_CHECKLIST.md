@@ -159,7 +159,7 @@ Planning only; nothing below has been started. Items are in dependency order wit
   P2 · M · FREE · depends on: none
 - [x] **T5.3** — Redirect validation and permanence — *2026-10-19: `src/__tests__/redirects.test.ts` (every retired slug redirected, targets exist, no chains; DB-only targets listed explicitly). Redirects stay temporary: **owner approval** needed for permanent*  
   P2 · S · FREE · depends on: none
-- [ ] **T5.4** — Lighthouse CI (non-blocking first)  
+- [x] **T5.4** — Lighthouse CI (non-blocking first) — *2026-10-19: `.github/workflows/lighthouse.yml` on PRs + `scripts/lighthouse-ci.mjs` (mobile; LCP ≤ 3 s, CLS ≤ 0.1, a11y ≥ 90, SEO ≥ 95; warn-only until `LIGHTHOUSE_ENFORCE=1`; scores in the job summary). Not yet run: first PR stores the baseline*  
   P2 · M · FREE · depends on: none
 - [ ] **T5.5** — Accessibility regression tests (axe + keyboard)  
   P2 · L · FREE WITH LIMITS · depends on: none
