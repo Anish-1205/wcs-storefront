@@ -1,22 +1,32 @@
 import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { SITE, SOCIAL_LINKS } from "@/lib/site";
 import { jsonLdScript } from "@/lib/json-ld";
 import { Analytics } from "@/components/layout/Analytics";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// Self-hosted (OFL) instead of next/font/google: fetching from Google at
+// build time sometimes returned font URLs without an extension, which
+// next/font cannot parse, and failed the build (seen locally and in CI,
+// 2026-10-20). Same "latin" subset as before; both are variable fonts, so one
+// file covers every weight in use. Source: fonts.gstatic.com, 2026-10-20.
+const playfair = localFont({
+  src: "./fonts/playfair-display-latin-var.woff2",
+  weight: "400 700",
+  style: "normal",
   variable: "--font-playfair",
   display: "swap",
+  fallback: ["Georgia", "serif"],
 });
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "./fonts/inter-latin-var.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-inter",
   display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export function generateMetadata(): Metadata {

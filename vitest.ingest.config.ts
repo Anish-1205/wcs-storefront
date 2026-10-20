@@ -9,6 +9,11 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 1_800_000,
     hookTimeout: 300_000,
+    // Near-duplicate hashing stops at INGEST_HASH_TIMEOUT_MS and keeps whatever
+    // it finished (src/lib/whatsapp-visual.ts): right in production, but on a
+    // loaded CI runner two replays of one stream could then curate differently.
+    // The maximum budget keeps the replay's outcome independent of machine load.
+    env: { INGEST_HASH_TIMEOUT_MS: "15000" },
   },
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
 });
