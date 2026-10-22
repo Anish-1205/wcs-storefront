@@ -33,7 +33,7 @@ node scripts/prepare-logo.mjs "<logo file>"          # (re)build public/brand/**
 node scripts/extract-colour-variants.mjs             # AI-extract colourway swatches from public/media/**/*colour-range*.jpg -> public/media/colour-variants.json (needs ANTHROPIC_API_KEY; degrades to no-op)
 ```
 
-See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-driven storefront (products, media, cart, WhatsApp), [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, and [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system.
+See [docs/storefront-catalogue.md](docs/storefront-catalogue.md) for the file-driven storefront (products, media, cart, WhatsApp), [docs/setup.md](docs/setup.md) for full local setup, [docs/deployment.md](docs/deployment.md) for deploy steps, [docs/admin-guide.md](docs/admin-guide.md) / [docs/content-guide.md](docs/content-guide.md) for content/admin usage, [docs/import-pipeline.md](docs/import-pipeline.md) for the bulk media import system, and [docs/diagrams/](docs/diagrams/) for a standalone runtime-architecture diagram of the request paths described above.
 
 ## Architecture
 
