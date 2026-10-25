@@ -243,7 +243,8 @@ function browserTableReads(): Map<string, string[]> {
       }
       if (!/\.tsx?$/.test(entry)) continue;
       const source = readFileSync(path, "utf8");
-      if (!source.includes('from "@/lib/supabase/client"')) continue;
+      // The lazy loader (@/lib/supabase/browser) hands out the same anon client.
+      if (!/from "@\/lib\/supabase\/(client|browser)"/.test(source)) continue;
       const tables = [...source.matchAll(/\.from\(\s*"([a-z_]+)"\s*\)/g)].map((m) => m[1]);
       if (tables.length > 0) found.set(path.replace(/\\/g, "/"), [...new Set(tables)]);
     }

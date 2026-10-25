@@ -57,6 +57,17 @@ All 17 open Dependabot alerts were closed in one commit; full `npm audit`
   #32 (incl. `@supabase/ssr` 0.6 → 0.12, which needs its own sign-in test) and
   #33.
 
+## `@sentry/replay` is pinned on purpose (2026-10-26)
+
+`src/instrumentation-client.ts` lazy-loads Session Replay with
+`import("@sentry/replay")` after the page is idle, and only for the
+error-replay sample (20% by default), so most visitors never download it.
+It has to come from `@sentry/replay`: `@sentry/nextjs` is already in the
+first-load bundle, so importing Replay from it would not split out.
+`@sentry/replay` is a direct dependency pinned to **exactly** the
+`@sentry/nextjs` version — **bump the two together** (Dependabot groups
+them), or Replay runs against a mismatched core.
+
 ## Lint: `next lint` is going away
 
 `next lint` prints "deprecated and will be removed in Next.js 16". This repo

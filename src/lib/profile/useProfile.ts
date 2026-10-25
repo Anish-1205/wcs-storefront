@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useEffect, useState } from "react";
+import { browserClient } from "@/lib/supabase/browser";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 /**
@@ -65,9 +65,6 @@ interface UseProfile {
 export function useProfile(): UseProfile {
   const { user, loading: authLoading } = useAuth();
 
-  const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
-  if (!supabaseRef.current) supabaseRef.current = createClient();
-
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -82,8 +79,8 @@ export function useProfile(): UseProfile {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const { data } = await supabaseRef
-        .current!.from("profiles")
+      const { data } = await (await browserClient())
+        .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -100,8 +97,8 @@ export function useProfile(): UseProfile {
   const save = useCallback(
     async (next: Profile): Promise<{ error: string | null }> => {
       if (!user) return { error: "You need to be signed in." };
-      const { error } = await supabaseRef
-        .current!.from("profiles")
+      const { error } = await (await browserClient())
+        .from("profiles")
         .upsert({ user_id: user.id, ...next }, { onConflict: "user_id" });
       if (!error) setProfile({ ...next });
       return { error: error?.message ?? null };

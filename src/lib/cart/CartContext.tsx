@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { analytics } from "@/lib/analytics";
-import { createClient } from "@/lib/supabase/client";
+import { browserClient } from "@/lib/supabase/browser";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { CartItem } from "./types";
 import {
@@ -93,9 +93,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [lastRemoved, setLastRemoved] = useState<RemovedItem | null>(null);
 
-  const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
-  if (!supabaseRef.current) supabaseRef.current = createClient();
-
   // The user id whose server cart is currently loaded into state.
   const syncedUserRef = useRef<string | null>(null);
   const itemsRef = useRef<CartItem[]>(items);
@@ -155,9 +152,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!uid) return;
     const serialized = JSON.stringify(next);
     lastPushedRef.current = serialized;
-    void supabaseRef
-      .current!.from("carts")
-      .upsert({ user_id: uid, items: next }, { onConflict: "user_id" })
+    void browserClient()
+      .then((supabase) => supabase.from("carts").upsert({ user_id: uid, items: next }, { onConflict: "user_id" }))
       .then(({ error }) => {
         if (error) {
           // Allow a later change to retry this content.
@@ -173,7 +169,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // React to sign-in / sign-out.
   useEffect(() => {
     if (!hydrated || authLoading) return;
-    const supabase = supabaseRef.current!;
 
     // Signed out (or still a guest): stop syncing, keep the local cart.
     // `localMetaRef.ownerId` deliberately keeps the last owner, so signing
@@ -190,6 +185,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     (async () => {
+      const supabase = await browserClient();
       const { data, error } = await supabase
         .from("carts")
         .select("items, updated_at")
