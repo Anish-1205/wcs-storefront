@@ -16,7 +16,7 @@ const photo = (url: string, order: number, primary = false) => ({
 
 function dbRow(overrides: Partial<ProductWithRelations> = {}): ProductWithRelations {
   return {
-    id: "11111111-1111-1111-1111-111111111111",
+    id: "11111111-1111-4111-8111-111111111111",
     slug: "rani-pink-saree-with-zari-check-pallu",
     name: "Rani Pink Saree with Zari Check Pallu",
     description: "A Benarasi-inspired saree with a zari check pallu.",
@@ -38,7 +38,7 @@ function dbRow(overrides: Partial<ProductWithRelations> = {}): ProductWithRelati
     product_variants: [
       {
         id: "v1",
-        product_id: "11111111-1111-1111-1111-111111111111",
+        product_id: "11111111-1111-4111-8111-111111111111",
         color: "Default",
         color_hex: null,
         status: "available",

@@ -36,8 +36,8 @@ import { POST } from "@/app/api/import/sign/route";
 
 function validBody(overrides: Record<string, unknown> = {}) {
   return {
-    batch_id: "11111111-1111-1111-1111-111111111111",
-    client_upload_id: "22222222-2222-2222-2222-222222222222",
+    batch_id: "11111111-1111-4111-8111-111111111111",
+    client_upload_id: "22222222-2222-4222-8222-222222222222",
     filename: "saree.jpg",
     mime_type: "image/jpeg",
     kind: "image",
@@ -128,7 +128,7 @@ describe("POST /api/import/sign", () => {
     const res = await POST(req(validBody()));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.publicId).toBe("imports/11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222");
+    expect(body.publicId).toBe("imports/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222");
     expect(body.resourceType).toBe("image");
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({ batch_id: validBody().batch_id, client_upload_id: validBody().client_upload_id, upload_status: "pending" }),

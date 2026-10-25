@@ -113,17 +113,17 @@ describe("import review gate — publishing is blocked until reviewed", () => {
   });
 
   it("saveProduct's publish path is gated the same way, before any other write happens", async () => {
-    const admin = makeFakeAdmin([{ id: "33333333-3333-3333-3333-333333333333", slug: "imported-item-2", status: "draft", review_status: "pending_review" }]);
+    const admin = makeFakeAdmin([{ id: "33333333-3333-4333-8333-333333333333", slug: "imported-item-2", status: "draft", review_status: "pending_review" }]);
     mockAssertAdmin.mockResolvedValue({ user: { email: "admin@example.com" }, admin });
 
     // Otherwise publish-ready — this proves the review gate itself blocks the
     // save, not an unrelated schema-completeness failure.
     const { saveProduct } = await import("@/app/admin/actions");
     const result = await saveProduct({
-      id: "33333333-3333-3333-3333-333333333333",
+      id: "33333333-3333-4333-8333-333333333333",
       name: "Imported Item",
       slug: "imported-item-2",
-      category_id: "44444444-4444-4444-4444-444444444444",
+      category_id: "44444444-4444-4444-8444-444444444444",
       fabric_type: "Pure silk",
       description: "A handwoven silk saree with a traditional border and matching blouse piece.",
       highlights: [],

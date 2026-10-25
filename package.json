@@ -19,7 +19,7 @@
     "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.73.0",
+    "@sentry/nextjs": "^10.76.2",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.45.4",
     "@upstash/ratelimit": "^2.0.8",
@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.454.0",
     "motion": "^12.43.0",
-    "next": "15.5.27",
+    "next": "15.5.28",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
@@ -36,10 +36,11 @@
     "resend": "^4.0.0",
     "sharp": "^0.35.4",
     "tailwind-merge": "^2.5.4",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "overrides": {
-    "postcss": "$postcss"
+    "postcss": "$postcss",
+    "postcss-selector-parser": "^7.1.6"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
@@ -52,7 +53,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.2",
     "eslint": "^8",
-    "eslint-config-next": "15.5.27",
+    "eslint-config-next": "15.5.28",
     "ffmpeg-static": "^5.2.0",
     "ffprobe-static": "^3.1.0",
     "lighthouse": "^13.4.1",
@@ -60,6 +61,6 @@
     "tailwindcss": "^3.4.14",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

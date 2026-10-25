@@ -9,8 +9,8 @@ import {
 } from "@/lib/cart/reconcile";
 import type { CartItem } from "@/lib/cart/types";
 
-const USER = "11111111-1111-1111-1111-111111111111";
-const OTHER_USER = "22222222-2222-2222-2222-222222222222";
+const USER = "11111111-1111-4111-8111-111111111111";
+const OTHER_USER = "22222222-2222-4222-8222-222222222222";
 
 function item(slug: string, qty: number): CartItem {
   return {

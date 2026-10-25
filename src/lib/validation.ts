@@ -492,7 +492,7 @@ export const importBatchCreateSchema = z.object({
   label: z.string().max(200).optional().nullable(),
   source: z.enum(importBatchSourceValues).default("web"),
   manifest_collection_id: z.string().uuid().optional().nullable(),
-  manifest: z.record(z.unknown()).optional().nullable(),
+  manifest: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export const importUploadSignRequestSchema = z

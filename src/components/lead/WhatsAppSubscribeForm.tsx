@@ -42,7 +42,7 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
     const leadSource = getSource();
     const parsed = subscriberSchema.safeParse({ name, phone, source: leadSource });
     if (!parsed.success) {
-      setError(parsed.error.errors[0]?.message ?? "Please check your details.");
+      setError(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;
     }
 

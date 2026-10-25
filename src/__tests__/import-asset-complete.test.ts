@@ -46,8 +46,8 @@ vi.mock("@/lib/rate-limit", async (original) => ({
 
 import { POST } from "@/app/api/import/complete/route";
 
-const BATCH_ID = "11111111-1111-1111-1111-111111111111";
-const CLIENT_UPLOAD_ID = "22222222-2222-2222-2222-222222222222";
+const BATCH_ID = "11111111-1111-4111-8111-111111111111";
+const CLIENT_UPLOAD_ID = "22222222-2222-4222-8222-222222222222";
 
 function validBody(overrides: Record<string, unknown> = {}) {
   return {
