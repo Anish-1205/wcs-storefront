@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { Product } from "@/data/products";
 import { primaryImage } from "@/data/products";
 import { availabilityLabel } from "@/lib/catalog-format";
+import { AnimatedText, Motion } from "@/components/ui/motion";
 
 export function AddToCartButton({
   product,
@@ -46,13 +47,19 @@ export function AddToCartButton({
         className,
       )}
     >
-      {sold
-        ? "Currently Unavailable"
-        : added
-          ? "Added to Selection"
-          : inCart
-            ? "Add Another"
-            : "Add to Cart"}
+      <Motion>
+        <AnimatedText
+          text={
+            sold
+              ? "Currently Unavailable"
+              : added
+                ? "Added to Selection"
+                : inCart
+                  ? "Add Another"
+                  : "Add to Cart"
+          }
+        />
+      </Motion>
     </button></ContentRegion>
   );
 }

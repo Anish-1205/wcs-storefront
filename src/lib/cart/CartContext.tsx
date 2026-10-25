@@ -70,6 +70,17 @@ interface CartContextValue {
   setQty: (slug: string, qty: number) => void;
   remove: (slug: string) => void;
   clear: () => void;
+  /** The item most recently taken out (remove, or qty down to 0), until undone or dismissed. */
+  lastRemoved: RemovedItem | null;
+  undoRemove: () => void;
+  dismissRemoved: () => void;
+}
+
+export interface RemovedItem {
+  item: CartItem;
+  index: number;
+  /** Changes on every removal, so a toast can restart its timer. */
+  at: number;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -80,6 +91,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [lastRemoved, setLastRemoved] = useState<RemovedItem | null>(null);
 
   const supabaseRef = useRef<ReturnType<typeof createClient> | undefined>(undefined);
   if (!supabaseRef.current) supabaseRef.current = createClient();
@@ -277,6 +289,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const setQty = useCallback(
     (slug: string, qty: number) => {
       touch();
+      const index = items.findIndex((i) => i.slug === slug);
+      if (index >= 0 && Math.floor(qty) <= 0) setLastRemoved({ item: items[index], index, at: Date.now() });
       setItems((prev) =>
         prev.flatMap((i) => {
           if (i.slug !== slug) return [i];
@@ -285,20 +299,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [touch],
+    [touch, items],
   );
 
   const remove = useCallback(
     (slug: string) => {
       touch();
+      const index = items.findIndex((i) => i.slug === slug);
+      if (index >= 0) setLastRemoved({ item: items[index], index, at: Date.now() });
       setItems((prev) => prev.filter((i) => i.slug !== slug));
     },
-    [touch],
+    [touch, items],
   );
+
+  // Puts the item back where it was, with its quantity. Not an add: no analytics event.
+  const undoRemove = useCallback(() => {
+    if (!lastRemoved) return;
+    const { item, index } = lastRemoved;
+    touch();
+    setItems((prev) => (prev.some((i) => i.slug === item.slug) ? prev : [...prev.slice(0, index), item, ...prev.slice(index)]));
+    setLastRemoved(null);
+  }, [touch, lastRemoved]);
+
+  const dismissRemoved = useCallback(() => setLastRemoved(null), []);
 
   const clear = useCallback(() => {
     touch();
     setItems([]);
+    setLastRemoved(null);
   }, [touch]);
 
   const openCart = useCallback(() => setIsOpen(true), []);
@@ -323,8 +351,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setQty,
       remove,
       clear,
+      lastRemoved,
+      undoRemove,
+      dismissRemoved,
     };
-  }, [items, hydrated, isOpen, openCart, closeCart, add, setQty, remove, clear]);
+  }, [items, hydrated, isOpen, openCart, closeCart, add, setQty, remove, clear, lastRemoved, undoRemove, dismissRemoved]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

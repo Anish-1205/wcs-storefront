@@ -4,6 +4,7 @@ import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { SourceTracker } from "@/components/layout/SourceTracker";
 import { CartProvider } from "@/lib/cart/CartContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { CartUndoToast } from "@/components/cart/CartUndoToast";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { PageContentProvider } from "@/components/content/ContentRegion";
 import { getPageContent } from "@/lib/page-content-server";
@@ -27,6 +28,7 @@ export default async function PublicLayout({
         <Footer />
         <WhatsAppFloat />
         <CartDrawer />
+        <CartUndoToast />
         </div>
       </CartProvider>
     </AuthProvider></PageContentProvider>

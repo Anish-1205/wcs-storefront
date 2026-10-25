@@ -7,9 +7,11 @@ import { SafeImage as Image } from "@/components/media/SafeImage";
 import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
 import { formatINR } from "@/lib/catalog-format";
+import { TimedUndoAction } from "@/components/ui/timed-undo-action";
+import { Motion, RollingNumber } from "@/components/ui/motion";
 
 export function CartView() {
-  const { items, setQty, remove, knownSubtotal, hasUnpriced, hydrated } = useCart();
+  const { items, setQty, remove, clear, knownSubtotal, hasUnpriced, hydrated } = useCart();
 
   if (hydrated && items.length === 0) {
     return (
@@ -83,7 +85,9 @@ export function CartView() {
               <dt className="text-muted-foreground">
                 {hasUnpriced ? "Priced items" : "Subtotal"}
               </dt>
-              <dd className="text-deep-brown">{formatINR(knownSubtotal)}</dd>
+              <dd className="text-deep-brown">
+                <Motion><RollingNumber value={knownSubtotal} format={formatINR} /></Motion>
+              </dd>
             </div>
           )}
           {hasUnpriced && (
@@ -110,6 +114,9 @@ export function CartView() {
         >
           Continue Shopping
         </Link>
+        {items.length > 1 && (
+          <TimedUndoAction onConfirm={clear} label="Clear List" className="mt-2 w-full" />
+        )}
       </aside>
     </div></ContentRegion>
   );

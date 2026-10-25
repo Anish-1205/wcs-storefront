@@ -66,7 +66,7 @@ export function SareeCard({
       onFocus={enter}
       onBlur={leave}
     >
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-warm-cream">
+      <div className="weave relative aspect-[4/5] w-full overflow-hidden bg-warm-cream">
         <Image
           src={main.src}
           alt={main.alt}

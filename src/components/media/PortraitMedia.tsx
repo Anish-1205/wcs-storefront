@@ -87,7 +87,7 @@ export function PortraitImage(props: ImageProps) {
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden bg-warm-cream",
+        "weave relative w-full overflow-hidden bg-warm-cream",
         RATIO_CLASS[ratio],
         rounded && "rounded-sm",
         className,
@@ -165,7 +165,7 @@ export function PortraitVideo(props: VideoProps) {
       ref={wrapRef}
       style={{ aspectRatio: `${width} / ${height}` }}
       className={cn(
-        "relative w-full overflow-hidden bg-warm-cream",
+        "weave relative w-full overflow-hidden bg-warm-cream",
         rounded && "rounded-sm",
         maxClassName,
         className,

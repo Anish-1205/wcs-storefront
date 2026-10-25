@@ -10,6 +10,9 @@ import { describeSubmitFailure } from "@/lib/submit-errors";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { AnimatePresence, m } from "motion/react";
+import { BellRing } from "lucide-react";
+import { Motion } from "@/components/ui/motion";
 
 interface Props {
   source?: string; // placement label, e.g. "footer" | "home" | "collection"
@@ -26,6 +29,7 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(!compact);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,8 +79,25 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
     );
   }
 
+  // The compact (footer) placement starts as one button that opens into the form.
   return (
-    <ContentRegion region="WhatsAppSubscribeForm" global><form onSubmit={handleSubmit} className="space-y-2">
+    <ContentRegion region="WhatsAppSubscribeForm" global><Motion><AnimatePresence mode="wait" initial={false}>
+    {!open ? (
+      <m.div key="cta" exit={{ opacity: 0, scale: 0.96, filter: "blur(4px)" }} transition={{ duration: 0.15 }}>
+        <Button type="button" variant="gold" className="w-full" size="sm" onClick={() => setOpen(true)} aria-expanded={false}>
+          <BellRing className="h-4 w-4" aria-hidden="true" />
+          Notify me on WhatsApp
+        </Button>
+      </m.div>
+    ) : (
+    <m.form
+      key="form"
+      onSubmit={handleSubmit}
+      className="space-y-2 overflow-hidden"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      transition={{ type: "spring", stiffness: 240, damping: 24 }}
+    >
       {/* Honeypot — hidden from humans, tempting to bots */}
       <input
         type="text"
@@ -92,6 +113,7 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         aria-label="Your name"
+        autoFocus={compact}
         required
         className={compact ? "h-10" : ""}
       />
@@ -124,6 +146,8 @@ export function WhatsAppSubscribeForm({ source = "unknown", compact }: Props) {
       >
         {status === "loading" ? "Subscribing…" : "Notify me on WhatsApp"}
       </Button>
-    </form></ContentRegion>
+    </m.form>
+    )}
+    </AnimatePresence></Motion></ContentRegion>
   );
 }

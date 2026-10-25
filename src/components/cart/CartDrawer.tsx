@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { X, Minus, Plus } from "lucide-react";
 import { useCart } from "@/lib/cart/CartContext";
 import { formatINR } from "@/lib/catalog-format";
+import { Motion, RollingNumber } from "@/components/ui/motion";
 import { CONCIERGE_NOTE } from "@/lib/copy";
 
 export function CartDrawer() {
@@ -148,7 +149,7 @@ export function CartDrawer() {
                     {hasUnpriced ? "Subtotal (priced items)" : "Subtotal"}
                   </span>
                   <span className="font-medium text-deep-brown">
-                    {formatINR(knownSubtotal)}
+                    <Motion><RollingNumber value={knownSubtotal} format={formatINR} /></Motion>
                   </span>
                 </div>
               )}
