@@ -25,7 +25,7 @@ const nextConfig = {
     // The widths a srcset can ask for. Source photography is capped at 1600px
     // (scripts/prepare-media.mjs MAX_EDGE), so nothing wider is useful, and a
     // short ladder keeps the number of Cloudinary derivations per photo small.
-    // 128/384/640 are also the local copy widths (LOCAL_VARIANT_WIDTHS).
+    // 128/384/640/1080 are also the local copy widths (LOCAL_VARIANT_WIDTHS).
     deviceSizes: [384, 640, 1080, 1600],
     imageSizes: [128, 256],
   },

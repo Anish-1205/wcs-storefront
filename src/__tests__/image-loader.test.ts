@@ -59,7 +59,8 @@ describe("imageLoader — everything else", () => {
     expect(imageLoader({ src, width: 128 })).toBe("/m/128/purple-tanchoi-silk/01-full.webp");
     expect(imageLoader({ src, width: 256 })).toBe("/m/384/purple-tanchoi-silk/01-full.webp");
     expect(imageLoader({ src, width: 640 })).toBe("/m/640/purple-tanchoi-silk/01-full.webp");
-    expect(imageLoader({ src, width: 1080 })).toBe(src);
+    expect(imageLoader({ src, width: 1080 })).toBe("/m/1080/purple-tanchoi-silk/01-full.webp");
+    expect(imageLoader({ src, width: 1600 })).toBe(src);
     expect(imageLoader({ src: "/media/craft-detail-red-saree.jpeg", width: 384 })).toBe("/m/384/craft-detail-red-saree.webp");
   });
 

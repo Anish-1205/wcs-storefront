@@ -16,7 +16,7 @@ import { dirname, join, relative } from "node:path";
 import sharp from "sharp";
 
 // Keep in step with LOCAL_VARIANT_WIDTHS in src/lib/image-loader.ts.
-const WIDTHS = [128, 384, 640];
+const WIDTHS = [128, 384, 640, 1080];
 const SRC_DIR = "public/media";
 // Short on purpose: the longest product folder already sits at Windows' 260-char
 // path limit, and "m/128" is no longer than "media".

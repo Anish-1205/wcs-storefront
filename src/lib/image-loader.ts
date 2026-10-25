@@ -10,7 +10,7 @@
 //  - Anything else (brand PNGs, data: URIs, other hosts) is returned as-is.
 
 /** Widths scripts/build-media-variants.mjs produces. Keep the two in step. */
-export const LOCAL_VARIANT_WIDTHS = [128, 384, 640] as const;
+export const LOCAL_VARIANT_WIDTHS = [128, 384, 640, 1080] as const;
 
 const CLOUDINARY_HOST = "res.cloudinary.com";
 // A transformation segment is a comma list of `<1-3 letter key>_<value>`
