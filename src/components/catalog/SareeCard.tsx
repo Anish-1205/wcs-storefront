@@ -88,7 +88,9 @@ export function SareeCard({
             loop
             playsInline
             preload="none"
-            poster={video.poster}
+            // Only once hovered: touch devices never play the clip, so an eager
+            // poster was a 150-200 KB download per card for nothing.
+            poster={hover ? video.poster : undefined}
             aria-hidden="true"
             className={cn(
               "absolute inset-0 h-full w-full object-cover transition-opacity duration-500",

@@ -141,6 +141,8 @@ export function PortraitVideo(props: VideoProps) {
     const el = videoRef.current;
     const wrap = wrapRef.current;
     if (!el || !wrap) return;
+    // Data Saver: the poster stays; a clip is several MB on a phone connection.
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
 
     // Hysteresis: start once a third of the clip is on screen, pause only
     // once it's almost gone — scrolling past pauses it on the frame, scrolling
@@ -156,8 +158,15 @@ export function PortraitVideo(props: VideoProps) {
       },
       { threshold: [0, 0.05, 0.3, 0.6] },
     );
-    io.observe(wrap);
-    return () => io.disconnect();
+    // Start only after the page has loaded, so the clip's download never
+    // competes with the images the first paint needs.
+    const start = () => io.observe(wrap);
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    return () => {
+      window.removeEventListener("load", start);
+      io.disconnect();
+    };
   }, []);
 
   return (
@@ -192,7 +201,8 @@ export function PortraitVideo(props: VideoProps) {
         playsInline
         controls={controls}
         preload={preload}
-        poster={poster}
+        // No poster attribute: the optimised <Image> underlay above is the
+        // poster, and a second, full-size JPG download of it is pure waste.
         aria-label={alt}
         onPlaying={() => setVideoReady(true)}
         className={cn(

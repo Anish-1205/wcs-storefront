@@ -151,6 +151,14 @@ async function finishMark(img, width) {
     .toBuffer();
 }
 
+/**
+ * 256-colour palette PNG for the four logo files the site serves (~1/3 the
+ * bytes; visually identical on the site's backgrounds). Applied at write time
+ * only, so the dark marks are still derived from the full-quality light ones.
+ */
+const palettePng = (buf) =>
+  sharp(buf).png({ palette: true, quality: 90, effort: 10, compressionLevel: 9 }).toBuffer();
+
 /** Flatten every opaque-ish pixel to a single flat colour, keeping alpha. */
 async function recolorFlat(pngBuffer, target) {
   const { data, info } = await sharp(pngBuffer)
@@ -235,15 +243,15 @@ async function main() {
   // ── monogram (navbar) ──
   const monoLight = await finishMark(await extract(MONOGRAM), MONOGRAM_W);
   const monoDark = await recolorFlat(monoLight, DARK_INK);
-  await fs.writeFile(path.join(BRAND_OUT, "monogram-light.png"), monoLight);
-  await fs.writeFile(path.join(BRAND_OUT, "monogram-dark.png"), monoDark);
+  await fs.writeFile(path.join(BRAND_OUT, "monogram-light.png"), await palettePng(monoLight));
+  await fs.writeFile(path.join(BRAND_OUT, "monogram-dark.png"), await palettePng(monoDark));
   const monoDims = await pngDims(monoLight);
 
   // ── lockup (footer) ──
   const lockLight = await finishMark(await extract(LOCKUP), LOCKUP_W);
   const lockDark = await recolorFlat(lockLight, DARK_INK);
-  await fs.writeFile(path.join(BRAND_OUT, "lockup-light.png"), lockLight);
-  await fs.writeFile(path.join(BRAND_OUT, "lockup-dark.png"), lockDark);
+  await fs.writeFile(path.join(BRAND_OUT, "lockup-light.png"), await palettePng(lockLight));
+  await fs.writeFile(path.join(BRAND_OUT, "lockup-dark.png"), await palettePng(lockDark));
   const lockDims = await pngDims(lockLight);
 
   // ── icons (from the monogram, on a cream ground) ──
