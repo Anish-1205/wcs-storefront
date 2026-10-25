@@ -32,7 +32,8 @@ export function CartUndoToast() {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex justify-center sm:bottom-6"
+        // Phones: above the floating WhatsApp button, which sits in the bottom-right corner.
+        className="pointer-events-none fixed inset-x-4 bottom-20 z-[70] flex justify-center sm:bottom-6"
       >
         <AnimatePresence>
           {lastRemoved && (
@@ -46,7 +47,7 @@ export function CartUndoToast() {
               onMouseLeave={() => setPaused(false)}
               onFocus={() => setPaused(true)}
               onBlur={() => setPaused(false)}
-              className="pointer-events-auto flex max-w-md items-center gap-3 border border-line bg-card py-2 pl-4 pr-2 text-base text-deep-brown shadow-lg"
+              className="pointer-events-auto flex w-full min-w-0 max-w-md items-center gap-3 border border-line bg-card py-2 pl-4 pr-2 text-base text-deep-brown shadow-lg"
             >
               <span className="min-w-0 truncate">
                 Removed <span className="font-medium">{lastRemoved.item.title}</span>

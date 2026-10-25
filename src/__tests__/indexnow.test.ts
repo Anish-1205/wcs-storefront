@@ -48,6 +48,9 @@ describe("IndexNow (T5.8)", () => {
     expect(ok.status).toBe(200);
     expect(await ok.text()).toBe(KEY);
     expect((await GET(new Request("http://x/api/indexnow-key?k=guessing123"))).status).toBe(404);
+    // Reached through the next.config rewrite, the handler may see the original path only.
+    expect(await (await GET(new Request(`http://x/${KEY}.txt`))).text()).toBe(KEY);
+    expect((await GET(new Request("http://x/guessing123.txt"))).status).toBe(404);
     vi.stubEnv("INDEXNOW_KEY", "");
     expect((await GET(new Request(`http://x/api/indexnow-key?k=${KEY}`))).status).toBe(404);
   });
