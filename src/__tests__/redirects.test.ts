@@ -27,6 +27,13 @@ describe("redirects", async () => {
     for (const slug of RETIRED_SLUGS) expect(sources, `no redirect for retired /sarees/${slug}`).toContain(`/sarees/${slug}`);
   });
 
+  // Otherwise the product stays in the catalogue and sitemap while its URL redirects.
+  it("every redirected product slug is retired", () => {
+    for (const { source } of redirects) {
+      if (source.startsWith("/sarees/")) expect(RETIRED_SLUGS.has(source.slice("/sarees/".length)), `${source} redirects but is not in RETIRED_SLUGS`).toBe(true);
+    }
+  });
+
   it("every target exists and is not itself redirected (no chains, no loops)", () => {
     const fileProducts = new Set(PRODUCTS.map((p) => `/sarees/${p.slug}`));
     for (const { source, destination } of redirects) {

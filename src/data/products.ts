@@ -894,43 +894,6 @@ const SEEDS: ProductSeed[] = [
     createdAt: "2026-08-06",
   },
   {
-    id: "wcs-020",
-    slug: "a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z",
-    title: "Antique Gold Saree with Red-Gold Benarasi Border",
-    reference: "WCS-020",
-    weave: null,
-    material: null,
-    origin: null,
-    colour: "Antique gold with a red-gold woven border and pallu",
-    colourFamily: "Gold",
-    price: 4990,
-    availability: "available",
-    availabilityNote: null,
-    description:
-      "A regal Kanjivaram tissue brocade saree, featuring a rich antique-gold base with intricate woven motifs and a striking red-gold Benarasi border and pallu. The traditional detailing and luxurious drape give it a timeless, royal appeal.",
-    details: [
-      "Antique-gold base with woven motifs",
-      "Red-gold Benarasi border and pallu",
-      "Traditional intricate detailing",
-    ],
-    tags: ["Kanjivaram", "Benarasi Border", "Festive"],
-    includes: null,
-    images: [
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "01-detail.jpg", "detail", "Detail of the antique-gold base and woven motifs"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "02-detail.jpg", "detail", "Detail of the red-gold Benarasi border"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "03-full.jpg", "full", "Antique gold saree with a red-gold Benarasi border and pallu, draped on a stand"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "04-detail.jpg", "detail", "Detail of the pallu border"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "05-detail.jpg", "detail", "Detail of the woven motifs"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "06-detail.jpg", "detail", "Detail of the border weave"),
-      img("a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z", "07-detail.jpg", "detail", "Detail of the drape"),
-    ],
-    primaryImageSrc: "/media/a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z/03-full.jpg",
-    videos: [],
-    featured: true,
-    colourRangeNote: null,
-    createdAt: "2026-09-07",
-  },
-  {
     id: "wcs-021",
     slug: "benarsi-crepe",
     title: "Saree with Temple Border",
@@ -1107,6 +1070,10 @@ export const RETIRED_SLUGS: ReadonlySet<string> = new Set([
   // WCS-024, the dusty-pink colourway — now part of WCS-023 (same design,
   // same price), which carries its photographs.
   "bandhani-on-gaji-silk-sarees-with-hand-work",
+  // WCS-020 — a 2026-09-07 import re-published WCS-012 (kanjivaram-peacock-pallu).
+  "a-regal-kanjiwaram-tissue-brocade-saree-featuring-a-rich-antique-gold-base-with-intricate-woven-motifs-and-a-striking-red-gold-benarasi-border-and-pallu-the-traditional-detailing-and-luxurious-drap-mtqw8h6z",
+  // A 2026-10-06 WhatsApp redelivery duplicate of red-tissue-saree-with-floral-embroidered-pallu.
+  "red-tissue-saree-with-floral-embroidered-border",
 ]);
 
 export const PRODUCTS: Product[] = SEEDS.map((s) => ({
