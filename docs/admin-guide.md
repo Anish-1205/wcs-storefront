@@ -255,10 +255,14 @@ in the sidebar.
 
 1. Go to **Database**.
 2. Read what's listed as pending.
-3. Press **Apply**.
+3. Send that list to your developer. The **Apply** button is switched off on
+   purpose (it shows "Apply disabled"): database changes are applied by the
+   developer from their computer, following
+   [the migration safety runbook](runbooks/migration-safety.md), so a half-run
+   change can't take the site down.
 
 If the page says it can't connect or can't verify the database certificate,
-stop and send that message to your developer — it's a configuration issue, not
+send that message to your developer too — it's a configuration issue, not
 something to retry.
 
 ## Managing inquiries

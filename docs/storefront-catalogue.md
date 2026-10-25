@@ -258,6 +258,27 @@ rules live in `src/lib/cart/reconcile.ts` and are covered by
 - `CartItem` (`src/lib/cart/types.ts`) carries `price: number | null` — priced
   and "Price on Enquiry" items coexist; totals only appear if **every** line is
   priced.
+- **Undo a removal.** `remove()` and a qty-to-0 `setQty()` record the line as
+  `lastRemoved` (item + its index); `undoRemove()` puts it back in the same
+  place with the same quantity and fires no add-to-cart analytics.
+  `CartUndoToast` (rendered once in `(public)/layout.tsx`, above the drawer)
+  shows "Removed … · Undo" for 5s; the timer pauses while the toast is hovered
+  or focused. On phones it sits above the WhatsApp float (`bottom-20`).
+  `clear()` drops any pending undo.
+- **Clear List** (cart page, 2+ items) is `TimedUndoAction`: the first click
+  arms a 5s countdown, a second click cancels, and `clear()` runs only when the
+  countdown reaches 0.
+
+### Motion
+
+Storefront animation goes through `src/components/ui/motion.tsx`: wrap a
+control in `<Motion>` (LazyMotion with `domAnimation` + `reducedMotion="user"`)
+and use `m.*`, never `motion.*` — the provider is `strict`, so `motion.*`
+throws. `AnimatedText` (letter-by-letter label swap, real text in an `sr-only`
+span) and `RollingNumber` (cart subtotals; screen readers get the final value,
+reduced motion jumps) live there too. `domAnimation` has no layout/`layoutId`
+animations; reach for `domMax` only if a component truly needs them.
+`.weave` (`globals.css`) is the faint woven texture behind media placeholders.
 
 ---
 

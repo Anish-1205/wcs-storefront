@@ -51,3 +51,13 @@ supabase/.temp
 
 # archify skill scratch output (diagrams are promoted into docs/diagrams/)
 .archify/
+
+# graphify: commit the graph + report + manifest; the HTML is rebuilt with
+# `graphify export html`, and the interpreter/root files are machine paths.
+graphify-out/graph.html
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/20*/
+graphify-out/.graphify_labels.pending.json
+graphify-out/cache/ast/
+graphify-out/cache/stat-index.json

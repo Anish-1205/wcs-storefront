@@ -1,0 +1,7 @@
+# Scope of the graphify knowledge graph (graphify-out/): code + docs only.
+# Product photos/videos would each need an AI pass and say nothing about the code.
+public/
+package-lock.json
+docs/diagrams/runtime-architecture.html
+graphify-out/
+src/app/*.png

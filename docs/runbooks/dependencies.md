@@ -33,6 +33,30 @@ None of these packages runs in production or touches user input; they read
 the repo's own files at build time. Fix them with the majors, not with
 `npm audit fix --force`.
 
+## Security round (recorded 2026-10-25, commit 300a7b2)
+
+All 17 open Dependabot alerts were closed in one commit; full `npm audit`
+(dev included) is **0 vulnerabilities**.
+
+| Package | To | Alert |
+| --- | --- | --- |
+| `next` / `eslint-config-next` | 15.5.28 (exact pin kept) | critical: RCE in the image optimiser with SVG; high: Server Actions DoS |
+| `@sentry/nextjs` | 10.76.2 | critical: middleware bypass via the tunnel route |
+| `zod` | 4.6.7 (major) | high: memory exhaustion on oversized constrained collections |
+| `vitest`, `vite`, `fast-uri`, lighthouse's `puppeteer-core` | patched | dev/build only |
+| `postcss-selector-parser` | 7.x via `overrides` | dev only; Tailwind 3 pins 6.x |
+
+- **Zod 4** needed only: `ZodError.errors` → `.issues`, and `z.record()` now
+  takes a key schema. Zod 4 enforces RFC 4122 UUIDs, so test fixtures use
+  valid v4 IDs (`…-4…-8…`) — real IDs all come from `gen_random_uuid()` /
+  `crypto.randomUUID()`.
+- **The `postcss-selector-parser` override** was checked by building
+  Tailwind's CSS before and after: byte-identical. Drop it when Tailwind 4
+  lands.
+- Dependabot PRs #29/#30 were superseded; the non-security remainder is in
+  #32 (incl. `@supabase/ssr` 0.6 → 0.12, which needs its own sign-in test) and
+  #33.
+
 ## Lint: `next lint` is going away
 
 `next lint` prints "deprecated and will be removed in Next.js 16". This repo
