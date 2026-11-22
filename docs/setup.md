@@ -4,7 +4,7 @@ This guide gets the saree website running on your machine.
 
 ## Prerequisites
 
-- **Node.js 18.17+** (Node 20 LTS recommended) — <https://nodejs.org>
+- **Node.js 20** (see `.nvmrc`) — <https://nodejs.org>
 - **Supabase CLI** — <https://supabase.com/docs/guides/cli> (`npm i -g supabase` or `scoop install supabase`)
 - **Docker Desktop** — required by the Supabase CLI for the local stack
 - A **Cloudinary** account (free tier) — for image uploads
